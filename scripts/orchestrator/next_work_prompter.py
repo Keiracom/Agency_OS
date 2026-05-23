@@ -35,12 +35,12 @@ Usage:
     python3 next_work_prompter.py --callsign aiden
     python3 next_work_prompter.py --callsign elliot --dry-run
 """
+
 from __future__ import annotations
 
 import argparse
 import json
 import logging
-import os
 import re
 import subprocess
 import sys
@@ -95,7 +95,10 @@ def _pane_idle(callsign: str) -> bool:
     try:
         cp = subprocess.run(
             ["tmux", "capture-pane", "-t", target, "-p"],
-            capture_output=True, text=True, timeout=5, check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
         )
     except (FileNotFoundError, subprocess.TimeoutExpired):
         return False
@@ -103,9 +106,7 @@ def _pane_idle(callsign: str) -> bool:
         return False
     tail = "\n".join(cp.stdout.splitlines()[-12:]).lower()
     # Mid-turn markers — Claude Code shows these only while processing.
-    if "esc to interrupt" in tail or "tokens ·" in tail or "tokens ·" in tail:
-        return False
-    return True
+    return not ("esc to interrupt" in tail or "tokens ·" in tail)
 
 
 def _inject(callsign: str, text: str) -> bool:
@@ -116,12 +117,18 @@ def _inject(callsign: str, text: str) -> bool:
     try:
         subprocess.run(
             ["tmux", "send-keys", "-t", target, text],
-            capture_output=True, text=True, timeout=5, check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
         )
         time.sleep(0.4)
         subprocess.run(
             ["tmux", "send-keys", "-t", target, "C-m"],
-            capture_output=True, text=True, timeout=5, check=False,
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
         )
         log.info("injected -> %s: %s", target, text[:120])
         return True
@@ -134,7 +141,10 @@ def _bd_in_progress(callsign: str) -> dict | None:
     try:
         cp = subprocess.run(
             ["bd", "list", "--status=in_progress", "--json"],
-            capture_output=True, text=True, timeout=10, check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
             cwd="/home/elliotbot/clawd/Agency_OS",
         )
         if cp.returncode != 0:
@@ -154,13 +164,17 @@ def _bd_next_ready_for(callsign: str) -> dict | None:
     try:
         cp = subprocess.run(
             ["bd", "ready", "--json"],
-            capture_output=True, text=True, timeout=10, check=False,
+            capture_output=True,
+            text=True,
+            timeout=10,
+            check=False,
             cwd="/home/elliotbot/clawd/Agency_OS",
         )
         if cp.returncode != 0:
             return None
         data = json.loads(cp.stdout) if cp.stdout.strip() else []
         items = data if isinstance(data, list) else data.get("issues", [])
+
         # Priority sort + assignee filter
         def pri(it):
             p = it.get("priority")
@@ -168,6 +182,7 @@ def _bd_next_ready_for(callsign: str) -> dict | None:
                 return p
             m = re.match(r"P?(\d+)", str(p or ""))
             return int(m.group(1)) if m else 9
+
         items.sort(key=pri)
         for it in items:
             assignee = (it.get("assignee") or "").lower()
@@ -188,15 +203,155 @@ REVIEW_VERDICT_RE = re.compile(
 def _open_prs() -> list[dict]:
     try:
         cp = subprocess.run(
-            ["gh", "pr", "list", "--state=open", "--limit=50",
-             "--json", "number,title,updatedAt,comments,author,statusCheckRollup"],
-            capture_output=True, text=True, timeout=30, check=False,
+            [
+                "gh",
+                "pr",
+                "list",
+                "--state=open",
+                "--limit=50",
+                "--json",
+                "number,title,updatedAt,comments,author,statusCheckRollup,commits",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=30,
+            check=False,
         )
         if cp.returncode != 0:
             return []
         return json.loads(cp.stdout) if cp.stdout.strip() else []
     except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
         return []
+
+
+_MAIN_HEAD_FAILURES: set[str] | None = None
+
+
+def _reset_main_head_cache() -> None:
+    """Test hook — clears the per-process main-HEAD failures cache."""
+    global _MAIN_HEAD_FAILURES
+    _MAIN_HEAD_FAILURES = None
+
+
+def _main_head_failures() -> set[str]:
+    """Context names of currently-failing checks on origin/main HEAD.
+
+    Combines legacy commit statuses (StatusContext — Vercel, third-party CI)
+    and modern check-runs (GH Actions). Cached for the process lifetime so
+    classification of multiple PRs in one prompter cycle reuses one snapshot.
+
+    Used by _classify_pr_block to detect INFRA-blocked PRs per Agency_OS-sg29:
+    a check that's red on the PR AND red on main HEAD is repo-wide infra, not
+    author-caused — author has nothing to do, no nudge.
+    """
+    global _MAIN_HEAD_FAILURES
+    if _MAIN_HEAD_FAILURES is not None:
+        return _MAIN_HEAD_FAILURES
+    failures: set[str] = set()
+    for endpoint, list_key, name_key, state_key in (
+        ("repos/keiracom/Agency_OS/commits/main/status", "statuses", "context", "state"),
+        ("repos/keiracom/Agency_OS/commits/main/check-runs", "check_runs", "name", "conclusion"),
+    ):
+        try:
+            cp = subprocess.run(
+                ["gh", "api", endpoint],
+                capture_output=True,
+                text=True,
+                timeout=15,
+                check=False,
+            )
+            if cp.returncode != 0 or not cp.stdout.strip():
+                continue
+            data = json.loads(cp.stdout)
+            for item in data.get(list_key, []):
+                if (item.get(state_key) or "").lower() == "failure":
+                    n = item.get(name_key)
+                    if n:
+                        failures.add(n)
+        except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
+            pass
+    _MAIN_HEAD_FAILURES = failures
+    return _MAIN_HEAD_FAILURES
+
+
+def _pr_check_failures(pr: dict) -> set[str]:
+    """Context names of FAILURE checks on this PR's head."""
+    names: set[str] = set()
+    for chk in pr.get("statusCheckRollup", []) or []:
+        verdict = (chk.get("conclusion") or chk.get("state") or "").upper()
+        if verdict == "FAILURE":
+            n = chk.get("name") or chk.get("context")
+            if n:
+                names.add(n)
+    return names
+
+
+def _pr_latest_commit_ts(pr: dict) -> str:
+    """ISO timestamp of the PR's most recent commit (empty if unknown)."""
+    latest = ""
+    for c in pr.get("commits", []) or []:
+        commit = c.get("commit") or {}
+        committer = commit.get("committer") or {}
+        ts = committer.get("date") or c.get("committedDate") or ""
+        if ts > latest:
+            latest = ts
+    return latest
+
+
+_HOLD_BODY_RE = re.compile(r"\[review:hold|\[hold-final|changes_requested", re.IGNORECASE)
+
+
+def _latest_hold_ts(pr: dict) -> str:
+    """ISO timestamp of the most recent HOLD/CHANGES_REQUESTED comment."""
+    latest = ""
+    for c in pr.get("comments", []) or []:
+        if _HOLD_BODY_RE.search(c.get("body") or ""):
+            at = c.get("createdAt") or ""
+            if at > latest:
+                latest = at
+    return latest
+
+
+def classify_pr_block(pr: dict) -> str | None:
+    """Three-state classifier per Agency_OS-sg29.
+
+    Returns one of: 'author', 'reviewer', 'infra', or None.
+
+      - 'author':   real CI red NOT mirrored on main, OR a HOLD/CHANGES_REQUESTED
+                    comment newer than the author's latest commit. Author must act.
+      - 'infra':    every failing PR check is ALSO failing on origin/main HEAD —
+                    repo-wide infra regression, not author-caused. Author has
+                    nothing to do; orchestrator should investigate main red
+                    separately (e.g. via a [PROPOSE:investigate-main-red]).
+      - 'reviewer': CI green AND author's latest commit newer than every HOLD
+                    AND not yet dual-approved. Waiting on reviewer verdict.
+      - None:       not blocked (green + dual-approved, or no signal).
+
+    INFRA detection uses main-HEAD parity (per Aiden's note) — not check-name
+    pattern matching, which would drift as context names change.
+    """
+    pr_failures = _pr_check_failures(pr)
+    if pr_failures:
+        main_failures = _main_head_failures()
+        author_caused = pr_failures - main_failures
+        if author_caused:
+            return "author"
+        if pr_failures.issubset(main_failures):
+            return "infra"
+    latest_commit = _pr_latest_commit_ts(pr)
+    latest_hold = _latest_hold_ts(pr)
+    if latest_hold and latest_hold > latest_commit:
+        return "author"
+    state = _verdicts_on(pr)
+    author = _author_callsign(pr)
+    non_auth = [d for d in ("elliot", "aiden", "max") if d != author]
+    approves = sum(1 for d in non_auth if state.get(d) == "approve")
+    if approves >= 2:
+        return None
+    has_hold = any(v == "hold" for v in state.values())
+    if has_hold or not pr_failures:
+        return "reviewer"
+    return None
 
 
 def _verdicts_on(pr: dict) -> dict:
@@ -240,25 +395,19 @@ def _reviewer_pending(callsign: str) -> list[int]:
 
 
 def _own_prs_needing_fix(callsign: str) -> list[int]:
-    """PRs this callsign authored that carry a HOLD or CI failure.
+    """PRs this callsign authored that are AUTHOR-blocked (author must act).
 
-    Closes the gap (Dave 2026-05-20): a reviewer with an empty review queue
-    would idle even while their own authored PRs sit blocked. Everyone is
-    responsible for their own authored PRs regardless of role.
+    Per Agency_OS-sg29: REVIEWER-blocked (author already responded, waiting on
+    re-review) and INFRA-blocked (CI red on contexts also red on main HEAD,
+    not author-caused) are EXCLUDED — author has nothing to do for those,
+    so no nudge. Only AUTHOR-blocked PRs are returned for the [NEXT-WORK]
+    fix-up dispatch.
     """
     out = []
     for pr in _open_prs():
         if _author_callsign(pr) != callsign:
             continue
-        state = _verdicts_on(pr)
-        has_hold = any(v == "hold" for v in state.values())
-        # CI failure check
-        ci_fail = False
-        for chk in pr.get("statusCheckRollup", []) or []:
-            if (chk.get("conclusion") or "").upper() == "FAILURE":
-                ci_fail = True
-                break
-        if has_hold or ci_fail:
+        if classify_pr_block(pr) == "author":
             out.append(pr["number"])
     return out
 
@@ -278,9 +427,13 @@ def _orchestrator_actions(callsign: str) -> str | None:
             merge_ready.append(pr["number"])
     parts = []
     if merge_ready:
-        parts.append(f"{len(merge_ready)} PRs merge-eligible — poll and merge: {sorted(merge_ready)[:5]}{'...' if len(merge_ready) > 5 else ''}")
+        parts.append(
+            f"{len(merge_ready)} PRs merge-eligible — poll and merge: {sorted(merge_ready)[:5]}{'...' if len(merge_ready) > 5 else ''}"
+        )
     if holds:
-        parts.append(f"{len(holds)} PRs HOLD — check author fix-ups: {sorted(holds)[:5]}{'...' if len(holds) > 5 else ''}")
+        parts.append(
+            f"{len(holds)} PRs HOLD — check author fix-ups: {sorted(holds)[:5]}{'...' if len(holds) > 5 else ''}"
+        )
     return " | ".join(parts) if parts else None
 
 
@@ -328,7 +481,9 @@ def prompt_orchestrator(callsign: str) -> str | None:
     summary = _orchestrator_actions(callsign)
     if not summary:
         return None
-    return f"[NEXT-WORK:{callsign}] PR queue state — {summary}. Poll, dispatch, merge as appropriate."
+    return (
+        f"[NEXT-WORK:{callsign}] PR queue state — {summary}. Poll, dispatch, merge as appropriate."
+    )
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -336,9 +491,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--callsign", required=True)
     p.add_argument("--dry-run", action="store_true")
     p.add_argument(
-        "--poll-mode", action="store_true",
+        "--poll-mode",
+        action="store_true",
         help="Called from the 60s self-claim loop — require an idle pane "
-             "before injecting (don't interrupt mid-turn work).",
+        "before injecting (don't interrupt mid-turn work).",
     )
     args = p.parse_args(argv)
     cs = args.callsign.lower()

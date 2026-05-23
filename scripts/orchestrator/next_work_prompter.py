@@ -233,6 +233,37 @@ def _reset_main_head_cache() -> None:
     _MAIN_HEAD_FAILURES = None
 
 
+def _fetch_main_failures_for(
+    endpoint: str, list_key: str, name_key: str, state_key: str
+) -> set[str]:
+    """Pull FAILURE context names from one GitHub API endpoint.
+
+    Structural extraction from _main_head_failures (Aiden HOLD-FINAL on PR #1113,
+    Sonar S3776 cognitive-complexity refactor). One endpoint, one try block, one
+    pass through results — keeps each function simple enough to read top-to-bottom.
+    """
+    failures: set[str] = set()
+    try:
+        cp = subprocess.run(
+            ["gh", "api", endpoint],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
+        )
+        if cp.returncode != 0 or not cp.stdout.strip():
+            return failures
+        data = json.loads(cp.stdout)
+    except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
+        return failures
+    for item in data.get(list_key, []):
+        if (item.get(state_key) or "").lower() == "failure":
+            n = item.get(name_key)
+            if n:
+                failures.add(n)
+    return failures
+
+
 def _main_head_failures() -> set[str]:
     """Context names of currently-failing checks on origin/main HEAD.
 
@@ -248,28 +279,11 @@ def _main_head_failures() -> set[str]:
     if _MAIN_HEAD_FAILURES is not None:
         return _MAIN_HEAD_FAILURES
     failures: set[str] = set()
-    for endpoint, list_key, name_key, state_key in (
+    for args in (
         ("repos/keiracom/Agency_OS/commits/main/status", "statuses", "context", "state"),
         ("repos/keiracom/Agency_OS/commits/main/check-runs", "check_runs", "name", "conclusion"),
     ):
-        try:
-            cp = subprocess.run(
-                ["gh", "api", endpoint],
-                capture_output=True,
-                text=True,
-                timeout=15,
-                check=False,
-            )
-            if cp.returncode != 0 or not cp.stdout.strip():
-                continue
-            data = json.loads(cp.stdout)
-            for item in data.get(list_key, []):
-                if (item.get(state_key) or "").lower() == "failure":
-                    n = item.get(name_key)
-                    if n:
-                        failures.add(n)
-        except (FileNotFoundError, subprocess.TimeoutExpired, json.JSONDecodeError):
-            pass
+        failures |= _fetch_main_failures_for(*args)
     _MAIN_HEAD_FAILURES = failures
     return _MAIN_HEAD_FAILURES
 

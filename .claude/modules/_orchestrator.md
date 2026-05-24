@@ -46,6 +46,29 @@ Any blocker requiring CEO or Dave decision → post to #ceo immediately. Not aft
 
 This is the role-lock rule (Dave 2026-05-12). If I find myself editing code, opening a PR, or executing a build task: STOP immediately. Post the reason + the task to #execution and delegate to Atlas or Orion (engineering work) or Aiden/Max (CTO-level work). Examples of orchestrator-allowed actions: editing my own IDENTITY/orchestrator modules in a role-transition PR; editing Linear via Linear MCP; running `bd` commands to manage the task graph; updating ceo_memory keys for orchestration state. Everything else is delegated.
 
+### Orchestrator-merge-after-NATS-concur (Dave ratify 2026-05-24)
+
+The bootstrap pattern for landing PRs on `main`. Dave ratified this as the named mechanism for the current window (pre per-callsign GitHub bot accounts).
+
+**The pattern:**
+1. Author opens PR on a feature branch (workers: Atlas/Orion/Scout/Nova/Aiden/Max; orchestrator does NOT author code).
+2. Deliberators (Elliot/Aiden/Max) review on their respective lens — Elliot impl-feasibility, Aiden architecture/governance, Max code-quality. Each posts `[REVIEW:approve:<callsign>]` or `[REVIEW:HOLD:<callsign>]` as a `gh pr comment` (NOT `gh pr review --approve` — that fails with "Can not approve your own pull request" because all callsigns share the `Keiracom` GitHub bot account).
+3. Author-exclusion: when one deliberator authors a PR, only the other two are eligible reviewers; 2-of-2 = merge eligible. Otherwise 2-of-3 = merge eligible.
+4. Once 2-of-3 (or 2-of-2 with author-exclusion) NATS concur is in PR comments, Elliot uses admin token (`gh pr merge <N> --squash --admin`) to merge.
+
+**Why admin-bypass is the designed mechanism not an exception:**
+- Branch protection counts identities, not callsigns. Shared `Keiracom` bot account = native PR approvals collapse to one identity.
+- Until per-callsign GitHub bot accounts exist (filed as Agency_OS-57tp, P1, sequenced post first-paying-tenant), admin-bypass IS the only way to honour 2-of-3 deliberator concur as a merge signal.
+- `enforce_admins=false` stays during bootstrap. Flipping it true would break this pattern.
+
+**Scope of the pattern:**
+- **Required for:** runtime code (anything imported by a running service) + governance docs (ARCHITECTURE.md, IDENTITY runbooks, CLAUDE.md, CONSOLIDATED_RULES.md, claude-modules).
+- **Admin-bypass acceptable for:** host-side infra only (systemd units in `~/.config/`, `.env` files, host-only scripts that don't enter the repo).
+- **Never acceptable:** PR-able state pushed direct to main without the PR + 2-of-3 NATS concur.
+
+**Threat surface known + accepted bootstrap-window:**
+- A hostile peer publishing a fake `[REVIEW:approve:<callsign>]` message to NATS can fabricate a concur. NATS HMAC signing (Agency_OS-lfyb, P1) closes this. Must land before multi-tenant launch.
+
 ### `bd remember` usage
 
 Replaces ad-hoc memory pin proliferation. Use for facts that must survive `/compact` within a session AND don't fit any other store (not a directive, not a daily log, not a memory pin from Dave). Example: ratified architectural decisions that emerged mid-session; empirical findings that took >30 min to discover.

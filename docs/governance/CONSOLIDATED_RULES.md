@@ -381,9 +381,9 @@ The set is intentionally small. Each rule names a required section anchor that m
 ### Implementation
 
 **Fleet repo:**
-- `governance/SHARED_GOVERNANCE_CHECKLIST.md` (new) — authoritative checklist with required section anchors per repo.
-- `scripts/governance/check_shared_governance.py` (new) — reads the checklist, scans repo's CLAUDE.md, fails CI if any required anchor missing for the repo's role.
-- CI integration: `.github/workflows/governance.yml` adds a `check-shared-governance` job that runs the script with `--role fleet`.
+- `governance/SHARED_GOVERNANCE_CHECKLIST.md` (`Agency_OS-7m2g`, P1) — authoritative checklist with required section anchors per repo.
+- `scripts/governance/check_shared_governance.py` (`Agency_OS-0f1o`, P1) — reads the checklist, scans repo's CLAUDE.md, fails CI if any required anchor missing for the repo's role.
+- CI integration: `.github/workflows/governance.yml` (`Agency_OS-js13`, P2) adds a `check-shared-governance` job that runs the script with `--role fleet`.
 
 **Product repo (Phase 2.0):**
 - `CLAUDE.md` authored independently with the required section anchors per the checklist's `product` column.

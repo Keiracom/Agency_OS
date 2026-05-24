@@ -144,6 +144,21 @@ class TEIClient:
             raise TEIClientError(f"info: HTTP {resp.status_code}: {resp.text[:200]}")
         return resp.json()
 
+    def _validate_embed_response(self, data: Any, expected_count: int) -> list[list[float]]:
+        """Validate /embed response shape + per-vector dimension. Returns data on pass."""
+        if not isinstance(data, list) or len(data) != expected_count:
+            got = len(data) if isinstance(data, list) else type(data).__name__
+            raise TEIClientError(
+                f"embed: response shape mismatch — got {got} entries for {expected_count} inputs"
+            )
+        for i, vec in enumerate(data):
+            if not isinstance(vec, list) or len(vec) != self.dimension:
+                got_dim = len(vec) if isinstance(vec, list) else "non-list"
+                raise TEIClientError(
+                    f"embed: vector {i} has dimension {got_dim}; expected {self.dimension}"
+                )
+        return data
+
     def embed(self, texts: list[str]) -> list[list[float]]:
         """POST /embed → list of dimension-`self.dimension` vectors.
 
@@ -165,17 +180,7 @@ class TEIClient:
         if resp.status_code != 200:
             raise TEIClientError(f"embed: HTTP {resp.status_code}: {resp.text[:200]}")
 
-        data = resp.json()
-        if not isinstance(data, list) or len(data) != len(texts):
-            raise TEIClientError(
-                f"embed: response shape mismatch — got {len(data) if isinstance(data, list) else type(data).__name__} entries for {len(texts)} inputs"
-            )
-        for i, vec in enumerate(data):
-            if not isinstance(vec, list) or len(vec) != self.dimension:
-                raise TEIClientError(
-                    f"embed: vector {i} has dimension {len(vec) if isinstance(vec, list) else 'non-list'}; expected {self.dimension}"
-                )
-        return data
+        return self._validate_embed_response(resp.json(), len(texts))
 
     def verify_model_lineage(self, expected_model_id: str = EXPECTED_MODEL_ID) -> None:
         """Defence-in-depth: assert the loaded model is the expected one.

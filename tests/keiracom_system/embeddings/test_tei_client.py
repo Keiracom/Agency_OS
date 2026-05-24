@@ -24,6 +24,7 @@ import json
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -105,8 +106,11 @@ def test_embed_non_list_input_raises_client_error():
     """(3) defensive: caller passes wrong type → TEIClientError (no HTTP call)."""
     post = _make_post(_resp(500, "should not be called"))
     client = TEIClient(base_url="http://test", http_post=post)
+    # Route bad input through `Any` so static type checkers (and Sonar S5655)
+    # don't flag the intentionally-wrong type that the runtime guard catches.
+    bad_input: Any = "not-a-list"
     with pytest.raises(TEIClientError, match="texts must be list"):
-        client.embed("not-a-list")  # type: ignore[arg-type]
+        client.embed(bad_input)
     assert len(post.calls) == 0  # type: ignore[attr-defined]
 
 

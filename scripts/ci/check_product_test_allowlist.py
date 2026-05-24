@@ -63,16 +63,27 @@ def load_allowlist(path: Path) -> list[str]:
 
 
 def walk_tests(tests_root: Path) -> list[Path]:
-    """All test files under tests_root, relative paths from repo root."""
+    """All test files under tests_root, relative paths from tests_root's parent.
+
+    Bug-fix 2026-05-24 (caught by negative-path test sweep): previously used
+    REPO_ROOT as the relativisation base, which broke when --tests-root pointed
+    outside the repo (e.g. a tmp_path test fixture or a separate worktree).
+    Using tests_root.parent makes the path display + allowlist matching work
+    consistently in both cases:
+      - default: tests_root = REPO_ROOT/tests → parent = REPO_ROOT → "tests/foo.py"
+      - test:    tests_root = /tmp/.../tests → parent = /tmp/... → "tests/foo.py"
+    Allowlist patterns reference 'tests/...' either way, so matching is stable.
+    """
     if not tests_root.is_dir():
         return []
+    base = tests_root.parent
     files: list[Path] = []
     for p in tests_root.rglob("*.py"):
         if "__pycache__" in p.parts:
             continue
         if p.name == "__init__.py":
             continue
-        files.append(p.relative_to(REPO_ROOT))
+        files.append(p.relative_to(base))
     return sorted(files)
 
 
@@ -80,6 +91,32 @@ def matches_any(path: Path, patterns: list[str]) -> bool:
     """True if path matches at least one allowlist pattern via fnmatch."""
     s = str(path)
     return any(fnmatch.fnmatch(s, pat) for pat in patterns)
+
+
+def _print_report(matched: list[Path], unmatched: list[Path], patterns: list[str]) -> None:
+    """Render --report-mode diagnostic to stderr (extracted from main per Max
+    HOLD on PR #1118 — Sonar S3776 cognitive-complexity refactor)."""
+    sys.stderr.write(f"  allowlist patterns: {len(patterns)}\n")
+    for f in matched[:10]:
+        sys.stderr.write(f"  matched  {f}\n")
+    if len(matched) > 10:
+        sys.stderr.write(f"  ... + {len(matched) - 10} more matched\n")
+    for f in unmatched[:10]:
+        sys.stderr.write(f"  rejected {f}\n")
+    if len(unmatched) > 10:
+        sys.stderr.write(f"  ... + {len(unmatched) - 10} more rejected\n")
+
+
+def _print_rejections(unmatched: list[Path]) -> None:
+    """Render enforcement-mode rejection block to stderr (extracted from main)."""
+    sys.stderr.write(
+        "REJECT: the following test files are not in the product-repo allowlist. "
+        "Either add their path to config/product_repo_test_allowlist.txt (with "
+        "review of whether they actually belong in the product repo CI matrix) "
+        "OR move them to the fleet/archive repo before this check runs.\n"
+    )
+    for f in unmatched:
+        sys.stderr.write(f"  rejected — not in product allowlist: {f}\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -119,26 +156,11 @@ def main(argv: list[str] | None = None) -> int:
     )
 
     if args.report:
-        sys.stderr.write(f"  allowlist patterns: {len(patterns)}\n")
-        for f in matched[:10]:
-            sys.stderr.write(f"  matched  {f}\n")
-        if len(matched) > 10:
-            sys.stderr.write(f"  ... + {len(matched) - 10} more matched\n")
-        for f in unmatched[:10]:
-            sys.stderr.write(f"  rejected {f}\n")
-        if len(unmatched) > 10:
-            sys.stderr.write(f"  ... + {len(unmatched) - 10} more rejected\n")
+        _print_report(matched, unmatched, patterns)
         return 0
 
     if unmatched:
-        sys.stderr.write(
-            "REJECT: the following test files are not in the product-repo allowlist. "
-            "Either add their path to config/product_repo_test_allowlist.txt (with "
-            "review of whether they actually belong in the product repo CI matrix) "
-            "OR move them to the fleet/archive repo before this check runs.\n"
-        )
-        for f in unmatched:
-            sys.stderr.write(f"  rejected — not in product allowlist: {f}\n")
+        _print_rejections(unmatched)
         return 1
 
     sys.stderr.write("OK: every tests/** file is in the product allowlist.\n")

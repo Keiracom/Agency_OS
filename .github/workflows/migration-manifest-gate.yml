@@ -1,0 +1,44 @@
+name: Migration Manifest Gate
+
+# Phase 1.2.5 artefact 6 (Agency_OS-fi4u). Enforces the migrated-manifest
+# seed at docs/migration/migrated_manifest_seed.json — schema validity,
+# enumeration discipline (no globs), and path-existence on disk.
+#
+# Mode is INFORMATIONAL-WARNING in Phase 1.2.5 (this PR) — runs on PRs that
+# touch the manifest or P-classified paths, but failures do not block merge
+# yet. Becomes a HARD GATE post-Phase-2.0 carve (toggle by removing
+# `continue-on-error: true` below).
+
+on:
+  pull_request:
+    paths:
+      - "docs/migration/migrated_manifest_seed.json"
+      - "scripts/ci/check_migration_manifest.py"
+      - "src/dispatcher/**"
+      - "src/memory/**"
+      - "mcp-servers/memory-mcp/**"
+      - "tests/dispatcher/**"
+      - "tests/memory/**"
+      - "tests/governance/test_ceo_memory_*"
+      - "tests/integration/test_tenant_isolation.py"
+  push:
+    branches: [main]
+
+jobs:
+  enforce-migration-manifest:
+    name: Migration manifest — schema + path-existence + enumeration discipline
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Run migration manifest enforcer
+        # Exit 1 on any schema/path/glob violation. Phase 1.2.5 = warn-only
+        # via continue-on-error; flip to hard-gate post-Phase-2.0 by removing
+        # the continue-on-error line.
+        continue-on-error: true
+        run: |
+          python3 scripts/ci/check_migration_manifest.py --report
+          python3 scripts/ci/check_migration_manifest.py

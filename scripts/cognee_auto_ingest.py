@@ -19,8 +19,14 @@ import time
 from pathlib import Path
 
 sys.path.insert(0, "/home/elliotbot/clawd/Agency_OS/scripts")
+from cognee_http_client import cognify as cognee_cognify  # noqa: E402
 from cognee_http_client import health as cognee_health
 from cognee_http_client import ingest as cognee_ingest  # noqa: E402
+
+DEFAULT_DATASET = "governance"
+BATCH_SIZE_DEFAULT = 8
+BATCH_SETTLE_DEFAULT = 5.0  # seconds — relax cgroup memory after each cognify
+WATCH_SETTLE_DEFAULT = 1.0  # smaller settle for single-file deltas
 
 REPO_ROOT = Path("/home/elliotbot/clawd/Agency_OS")
 WORKTREE_PARENT = REPO_ROOT.parent  # /home/elliotbot/clawd
@@ -114,18 +120,38 @@ def ingest_one(path: Path) -> bool:
     return True
 
 
-def run_once() -> dict:
+def _cognify_settle(dataset: str = DEFAULT_DATASET, settle: float = BATCH_SETTLE_DEFAULT) -> None:
+    # Trigger graph rebuild for newly /added files, then sleep to let the
+    # cgroup memory pressure relax. Cognify on full 52-file delta wedges
+    # cognee.service at MemoryHigh=2700M (Agency_OS-cuee defect 2).
+    result = cognee_cognify(datasets=[dataset])
+    if isinstance(result, dict) and result.get("error"):
+        log.warning("cognify err %s: %s", dataset, result.get("error"))
+    else:
+        log.info("cognify ok %s", dataset)
+    if settle > 0:
+        time.sleep(settle)
+
+
+def run_once(batch_size: int = BATCH_SIZE_DEFAULT, settle: float = BATCH_SETTLE_DEFAULT) -> dict:
     h = cognee_health()
     if h.get("status") != "ready":
         log.error("cognee not ready: %s", h)
         return {"files": 0, "ok": 0, "errors": 1, "skipped_unhealthy": True}
     paths = targets()
-    stats = {"files": len(paths), "ok": 0, "errors": 0}
-    for p in paths:
-        if ingest_one(p):
-            stats["ok"] += 1
-        else:
-            stats["errors"] += 1
+    stats = {"files": len(paths), "ok": 0, "errors": 0, "batches": 0}
+    for i in range(0, len(paths), batch_size):
+        batch = paths[i : i + batch_size]
+        batch_ok = 0
+        for p in batch:
+            if ingest_one(p):
+                stats["ok"] += 1
+                batch_ok += 1
+            else:
+                stats["errors"] += 1
+        if batch_ok > 0:
+            _cognify_settle(settle=settle)
+            stats["batches"] += 1
     log.info("once done: %s", stats)
     return stats
 
@@ -178,7 +204,12 @@ def watch_loop() -> None:
             debounce[fpath] = now
             if ev.exists():
                 log.info("change detected: %s", fpath)
-                ingest_one(ev)
+                if ingest_one(ev):
+                    # Per Agency_OS-cuee defect 1: /add alone never rebuilds
+                    # the graph that GRAPH_COMPLETION recall reads. Single-file
+                    # cognify delta is bounded; settle prevents thundering herd
+                    # if many files change inside the 5s ingest debounce.
+                    _cognify_settle(settle=WATCH_SETTLE_DEFAULT)
         except KeyboardInterrupt:
             break
         except Exception as e:
@@ -190,9 +221,21 @@ def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--once", action="store_true")
     p.add_argument("--watch", action="store_true")
+    p.add_argument(
+        "--batch-size",
+        type=int,
+        default=BATCH_SIZE_DEFAULT,
+        help="files per /add+/cognify batch in --once mode",
+    )
+    p.add_argument(
+        "--settle",
+        type=float,
+        default=BATCH_SETTLE_DEFAULT,
+        help="seconds to sleep after each /cognify call (--once)",
+    )
     args = p.parse_args()
     if args.once:
-        run_once()
+        run_once(batch_size=args.batch_size, settle=args.settle)
         return 0
     if args.watch:
         watch_loop()

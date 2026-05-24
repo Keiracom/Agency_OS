@@ -285,6 +285,8 @@ From `github.com/vectorize-io/hindsight-benchmarks`:
 - `benchmark-runner/quality_benchmark/locomo_quality.json` exists
 - **But eval scripts + prompts + traces** are not on the public surface of this repo per the fetch — the GitHub fetch says these live "in the main Hindsight repository" (`vectorize-io/hindsight`). I did not deeply audit those.
 
+**Footnote — benchmarks repo lacks LICENSE (Max catch, 2026-05-24):** `GET /repos/vectorize-io/hindsight-benchmarks` returns `"license": null` (verified independently 2026-05-24 by scout; repo `created_at: 2025-12-01T10:05:36Z`). The main `vectorize-io/hindsight` runtime repo is MIT (Section A.1) but the **benchmarks repo we rely on for source verification of the 91.4% claim is unlicensed**. Downstream redistribution rights for the result JSON files (`results/longmemeval.json.gz`, `results/locomo.json.gz`) + inclusion in derivative benchmarks are ambiguous in the absence of an explicit licence grant. Worth raising with Vectorize before any third-party comparative-benchmark publication that re-uses these files. License-parity gap relative to the runtime repo.
+
 **Verdict on validity:** The 91.4% LongMemEval claim is:
 - ✅ Sourced from a real ICLR-2025-published benchmark
 - ✅ Documented in an arxiv paper (Dec 2025) with named academic co-authors
@@ -293,6 +295,7 @@ From `github.com/vectorize-io/hindsight-benchmarks`:
 - ⚠️ Vendor-published, not independently peer-reviewed yet (arxiv, not journal)
 - ⚠️ Competitor leaderboards show Hindsight ranked behind OMEGA (95.4%) and behind ByteRover (92.2%) on the same benchmark
 - ⚠️ Hindsight's own dashboard shows a different higher number (94.6%) than the paper (91.4%) — internal inconsistency
+- ⚠️ **Benchmarks repo unlicensed** — redistribution rights for the result JSON files unclear (license-parity gap vs the MIT runtime repo — see footnote above)
 - ❌ **NOT directly applicable to agentic-SE memory** — LongMemEval tests chat-assistant conversational recall, not the workflow our MAL V1 is being designed for
 
 ---

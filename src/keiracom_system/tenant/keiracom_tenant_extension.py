@@ -293,6 +293,20 @@ class KeiracomTenantExtension(_HindsightTenantExtension):
             return set()
         return _TIER_ALLOWED_FIELDS[tier]
 
+    def get_bank_id(self, tenant_id: str) -> str:
+        """Return the Hindsight memory-bank id for this tenant.
+
+        V1 contract: one bank per tenant; bank_id == tenant_id. Synchronous —
+        pure derivation, no DB lookup. Consumed by the wrapper layer
+        (Atlas PR #1134 TenantExtensionProtocol) which paths Hindsight
+        retain/recall/reflect calls through /v1/default/banks/{bank_id}/...
+
+        Multi-bank-per-tenant scoping is a Pro/Scale tier feature deferred
+        to V2 — at that point this method becomes async and reads from
+        tenants.bank_namespaces JSONB.
+        """
+        return tenant_id
+
 
 def from_env() -> KeiracomTenantExtension:
     """Factory for production deployment via HINDSIGHT_API_TENANT_EXTENSION env.

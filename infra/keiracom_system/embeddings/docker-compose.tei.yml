@@ -1,0 +1,57 @@
+# Keiracom System — TEI sidecar for fastembed-equivalent embeddings.
+#
+# Phase 2 build wave 2 item 2 per Dave-ratified MAL V1 (ceo:memory_abstraction_layer_v1
+# eleven_agreed_positions #1: "Embedding model: BGE-small-en-v1.5 (fastembed default
+# lineage, BYOK-sovereign, dimension-from-model). V1 implementation: TEI sidecar
+# serving BGE-small-en-v1.5 in tenant deployment (zero upstream Hindsight changes;
+# Path 3 per Orion PR #1127)").
+#
+# Per-tenant docker-compose snippet — included from the tenant's main compose
+# stack via `extends:` or merged at deploy time. The Hindsight container reads
+# embeddings via HINDSIGHT_API_EMBEDDINGS_TEI_URL=http://embed:80.
+#
+# CPU image used by default — V1 ship target. GPU image (text-embeddings-inference:1.5)
+# is a per-tenant upgrade for Pro/Scale tiers once embedding-throughput benchmarks
+# justify the cost.
+
+services:
+  embed:
+    # CPU image — sufficient for V1 throughput targets (~100 docs/sec on 4 vCPU).
+    # Upgrade to ghcr.io/huggingface/text-embeddings-inference:1.5 (CUDA) once
+    # a tenant's workload exceeds CPU saturation.
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    command:
+      # BGE-small-en-v1.5 — 384-dim, ~33MB ONNX, MIT licence. Same model fastembed
+      # serves by default; vector lineage identical so a future switch to upstream
+      # native fastembed (Path 1) requires zero schema migration.
+      - --model-id=BAAI/bge-small-en-v1.5
+      # Match Hindsight's default request batch — keeps TEI's internal queue
+      # in lockstep with the consumer.
+      - --max-batch-tokens=16384
+      - --max-concurrent-requests=128
+      # Hot-load model at container start so first-request latency is near-zero
+      # (instead of 5-10s cold start).
+      - --port=80
+    ports:
+      - "8080:80"  # localhost:8080 → container:80 (Hindsight + clients address as http://embed:80 inside the network)
+    volumes:
+      # Persistent model cache — avoids re-downloading BGE on container restart.
+      # ~33MB model + tokenizer files cached here.
+      - tei_model_cache:/data
+    environment:
+      # HF_HUB_OFFLINE=0 — allow first-boot model download; subsequent boots
+      # read from the persistent cache.
+      HF_HUB_OFFLINE: "0"
+    healthcheck:
+      # TEI's built-in /health endpoint returns 200 when model is loaded + ready.
+      test: ["CMD", "curl", "-fsS", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 12  # ~2 min grace period for first-boot model download.
+      start_period: 30s
+    restart: unless-stopped
+
+volumes:
+  # Named volume for model cache persistence across container recreates.
+  tei_model_cache:
+    driver: local

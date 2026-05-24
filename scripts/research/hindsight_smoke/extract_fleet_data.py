@@ -29,11 +29,8 @@ TASKCONTEXT_FILENAME = "taskcontext.jsonl"
 ANTIPATTERN_FILENAME = "antipattern.jsonl"
 ARTIFACT_FILENAME = "artifact.jsonl"
 
-# S5443 — confined sub-dir (mode 0o700) instead of bare /tmp. Same pattern as
-# PR #1119 weaviate_cutover._SNAPSHOT_DIR. Operators can override via --out-dir.
-_DATA_DIR = Path("/tmp/hindsight_smoke_data")  # NOSONAR S5443 — created mode-0o700 below
-_DATA_DIR.mkdir(mode=0o700, exist_ok=True)
-DEFAULT_DATA_DIR = _DATA_DIR
+sys.path.insert(0, str(Path(__file__).parent))
+from _common import RUNTIME_DIR as DEFAULT_DATA_DIR  # noqa: E402
 
 
 def emit(out: Path, record: dict) -> None:

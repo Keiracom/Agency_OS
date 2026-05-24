@@ -20,19 +20,13 @@ import json
 import sys
 import time
 from pathlib import Path
-from urllib import error as urlerror
-from urllib import request as urlrequest
 
-BASE = "http://localhost:8888"
-BANK = "keiracom_smoke"
-TIMEOUT = 120
+sys.path.insert(0, str(Path(__file__).parent))
+from _common import DEFAULT_BANK as BANK  # noqa: E402
+from _common import RUNTIME_DIR, post  # noqa: E402
 
-# S5443 — confined sub-dir (mode 0o700) instead of bare /tmp paths. Same pattern as
-# PR #1119 weaviate_cutover._SNAPSHOT_DIR. Operators override via --data-dir / --out.
-_RUNTIME_DIR = Path("/tmp/hindsight_smoke_data")  # NOSONAR S5443 — created mode-0o700 below
-_RUNTIME_DIR.mkdir(mode=0o700, exist_ok=True)
-DEFAULT_DATA_DIR = _RUNTIME_DIR
-DEFAULT_INGEST_LOG = _RUNTIME_DIR / "ingest_log.jsonl"
+DEFAULT_DATA_DIR = RUNTIME_DIR
+DEFAULT_INGEST_LOG = RUNTIME_DIR / "ingest_log.jsonl"
 
 # MAL node-type → tags (Hindsight infers world/experience fact-type from content;
 # tags carry our MAL classification + the AntiPattern Graveyard marker per
@@ -43,23 +37,6 @@ TAGS_MAP = {
     "taskcontext": ["mal_node:taskcontext"],
     "antipattern": ["mal_node:antipattern", "anti-pattern"],
 }
-
-
-def post(path: str, body: dict) -> tuple[int, dict | str]:
-    data = json.dumps(body).encode()
-    req = urlrequest.Request(
-        f"{BASE}{path}",
-        data=data,
-        method="POST",
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urlrequest.urlopen(req, timeout=TIMEOUT) as resp:
-            return (resp.status, json.loads(resp.read().decode()))
-    except urlerror.HTTPError as e:
-        return (e.code, {"error": e.read().decode()[:500]})
-    except (urlerror.URLError, json.JSONDecodeError, TimeoutError) as e:
-        return (0, {"error": str(e)})
 
 
 def _stringify(meta: dict) -> dict:

@@ -22,18 +22,12 @@ import json
 import sys
 import time
 from pathlib import Path
-from urllib import error as urlerror
-from urllib import request as urlrequest
 
-BASE = "http://localhost:8888"
-BANK = "keiracom_smoke"
-TIMEOUT = 120
+sys.path.insert(0, str(Path(__file__).parent))
+from _common import DEFAULT_BANK as BANK  # noqa: E402
+from _common import RUNTIME_DIR, post  # noqa: E402
 
-# S5443 — confined sub-dir (mode 0o700) instead of bare /tmp default path. Same
-# pattern as PR #1119 weaviate_cutover._SNAPSHOT_DIR. Operators override via --out.
-_RUNTIME_DIR = Path("/tmp/hindsight_smoke_data")  # NOSONAR S5443 — created mode-0o700 below
-_RUNTIME_DIR.mkdir(mode=0o700, exist_ok=True)
-DEFAULT_RECALL_RESULTS = _RUNTIME_DIR / "recall_results.json"
+DEFAULT_RECALL_RESULTS = RUNTIME_DIR / "recall_results.json"
 
 TEST_CASES = [
     {
@@ -65,23 +59,6 @@ TEST_CASES = [
         "expected_signal_tokens": ["kei", "atlas", "dispatch", "task", "agency_os"],
     },
 ]
-
-
-def post(path: str, body: dict) -> tuple[int, dict]:
-    data = json.dumps(body).encode()
-    req = urlrequest.Request(
-        f"{BASE}{path}",
-        data=data,
-        method="POST",
-        headers={"Content-Type": "application/json"},
-    )
-    try:
-        with urlrequest.urlopen(req, timeout=TIMEOUT) as resp:
-            return (resp.status, json.loads(resp.read().decode()))
-    except urlerror.HTTPError as e:
-        return (e.code, {"error": e.read().decode()[:500]})
-    except (urlerror.URLError, json.JSONDecodeError, TimeoutError) as e:
-        return (0, {"error": str(e)})
 
 
 def score_relevance(content: str, signal_tokens: list[str]) -> tuple[bool, list[str]]:

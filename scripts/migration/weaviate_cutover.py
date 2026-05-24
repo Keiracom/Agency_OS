@@ -186,8 +186,7 @@ def _set_by_dotted_key(obj: dict, key_path: str, value: Any) -> None:
 def _safe_resolve(raw: str, root: Path) -> Path:
     # Defense in depth — string-level rejections first (cheap, fail fast on
     # obvious-bad input), then the stdlib `os.path.realpath` + `commonpath`
-    # confinement check (which Sonar S2083 recognises as a sanitisation sink,
-    # so call sites do not need NOSONAR annotations).
+    # confinement check (the canonical Python idiom for path-injection guards).
     if not isinstance(raw, str) or not raw:
         raise ValueError(f"manifest path must be non-empty string: {raw!r}")
     if "\x00" in raw or "\n" in raw or "\r" in raw:
@@ -240,7 +239,7 @@ def repoint(
             )
             continue
         backup = target_file.with_suffix(target_file.suffix + ".cutover-backup")
-        backup.write_text(original)
+        backup.write_text(original)  # NOSONAR S2083 — sanitised by _safe_resolve commonpath
         data = json.loads(original) if target_file.suffix == ".json" else None
         if data is None:
             log.error(
@@ -248,7 +247,9 @@ def repoint(
             )
             continue
         _set_by_dotted_key(data, key_path, target_class)
-        target_file.write_text(json.dumps(data, indent=2))
+        target_file.write_text(
+            json.dumps(data, indent=2)
+        )  # NOSONAR S2083 — sanitised by _safe_resolve commonpath
         applied += 1
         log.info(
             "repoint applied: %s %s -> %s (backup at %s)",

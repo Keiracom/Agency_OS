@@ -182,14 +182,25 @@ def _set_by_dotted_key(obj: dict, key_path: str, value: Any) -> None:
     cur[parts[-1]] = value
 
 
-def _safe_resolve(path: Path, root: Path) -> Path:
-    # Confine manifest-controlled paths to `root` (default REPO_ROOT) so a
-    # hostile manifest entry like {"file": "/etc/passwd"} cannot trigger an
-    # arbitrary-file overwrite. Closes pythonsecurity:S2083 BLOCKER ×2.
-    resolved = path.resolve()
+def _safe_resolve(raw: str, root: Path) -> Path:
+    # Validate the raw user-controlled string BEFORE any pathlib construction
+    # so Sonar's S2083 taint tracker sees sanitisation at the string boundary
+    # (taking a Path arg here would still flag the upstream Path(raw) site).
+    # Three string-level rejections, then a composed-path confinement check.
+    if not isinstance(raw, str) or not raw:
+        raise ValueError(f"manifest path must be non-empty string: {raw!r}")
+    if "\x00" in raw or "\n" in raw or "\r" in raw:
+        raise ValueError(f"manifest path contains control characters: {raw!r}")
+    if raw.startswith("~"):
+        raise ValueError(f"manifest path home-expansion forbidden: {raw!r}")
+    # Compose only AFTER string validation. Absolute inputs are allowed iff
+    # they resolve inside root (tests use tmp_path, an absolute confinement).
     root_resolved = root.resolve()
+    candidate = Path(raw)
+    composed = candidate if candidate.is_absolute() else root_resolved / candidate
+    resolved = composed.resolve()
     if resolved != root_resolved and root_resolved not in resolved.parents:
-        raise ValueError(f"manifest path escapes confinement root: {path} (root={root})")
+        raise ValueError(f"manifest path escapes confinement root: {raw} (root={root})")
     return resolved
 
 
@@ -211,10 +222,11 @@ def repoint(
     edits = manifest.get("edits", [])
     applied = 0
     for edit in edits:
+        raw_file = edit.get("file", "")
         try:
-            target_file = _safe_resolve(Path(edit["file"]), root)
-        except ValueError as exc:
-            log.error("repoint: rejected path-escape %s — %s", edit.get("file"), exc)
+            target_file = _safe_resolve(raw_file, root)
+        except ValueError:
+            log.exception("repoint: rejected path-escape %r", raw_file)
             continue
         key_path = edit["key_path"]
         if not target_file.exists():

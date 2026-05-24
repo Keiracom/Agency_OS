@@ -229,17 +229,48 @@ def test_repoint_rejects_path_escape_attempt(mod, tmp_path):
 
 
 def test_safe_resolve_accepts_in_root_paths(mod, tmp_path):
-    """Happy path — paths inside the confine root resolve cleanly."""
+    """Happy path — paths inside the confine root resolve cleanly (absolute form)."""
     inside = tmp_path / "agent.json"
     inside.touch()
-    resolved = mod._safe_resolve(inside, tmp_path)
+    resolved = mod._safe_resolve(str(inside), tmp_path)
     assert resolved == inside.resolve()
 
 
+def test_safe_resolve_accepts_relative_paths(mod, tmp_path):
+    """Relative manifest paths compose against confine_root."""
+    (tmp_path / "agent.json").touch()
+    resolved = mod._safe_resolve("agent.json", tmp_path)
+    assert resolved == (tmp_path / "agent.json").resolve()
+
+
 def test_safe_resolve_rejects_escape_paths(mod, tmp_path):
-    """Negative-path lock — explicit escape rejection."""
+    """Negative-path lock — absolute escape rejected."""
     with pytest.raises(ValueError, match="escapes confinement root"):
-        mod._safe_resolve(Path("/etc/passwd"), tmp_path)
+        mod._safe_resolve("/etc/passwd", tmp_path)
+
+
+def test_safe_resolve_rejects_dotdot_traversal(mod, tmp_path):
+    """Negative-path lock — relative ../../etc/passwd resolves outside root → reject."""
+    with pytest.raises(ValueError, match="escapes confinement root"):
+        mod._safe_resolve("../../etc/passwd", tmp_path)
+
+
+def test_safe_resolve_rejects_empty_string(mod, tmp_path):
+    """Negative-path lock — empty string is invalid manifest data."""
+    with pytest.raises(ValueError, match="non-empty string"):
+        mod._safe_resolve("", tmp_path)
+
+
+def test_safe_resolve_rejects_null_byte(mod, tmp_path):
+    """Negative-path lock — embedded null byte (classic path-truncation attack)."""
+    with pytest.raises(ValueError, match="control characters"):
+        mod._safe_resolve("agent.json\x00.bak", tmp_path)
+
+
+def test_safe_resolve_rejects_home_expansion(mod, tmp_path):
+    """Negative-path lock — `~` would be Path.expanduser-ambiguous, reject upfront."""
+    with pytest.raises(ValueError, match="home-expansion"):
+        mod._safe_resolve("~/secrets", tmp_path)
 
 
 def test_purge_old_opt_in_only(mod, monkeypatch, tmp_path):

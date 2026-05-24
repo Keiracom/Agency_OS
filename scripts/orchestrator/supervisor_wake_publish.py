@@ -39,7 +39,13 @@ import os
 import sys
 import time
 
-import nats
+# nats-py is lazy-imported inside publish_wake() so this module remains
+# collectable on CI hosts where nats-py is not in the test venv. CI
+# regression caught 2026-05-24: top-level `import nats` made the test
+# file uncollectable (test imports this module → ImportError cascades →
+# pytest collection error → 3 consecutive main CI failures + PR #1116
+# inherit-blocked). Fix per Elliot dispatch: lazy-import only on the
+# live-publish path.
 
 DEFAULT_NATS_URL = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
 DEFAULT_SUBJECT = os.environ.get("SUPERVISOR_WAKE_SUBJECT", "keiracom.elliot.inbox")
@@ -66,6 +72,11 @@ def build_envelope(now: float | None = None) -> dict:
 
 async def publish_wake(nats_url: str, subject: str) -> int:
     """Publish one envelope to NATS. Returns 0 on success, 1 on failure."""
+    try:
+        import nats  # lazy — keeps module collectable on hosts without nats-py
+    except ImportError as exc:
+        log.error("supervisor_wake: nats-py not installed; publish skipped (%s)", exc)
+        return 1
     envelope = build_envelope()
     payload = json.dumps(envelope).encode("utf-8")
     try:

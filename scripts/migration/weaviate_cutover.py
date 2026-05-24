@@ -30,6 +30,7 @@ from __future__ import annotations
 import argparse
 import json
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -183,25 +184,21 @@ def _set_by_dotted_key(obj: dict, key_path: str, value: Any) -> None:
 
 
 def _safe_resolve(raw: str, root: Path) -> Path:
-    # Validate the raw user-controlled string BEFORE any pathlib construction
-    # so Sonar's S2083 taint tracker sees sanitisation at the string boundary
-    # (taking a Path arg here would still flag the upstream Path(raw) site).
-    # Three string-level rejections, then a composed-path confinement check.
+    # Defense in depth — string-level rejections first (cheap, fail fast on
+    # obvious-bad input), then the stdlib `os.path.realpath` + `commonpath`
+    # confinement check (which Sonar S2083 recognises as a sanitisation sink,
+    # so call sites do not need NOSONAR annotations).
     if not isinstance(raw, str) or not raw:
         raise ValueError(f"manifest path must be non-empty string: {raw!r}")
     if "\x00" in raw or "\n" in raw or "\r" in raw:
         raise ValueError(f"manifest path contains control characters: {raw!r}")
     if raw.startswith("~"):
         raise ValueError(f"manifest path home-expansion forbidden: {raw!r}")
-    # Compose only AFTER string validation. Absolute inputs are allowed iff
-    # they resolve inside root (tests use tmp_path, an absolute confinement).
-    root_resolved = root.resolve()
-    candidate = Path(raw)
-    composed = candidate if candidate.is_absolute() else root_resolved / candidate
-    resolved = composed.resolve()
-    if resolved != root_resolved and root_resolved not in resolved.parents:
-        raise ValueError(f"manifest path escapes confinement root: {raw} (root={root})")
-    return resolved
+    safe_root = os.path.realpath(str(root))
+    candidate = os.path.realpath(os.path.join(safe_root, raw))
+    if os.path.commonpath([candidate, safe_root]) != safe_root:
+        raise ValueError(f"manifest path escapes confinement root: {raw!r} (root={root})")
+    return Path(candidate)
 
 
 def repoint(
@@ -243,15 +240,7 @@ def repoint(
             )
             continue
         backup = target_file.with_suffix(target_file.suffix + ".cutover-backup")
-        # NOSONAR S2083 — `target_file` is the return value of _safe_resolve(raw_file, root),
-        # which validates the raw manifest string against four string-level rejections
-        # (non-empty, no control chars, no home-expansion, no absolute-or-relative
-        # path that resolves outside the confinement root) BEFORE constructing any
-        # Path. Sonar's taint tracker cannot follow custom validators; safety is
-        # locked by negative-path tests (test_safe_resolve_rejects_* ×5 +
-        # test_repoint_rejects_path_escape_attempt). Same rationale applies to the
-        # write_text call below.
-        backup.write_text(original)  # NOSONAR S2083
+        backup.write_text(original)
         data = json.loads(original) if target_file.suffix == ".json" else None
         if data is None:
             log.error(
@@ -259,7 +248,7 @@ def repoint(
             )
             continue
         _set_by_dotted_key(data, key_path, target_class)
-        target_file.write_text(json.dumps(data, indent=2))  # NOSONAR S2083
+        target_file.write_text(json.dumps(data, indent=2))
         applied += 1
         log.info(
             "repoint applied: %s %s -> %s (backup at %s)",

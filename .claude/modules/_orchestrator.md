@@ -76,3 +76,9 @@ Replaces ad-hoc memory pin proliferation. Use for facts that must survive `/comp
 ### Cross-store consistency
 
 The directive counter, the Beads issue state, the Linear issue state, and the `cis_directive_metrics` row must stay consistent. Linear is the human-facing canonical source — sync the other three to match. Anti-amnesia capsule (per Max's PR #754, to be extended) carries the Linear board URL + `bd ready` reminder across `/compact` boundaries.
+
+### bd routing across 3 repos (Phase 1.2.5 → Phase 2.0)
+
+Once the fleet/product/archive split lands, all `bd create` calls outside the fleet worktree MUST carry an explicit `--repo` tag. One central bd database (in the fleet repo's Dolt store) serves all three repos; the `--repo` tag drives Linear team routing + `bd ready --repo=<tag>` filtering. Cross-repo `blocked-by` chains are honoured natively.
+
+Full policy + worked examples + anti-patterns: `docs/governance/bd_routing_policy.md`.

@@ -68,7 +68,8 @@ def test_files_in_uses_the_shared_root_core_constant(mod):
 
 def test_run_once_batches_to_groups_of_n(mod, monkeypatch):
     """52-file set → exactly 7 cognify calls (6×8 + 1×4); each batch sized ≤8."""
-    paths = [Path(f"/tmp/dummy_{i}.md") for i in range(52)]
+    # Pure-string Paths — never read or written; ingest_one is patched.
+    paths = [Path(f"dummy_{i}.md") for i in range(52)]
     monkeypatch.setattr(mod, "targets", lambda: paths)
     monkeypatch.setattr(mod, "cognee_health", lambda: {"status": "ready"})
     monkeypatch.setattr(mod, "ingest_one", lambda p: True)
@@ -85,7 +86,7 @@ def test_run_once_batches_to_groups_of_n(mod, monkeypatch):
 
 def test_run_once_partial_batch_failure_still_cognifies(mod, monkeypatch):
     """batch_ok > 0 must still trigger cognify even when half the batch failed."""
-    paths = [Path(f"/tmp/dummy_{i}.md") for i in range(8)]
+    paths = [Path(f"dummy_{i}.md") for i in range(8)]
     monkeypatch.setattr(mod, "targets", lambda: paths)
     monkeypatch.setattr(mod, "cognee_health", lambda: {"status": "ready"})
     calls = iter([False, False, False, False, True, True, True, True])
@@ -102,7 +103,7 @@ def test_run_once_partial_batch_failure_still_cognifies(mod, monkeypatch):
 
 def test_run_once_all_batch_fails_skips_cognify(mod, monkeypatch):
     """batch_ok == 0 must NOT trigger cognify — avoids cognify-on-empty-delta noise."""
-    paths = [Path(f"/tmp/dummy_{i}.md") for i in range(8)]
+    paths = [Path(f"dummy_{i}.md") for i in range(8)]
     monkeypatch.setattr(mod, "targets", lambda: paths)
     monkeypatch.setattr(mod, "cognee_health", lambda: {"status": "ready"})
     monkeypatch.setattr(mod, "ingest_one", lambda p: False)
@@ -128,8 +129,10 @@ def test_cognify_default_datasets_posts_empty_body(http, monkeypatch):
         lambda p, b, timeout=30: captured.append((p, b, timeout)) or {"ok": True},
     )
     http.cognify()
-    assert captured[0][0] == "/api/v1/cognify"
-    assert captured[0][1] == {}
+    assert len(captured) == 1, "cognify() must POST exactly once"
+    path, body, _ = captured[0]
+    assert path == "/api/v1/cognify"
+    assert body == {}
 
 
 def test_cognify_with_datasets_posts_list(http, monkeypatch):
@@ -141,7 +144,9 @@ def test_cognify_with_datasets_posts_list(http, monkeypatch):
         lambda p, b, timeout=30: captured.append((p, b, timeout)) or {"ok": True},
     )
     http.cognify(datasets=["governance"])
-    assert captured[0][1] == {"datasets": ["governance"]}
+    assert len(captured) == 1, "cognify(datasets) must POST exactly once"
+    _, body, _ = captured[0]
+    assert body == {"datasets": ["governance"]}
 
 
 def test_watch_loop_calls_cognify_after_successful_ingest(mod):

@@ -69,11 +69,17 @@ Three canonical keys queried 2026-05-24 ahead of authoring. Pasted verbatim so r
 
 ### 3.1 Top-level directories
 
+**Source-of-truth rule:** the carve-out operates on `git ls-tree -d --name-only origin/main` (tracked directories) — see the table below. Gitignored runtime directories (`logs/`, `.cache/`, `app-data/`, `__pycache__/`, host-side `~/.claude/projects/`) are NOT carved per se; they are recreated per-worktree by the running fleet code in their target repo. Conceptual ownership of these gitignored runtime dirs is documented at end of this section (3.1-gitignored).
+
 | Dir | Classification | Rationale |
 |---|---|---|
 | `.beads/` | F | Central bd database lives in fleet repo per bd routing policy (PR #1120). |
+| `.cache/` | DROP | Tool cache (per-worktree). Recreated per-repo. |
 | `.claude/` | F | Per-worktree Claude Code config; modules import in IDENTITY chain. |
+| `.clawdbot/`, `.clawdhub/` | F | Fleet bot-runtime metadata directories. |
+| `.githooks/` | F | Repo git hooks (commit-msg etc.) — fleet workflow discipline. |
 | `.github/` | SPLIT | Workflows split per-repo: stripped product matrix per PR #1118 + fleet's own CI. |
+| `.openclaw/` | F | OpenClaw runtime metadata — fleet substrate. |
 | `agency-os-html/` | A | Agency OS marketing HTML — dead product surface. |
 | `agency-os-prototype/` | A | Agency OS prototype — dead product surface. |
 | `agents/` | F | Fleet agent definitions (callsign personas). |
@@ -106,6 +112,21 @@ Three canonical keys queried 2026-05-24 ahead of authoring. Pasted verbatim so r
 | `supabase/` | SPLIT | Migrations + edge functions split. See §4.9. |
 | `systemd/` | F | Fleet systemd unit definitions. |
 | `tests/` | SPLIT | Per PR #1118 stripped allowlist — 27 product paths + remainder fleet/archive. See §4.10. |
+
+### 3.1-gitignored — runtime/operational directories (not git-tracked, ownership rules)
+
+These directories appear in worktrees but are NOT carved (not in `git ls-tree`). The rule documents which target repo's runtime recreates them.
+
+| Dir | Conceptual owner | Rationale |
+|---|---|---|
+| `logs/` (if present) | F | Fleet operational state (callsign tmux logs, agent journald exports). Per-worktree runtime artefact. |
+| `app-data/` | DROP | Runtime artifact directory; recreated per-repo. |
+| `__pycache__/`, `*.pyc` | DROP | Python bytecode caches; recreated per-import. |
+| `~/.claude/projects/<project-slug>/` (host-side, outside repo) | F | Per-callsign session memory + discovery log + auto-memory MEMORY.md. Fleet-tier — not in repo regardless of carve-out. |
+| `/tmp/telegram-relay-<callsign>/` (host-side) | F | Per-callsign relay inbox/outbox dirs — fleet substrate (NATS bridges + watchers). |
+| `/tmp/cognee-context-<callsign>.md` (host-side) | F | Per-callsign Cognee session-start context — fleet substrate (pre-Hindsight). |
+
+If a peer review surfaces additional gitignored runtime directories (e.g. a Telegram bot data directory at `src/telegram_bot/` that doesn't appear on `origin/main`), classify them per the same rule: anything fleet-generated → F; anything tool/cache → DROP. Tracking gap: if such a directory becomes tracked in a future PR, add a row to §3.1 (top-level dirs) or the appropriate §4 SPLIT subsection.
 
 ---
 
@@ -203,18 +224,15 @@ Per the canonical-key gate "Skills directory ownership manifest drafted before a
 
 ### 4.8 `src/`
 
-Most consequential split. Classification per top-level subpackage:
+Most consequential split. Classification covers all 34 subpackages tracked on `origin/main` (verified `git ls-tree -d --name-only origin/main src/`; earlier draft cited "38 subpackages" from worktree scan that included `__pycache__` + 3 historical subpackages no longer on main).
 
 | Subpackage | Classification | Rationale |
 |---|---|---|
-| `src/agent_coord/` | F | Inter-agent coordination — fleet substrate |
 | `src/agents/` | F | Fleet agent code (deliberator/worker process entry points) |
 | `src/api/` | A | FastAPI surface for Agency OS dashboard (`/api/routes/campaigns.py` etc. — dead BDR endpoints) |
 | `src/bot_common/` | F | Shared bot utilities (Slack relay client, NATS publish helpers, callsign env detection) |
-| `src/clients/` | A | Agency OS vendor clients (BrightData, DataForSEO, Leadmagic, etc.) |
 | `src/cognee/` | F | Fleet Cognee integration (memory ingest for callsign discoveries) — pre-Hindsight |
 | `src/config/` | SPLIT | Cross-cutting config; per-file classify |
-| `src/coo_bot/` | F | Elliot COO/orchestrator bot (legacy module path, may be deprecated by `src/agents/`) |
 | `src/data/` | A | Agency OS reference data loaders |
 | `src/detectors/` | F | Fleet-side anomaly detectors (relay-watcher, callsign-stall) |
 | `src/dispatcher/` | P | **V1.0 MCP dispatcher** — primary product code per PR #1118 allowlist (16 dispatcher tests) |

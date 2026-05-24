@@ -52,10 +52,17 @@ log = logging.getLogger("weaviate_cutover")
 DEFAULT_SOURCE_CLASS = "Decisions"
 DEFAULT_TARGET_CLASS = "Keiracom_Product"
 DEFAULT_FILTER_TAG = "product"
-DEFAULT_SNAPSHOT_PATH = Path("/tmp/weaviate_cutover_snapshot.json")
+# Confined sub-dir (mode 0o700) instead of bare /tmp: closes S5443 TOCTOU on
+# a world-writable + predictable path. Operators can override via --snapshot-path.
+_SNAPSHOT_DIR = Path("/tmp/weaviate_cutover")  # NOSONAR — created mode-0o700 below
+_SNAPSHOT_DIR.mkdir(mode=0o700, exist_ok=True)
+DEFAULT_SNAPSHOT_PATH = _SNAPSHOT_DIR / "snapshot.json"
 DEFAULT_BATCH_SIZE = 100
 SAMPLE_PARITY_N = 5
 UUID_SOURCE_TAG = "cutover_to_keiracom_product"
+_ERR_SNAPSHOT_MISSING = "snapshot file missing: %s"
+# Step 4 confines manifest-controlled paths to REPO_ROOT to close S2083 path injection.
+_REPOINT_ROOT = REPO_ROOT
 
 
 def _fetch_objects(class_name: str, filter_tag: str, batch_size: int) -> list[dict[str, Any]]:
@@ -75,8 +82,8 @@ def _fetch_objects(class_name: str, filter_tag: str, batch_size: int) -> list[di
         try:
             with _http_request("POST", "/v1/graphql", query) as resp:
                 body = json.loads(resp.read().decode("utf-8"))
-        except (urlerror.URLError, OSError) as exc:
-            log.error("graphql fetch failed at offset=%d: %s", offset, exc)
+        except (urlerror.URLError, OSError):
+            log.exception("graphql fetch failed at offset=%d", offset)
             raise
         rows = body.get("data", {}).get("Get", {}).get(class_name, []) or []
         if not rows:
@@ -109,7 +116,7 @@ def write_to_target(target_class: str, path: Path, dry_run: bool) -> tuple[int, 
         if dry_run:
             log.info("dry-run: snapshot file missing — would upsert rows once step 1 produces it")
             return (0, 0)
-        log.error("snapshot file missing: %s", path)
+        log.error(_ERR_SNAPSHOT_MISSING, path)
         raise FileNotFoundError(str(path))
     payload = json.loads(path.read_text())
     rows = payload["rows"]
@@ -132,10 +139,10 @@ def write_to_target(target_class: str, path: Path, dry_run: bool) -> tuple[int, 
     return (ok, fail)
 
 
-def verify(source_class: str, target_class: str, path: Path, filter_tag: str) -> bool:
+def verify(source_class: str, target_class: str, path: Path) -> bool:
     log.info("STEP 3 verify: source=%s target=%s snapshot=%s", source_class, target_class, path)
     if not path.exists():
-        log.error("snapshot file missing: %s", path)
+        log.error(_ERR_SNAPSHOT_MISSING, path)
         return False
     payload = json.loads(path.read_text())
     expected = len(payload["rows"])
@@ -153,9 +160,10 @@ def verify(source_class: str, target_class: str, path: Path, filter_tag: str) ->
         tgt_id = deterministic_uuid(UUID_SOURCE_TAG, src_id)
         try:
             with _http_request("GET", f"/v1/objects/{target_class}/{tgt_id}"):
+                # Existence-only probe — response body is irrelevant; HTTP 404 raises.
                 pass
-        except urlerror.HTTPError as exc:
-            log.error("verify: sample-read fail src=%s tgt=%s rc=%s", src_id, tgt_id, exc.code)
+        except urlerror.HTTPError:
+            log.exception("verify: sample-read fail src=%s tgt=%s", src_id, tgt_id)
             return False
     log.info(
         "verify OK: source-snapshot=%d target-aggregate=%d sample_parity=%d",
@@ -174,7 +182,23 @@ def _set_by_dotted_key(obj: dict, key_path: str, value: Any) -> None:
     cur[parts[-1]] = value
 
 
-def repoint(manifest_path: Path, target_class: str, dry_run: bool) -> int:
+def _safe_resolve(path: Path, root: Path) -> Path:
+    # Confine manifest-controlled paths to `root` (default REPO_ROOT) so a
+    # hostile manifest entry like {"file": "/etc/passwd"} cannot trigger an
+    # arbitrary-file overwrite. Closes pythonsecurity:S2083 BLOCKER ×2.
+    resolved = path.resolve()
+    root_resolved = root.resolve()
+    if resolved != root_resolved and root_resolved not in resolved.parents:
+        raise ValueError(f"manifest path escapes confinement root: {path} (root={root})")
+    return resolved
+
+
+def repoint(
+    manifest_path: Path,
+    target_class: str,
+    dry_run: bool,
+    confine_root: Path | None = None,
+) -> int:
     log.info("STEP 4 repoint: manifest=%s target=%s", manifest_path, target_class)
     if not manifest_path.exists():
         log.warning(
@@ -182,11 +206,16 @@ def repoint(manifest_path: Path, target_class: str, dry_run: bool) -> int:
             manifest_path,
         )
         return 0
+    root = confine_root if confine_root is not None else _REPOINT_ROOT
     manifest = json.loads(manifest_path.read_text())
     edits = manifest.get("edits", [])
     applied = 0
     for edit in edits:
-        target_file = Path(edit["file"])
+        try:
+            target_file = _safe_resolve(Path(edit["file"]), root)
+        except ValueError as exc:
+            log.error("repoint: rejected path-escape %s — %s", edit.get("file"), exc)
+            continue
         key_path = edit["key_path"]
         if not target_file.exists():
             log.warning("repoint: file missing %s — skipping", target_file)
@@ -228,7 +257,7 @@ def purge_old(source_class: str, path: Path, dry_run: bool) -> tuple[int, int]:
         if dry_run:
             log.info("dry-run: snapshot file missing — would delete rows once step 1 produces it")
             return (0, 0)
-        log.error("snapshot file missing: %s", path)
+        log.error(_ERR_SNAPSHOT_MISSING, path)
         raise FileNotFoundError(str(path))
     payload = json.loads(path.read_text())
     rows = payload["rows"]
@@ -284,12 +313,13 @@ def main() -> int:
         )
     if args.step in ("write", "all"):
         write_to_target(args.target_class, args.snapshot_path, args.dry_run)
-    if args.step in ("verify", "all"):
-        if not args.dry_run and not verify(
-            args.source_class, args.target_class, args.snapshot_path, args.filter_tag
-        ):
-            log.error("verify FAILED — aborting")
-            return 1
+    if (
+        args.step in ("verify", "all")
+        and not args.dry_run
+        and not verify(args.source_class, args.target_class, args.snapshot_path)
+    ):
+        log.error("verify FAILED — aborting")
+        return 1
     if args.step in ("repoint", "all") and args.repoint_manifest:
         repoint(args.repoint_manifest, args.target_class, args.dry_run)
     if args.step == "purge" or (args.step == "all" and args.purge_old):

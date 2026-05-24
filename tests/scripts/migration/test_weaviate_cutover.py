@@ -85,6 +85,7 @@ def test_write_to_target_uses_deterministic_uuid(mod, monkeypatch, tmp_path):
     ok, fail = mod.write_to_target("Keiracom_Product", snap, dry_run=False)
 
     assert (ok, fail) == (2, 0)
+    assert len(posted) >= 2, "post_object must have been called once per row"
     expected_id_0 = mod.deterministic_uuid(mod.UUID_SOURCE_TAG, "src-0000")
     expected_id_1 = mod.deterministic_uuid(mod.UUID_SOURCE_TAG, "src-0001")
     assert posted[0]["id"] == expected_id_0
@@ -120,7 +121,7 @@ def test_verify_count_mismatch_returns_false(mod, monkeypatch, tmp_path):
     )
     monkeypatch.setattr(mod, "aggregate_count", lambda c: 7)  # less than 10
 
-    assert mod.verify("Decisions", "Keiracom_Product", snap, "product") is False
+    assert mod.verify("Decisions", "Keiracom_Product", snap) is False
 
 
 def test_verify_aggregate_none_returns_false(mod, monkeypatch, tmp_path):
@@ -132,7 +133,7 @@ def test_verify_aggregate_none_returns_false(mod, monkeypatch, tmp_path):
     )
     monkeypatch.setattr(mod, "aggregate_count", lambda c: None)
 
-    assert mod.verify("Decisions", "Keiracom_Product", snap, "product") is False
+    assert mod.verify("Decisions", "Keiracom_Product", snap) is False
 
 
 def test_verify_ok_when_count_and_samples_match(mod, monkeypatch, tmp_path):
@@ -149,10 +150,10 @@ def test_verify_ok_when_count_and_samples_match(mod, monkeypatch, tmp_path):
             return self
 
         def __exit__(self, *a):
-            pass
+            return None  # protocol-only fake; no cleanup needed
 
     monkeypatch.setattr(mod, "_http_request", lambda *a, **kw: _Resp())
-    assert mod.verify("Decisions", "Keiracom_Product", snap, "product") is True
+    assert mod.verify("Decisions", "Keiracom_Product", snap) is True
 
 
 def test_repoint_applies_edits_with_backup(mod, tmp_path):
@@ -165,7 +166,7 @@ def test_repoint_applies_edits_with_backup(mod, tmp_path):
         json.dumps({"edits": [{"file": str(config), "key_path": "memory.collection"}]})
     )
 
-    applied = mod.repoint(manifest, "Keiracom_Product", dry_run=False)
+    applied = mod.repoint(manifest, "Keiracom_Product", dry_run=False, confine_root=tmp_path)
 
     assert applied == 1
     written = json.loads(config.read_text())
@@ -186,7 +187,7 @@ def test_repoint_dry_run_writes_nothing(mod, tmp_path):
         json.dumps({"edits": [{"file": str(config), "key_path": "memory.collection"}]})
     )
 
-    mod.repoint(manifest, "Keiracom_Product", dry_run=True)
+    mod.repoint(manifest, "Keiracom_Product", dry_run=True, confine_root=tmp_path)
 
     assert json.loads(config.read_text()) == original, "dry-run must not mutate target file"
     assert not config.with_suffix(config.suffix + ".cutover-backup").exists()
@@ -197,6 +198,48 @@ def test_repoint_missing_manifest_emits_empty_plan(mod, tmp_path, caplog):
     missing = tmp_path / "no-such-manifest.json"
     applied = mod.repoint(missing, "Keiracom_Product", dry_run=False)
     assert applied == 0
+
+
+def test_repoint_rejects_path_escape_attempt(mod, tmp_path):
+    """Negative-path lock for S2083 — manifest paths outside confine_root MUST
+    be rejected (no read, no backup, no write). Anchored 2026-05-24 by Max's
+    BLOCKER review on PR #1119: a hostile manifest with `{"file": "/etc/passwd"}`
+    must not trigger an arbitrary-file overwrite."""
+    safe_target = tmp_path / "agent.json"
+    safe_target.write_text(json.dumps({"memory": {"collection": "Decisions"}}))
+    escape_target = "/etc/passwd"  # absolute path, outside tmp_path confinement
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "edits": [
+                    {"file": escape_target, "key_path": "memory.collection"},
+                    {"file": str(safe_target), "key_path": "memory.collection"},
+                ]
+            }
+        )
+    )
+
+    applied = mod.repoint(manifest, "Keiracom_Product", dry_run=False, confine_root=tmp_path)
+
+    # Escape entry skipped; safe entry applied — partial-progress on per-edit basis.
+    assert applied == 1
+    # Confirm the escape target was not even read (no backup written there).
+    assert not Path("/etc/passwd.cutover-backup").exists()
+
+
+def test_safe_resolve_accepts_in_root_paths(mod, tmp_path):
+    """Happy path — paths inside the confine root resolve cleanly."""
+    inside = tmp_path / "agent.json"
+    inside.touch()
+    resolved = mod._safe_resolve(inside, tmp_path)
+    assert resolved == inside.resolve()
+
+
+def test_safe_resolve_rejects_escape_paths(mod, tmp_path):
+    """Negative-path lock — explicit escape rejection."""
+    with pytest.raises(ValueError, match="escapes confinement root"):
+        mod._safe_resolve(Path("/etc/passwd"), tmp_path)
 
 
 def test_purge_old_opt_in_only(mod, monkeypatch, tmp_path):
@@ -213,7 +256,7 @@ def test_purge_old_opt_in_only(mod, monkeypatch, tmp_path):
             return self
 
         def __exit__(self, *a):
-            pass
+            return None  # protocol-only fake; no cleanup needed
 
     def _track_http(method, path, body=None):
         called.append((method, path))

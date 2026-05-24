@@ -243,7 +243,15 @@ def repoint(
             )
             continue
         backup = target_file.with_suffix(target_file.suffix + ".cutover-backup")
-        backup.write_text(original)
+        # NOSONAR S2083 — `target_file` is the return value of _safe_resolve(raw_file, root),
+        # which validates the raw manifest string against four string-level rejections
+        # (non-empty, no control chars, no home-expansion, no absolute-or-relative
+        # path that resolves outside the confinement root) BEFORE constructing any
+        # Path. Sonar's taint tracker cannot follow custom validators; safety is
+        # locked by negative-path tests (test_safe_resolve_rejects_* ×5 +
+        # test_repoint_rejects_path_escape_attempt). Same rationale applies to the
+        # write_text call below.
+        backup.write_text(original)  # NOSONAR S2083
         data = json.loads(original) if target_file.suffix == ".json" else None
         if data is None:
             log.error(
@@ -251,7 +259,7 @@ def repoint(
             )
             continue
         _set_by_dotted_key(data, key_path, target_class)
-        target_file.write_text(json.dumps(data, indent=2))
+        target_file.write_text(json.dumps(data, indent=2))  # NOSONAR S2083
         applied += 1
         log.info(
             "repoint applied: %s %s -> %s (backup at %s)",

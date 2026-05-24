@@ -38,12 +38,41 @@ from __future__ import annotations
 import argparse
 import fnmatch
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 DEFAULT_MANIFEST = REPO_ROOT / "docs/migration/migrated_manifest_seed.json"
+
+
+def _safe_resolve(raw: str | Path, root: Path) -> Path:
+    """Confine a CLI-supplied path to REPO_ROOT (pythonsecurity:S2083 guard).
+
+    Same shape as scripts/migration/weaviate_cutover.py _safe_resolve
+    (PR #1119). Defence-in-depth: string-level rejections first (fail fast on
+    obvious-bad input), then the stdlib `os.path.realpath` + `commonpath`
+    confinement check — the canonical Python idiom for path-injection guards
+    Sonar's taint-tracking recognises as a sanitisation sink.
+
+    NOTE: kept inline rather than imported from scripts/migration/ to avoid
+    a CI-script depending on a migration-script. Per `feedback_split_orthogonal_scope`,
+    extracting to scripts/common/safe_path.py is scope-creep for this PR.
+    """
+    raw_str = str(raw) if isinstance(raw, Path) else raw
+    if not isinstance(raw_str, str) or not raw_str:
+        raise ValueError(f"manifest path must be non-empty: {raw!r}")
+    if "\x00" in raw_str or "\n" in raw_str or "\r" in raw_str:
+        raise ValueError(f"manifest path contains control characters: {raw!r}")
+    if raw_str.startswith("~"):
+        raise ValueError(f"manifest path home-expansion forbidden: {raw!r}")
+    safe_root = os.path.realpath(str(root))
+    candidate = os.path.realpath(os.path.join(safe_root, raw_str))
+    if os.path.commonpath([candidate, safe_root]) != safe_root:
+        raise ValueError(f"manifest path escapes confinement root: {raw!r} (root={root})")
+    return Path(candidate)
+
 
 VALID_TARGET_REPOS = frozenset({"fleet", "product", "archive", "both"})
 VALID_OPERATIONS = frozenset({"move", "copy", "archive"})
@@ -181,10 +210,18 @@ def refresh_exclusions(manifest: dict) -> dict:
 
 
 def write_manifest_atomic(manifest: dict, path: Path) -> None:
-    """Atomic write — tmp.replace pattern (idempotent re-runs)."""
+    """Atomic write — tmp.replace pattern (idempotent re-runs).
+
+    `path` MUST already be confined to REPO_ROOT via _safe_resolve at the caller
+    (main() does this at args-parse time so all downstream uses receive a
+    sanitised Path). Aiden HOLD on PR #1123 caught the S2083 path-injection at
+    this site; the fix moves confinement upstream to args parsing.
+    """
     tmp = path.with_suffix(path.suffix + ".tmp")
-    tmp.write_text(json.dumps(manifest, indent=2) + "\n")
-    tmp.replace(path)
+    tmp.write_text(  # NOSONAR S2083 — sanitised at main() via _safe_resolve commonpath
+        json.dumps(manifest, indent=2) + "\n"
+    )
+    tmp.replace(path)  # NOSONAR S2083 — sanitised at main() via _safe_resolve commonpath
 
 
 def _print_report(entries: list[dict], blocked_count: int) -> None:
@@ -200,6 +237,13 @@ def _print_report(entries: list[dict], blocked_count: int) -> None:
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     p.add_argument("--manifest", type=Path, default=DEFAULT_MANIFEST)
+    p.add_argument(
+        "--root",
+        type=Path,
+        default=REPO_ROOT,
+        help="Confinement root for manifest path (default: REPO_ROOT). "
+        "Test fixtures override this; production CI never sets it.",
+    )
     p.add_argument("--report", action="store_true", help="Print counts; exit 0 regardless")
     p.add_argument(
         "--refresh-exclusions",
@@ -208,7 +252,16 @@ def main(argv: list[str] | None = None) -> int:
     )
     args = p.parse_args(argv)
 
-    manifest = load_manifest(args.manifest)
+    # Path confinement — every downstream path use receives a Path confined to
+    # --root (default REPO_ROOT). Fail fast (exit 2 config-error) on any escape.
+    # Closes pythonsecurity:S2083 caught by Aiden HOLD on PR #1123.
+    try:
+        manifest_path = _safe_resolve(args.manifest, args.root)
+    except ValueError as exc:
+        sys.stderr.write(f"ERROR: {exc}\n")
+        return 2
+
+    manifest = load_manifest(manifest_path)
     top_violations = validate_top_level(manifest)
     if top_violations:
         for v in top_violations:
@@ -217,7 +270,7 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.refresh_exclusions:
         manifest = refresh_exclusions(manifest)
-        write_manifest_atomic(manifest, args.manifest)
+        write_manifest_atomic(manifest, manifest_path)
         sys.stderr.write(f"refreshed active_pr_block for {len(manifest['entries'])} entries\n")
 
     all_violations: list[str] = []

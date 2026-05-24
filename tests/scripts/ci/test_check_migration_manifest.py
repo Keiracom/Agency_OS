@@ -18,14 +18,17 @@ REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 SCRIPT = REPO_ROOT / "scripts/ci/check_migration_manifest.py"
 
 
-def _run(manifest_path: Path, *extra: str) -> tuple[int, str, str]:
-    cp = subprocess.run(
-        [sys.executable, str(SCRIPT), "--manifest", str(manifest_path), *extra],
-        capture_output=True,
-        text=True,
-        timeout=20,
-        check=False,
-    )
+def _run(manifest_path: Path, *extra: str, root: Path | None = None) -> tuple[int, str, str]:
+    """Subprocess-invoke the script. `root` defaults to manifest_path's parent
+    so tests can use tmp_path without falling foul of the REPO_ROOT confinement.
+    Production CI never passes --root."""
+    if root is None and manifest_path.is_absolute():
+        root = manifest_path.parent
+    args = [sys.executable, str(SCRIPT), "--manifest", str(manifest_path)]
+    if root is not None:
+        args.extend(["--root", str(root)])
+    args.extend(extra)
+    cp = subprocess.run(args, capture_output=True, text=True, timeout=20, check=False)
     return cp.returncode, cp.stdout, cp.stderr
 
 
@@ -164,3 +167,88 @@ def test_seed_manifest_on_disk_validates(tmp_path):
         pytest.skip("seed manifest absent (running before artefact lands)")
     rc, _out, err = _run(seed)
     assert rc == 0, f"seed manifest validation failed: {err}"
+
+
+# _safe_resolve negative-path tests — pythonsecurity:S2083 path-injection guard.
+# Same shape as PR #1119's _safe_resolve tests. Loads the module via importlib
+# so we can call the helper directly without spawning subprocesses.
+
+
+def _load_enforcer_module():
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "cmm", REPO_ROOT / "scripts/ci/check_migration_manifest.py"
+    )
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return mod
+
+
+def test_safe_resolve_accepts_in_root_paths(tmp_path):
+    """In-root path resolves cleanly."""
+    mod = _load_enforcer_module()
+    inside = tmp_path / "manifest.json"
+    inside.write_text("{}")
+    resolved = mod._safe_resolve(str(inside), tmp_path)
+    assert resolved == inside.resolve()
+
+
+def test_safe_resolve_accepts_relative_paths(tmp_path):
+    """Relative path inside root resolves cleanly."""
+    mod = _load_enforcer_module()
+    resolved = mod._safe_resolve("subdir/manifest.json", tmp_path)
+    assert resolved == (tmp_path / "subdir/manifest.json").resolve()
+
+
+def test_safe_resolve_rejects_absolute_escape(tmp_path):
+    """Absolute path outside root → ValueError (S2083 guard)."""
+    mod = _load_enforcer_module()
+    with pytest.raises(ValueError, match="escapes confinement root"):
+        mod._safe_resolve("/etc/passwd", tmp_path)
+
+
+def test_safe_resolve_rejects_dotdot_escape(tmp_path):
+    """Relative ..-escape outside root → ValueError."""
+    mod = _load_enforcer_module()
+    with pytest.raises(ValueError, match="escapes confinement root"):
+        mod._safe_resolve("../../../../etc/passwd", tmp_path)
+
+
+def test_safe_resolve_rejects_home_expansion(tmp_path):
+    """~/foo home-expansion → ValueError (fail-fast string check)."""
+    mod = _load_enforcer_module()
+    with pytest.raises(ValueError, match="home-expansion forbidden"):
+        mod._safe_resolve("~/.ssh/id_rsa", tmp_path)
+
+
+def test_safe_resolve_rejects_null_byte(tmp_path):
+    """Null byte in path → ValueError (control-character guard)."""
+    mod = _load_enforcer_module()
+    with pytest.raises(ValueError, match="control characters"):
+        mod._safe_resolve("manifest.json\x00.evil", tmp_path)
+
+
+def test_safe_resolve_rejects_empty(tmp_path):
+    """Empty string → ValueError."""
+    mod = _load_enforcer_module()
+    with pytest.raises(ValueError, match="non-empty"):
+        mod._safe_resolve("", tmp_path)
+
+
+def test_main_rejects_manifest_escape_with_exit_2(tmp_path):
+    """End-to-end: --manifest /etc/passwd against --root tmp_path → exit 2
+    (config error). The path-confinement guard rejects any path outside
+    the configured root regardless of caller intent."""
+    # Use tmp_path as root so the manifest path /etc/passwd is empirically
+    # outside it; if --root defaulted to REPO_ROOT we'd still get exit 2
+    # but for different reasons.
+    cp = subprocess.run(
+        [sys.executable, str(SCRIPT), "--manifest", "/etc/passwd", "--root", str(tmp_path)],
+        capture_output=True,
+        text=True,
+        timeout=10,
+        check=False,
+    )
+    assert cp.returncode == 2
+    assert "escapes confinement root" in cp.stderr or "ERROR:" in cp.stderr

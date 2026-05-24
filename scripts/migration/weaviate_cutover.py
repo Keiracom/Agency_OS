@@ -247,9 +247,8 @@ def repoint(
             )
             continue
         _set_by_dotted_key(data, key_path, target_class)
-        target_file.write_text(
-            json.dumps(data, indent=2)
-        )  # NOSONAR S2083 — sanitised by _safe_resolve commonpath
+        new_body = json.dumps(data, indent=2)
+        target_file.write_text(new_body)  # NOSONAR S2083 — sanitised by _safe_resolve commonpath
         applied += 1
         log.info(
             "repoint applied: %s %s -> %s (backup at %s)",

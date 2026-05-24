@@ -165,3 +165,60 @@ def test_summarise_counts_labels():
     assert counts["product"] == 1
     assert counts["manual-review"] == 1
     assert sum(counts.values()) == 4
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Tie-break discriminator-gate tests (Max HOLD on PR #1121, 2026-05-24).
+# Cover the strict-margin semantics: ONLY a true tie (top == next) routes to
+# manual-review; a 1-point lead is sufficient confidence. Per
+# feedback_negative_path_test_before_approve — gate semantics must have
+# explicit negative + positive coverage on synthetic offenders.
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_tie_break_zero_margin_routes_to_manual_review():
+    """(7) — true tie (top score == next score) → manual-review with reason=tie_or_near_tie.
+
+    Synthetic offender: 2 fleet keywords + 2 archive keywords. fleet score = 2,
+    archive score = 2 → tie → manual-review.
+    """
+    entry = {
+        "context": "relay tmux siege_waterfall flow a",
+        "tags": [],
+    }
+    result = clf.classify(entry)
+    assert result["label"] == "manual-review", f"true tie should route manual-review, got {result}"
+    assert result["reason"] == "tie_or_near_tie"
+    # Both buckets scored equally (2 each), no other bucket above.
+    assert result["scores"]["fleet"] == result["scores"]["archive"]
+    assert result["scores"]["fleet"] >= 2
+
+
+def test_one_point_lead_routes_to_top():
+    """(8) — 1-point lead = sufficient confidence; classify to top bucket.
+
+    Synthetic offender: 3 fleet keywords + 2 product keywords. fleet score=3,
+    product score=2 → fleet wins (1-point lead is enough per strict semantics).
+    """
+    entry = {
+        "context": "relay tmux watchdog keiracom_chat hindsight",
+        "tags": [],
+    }
+    result = clf.classify(entry)
+    assert result["label"] == "fleet", f"1-point lead should classify to fleet, got {result}"
+    assert result["scores"]["fleet"] == 3
+    assert result["scores"]["product"] == 2
+
+
+def test_two_point_lead_routes_to_top():
+    """(9) — comfortable 2-point lead → confident classification (regression
+    guard against any future tie-break refactor that introduces a wider
+    no-confidence band by mistake)."""
+    entry = {
+        "context": "relay tmux watchdog dispatcher keiracom_chat hindsight",
+        "tags": [],
+    }
+    result = clf.classify(entry)
+    assert result["label"] == "fleet", f"2-point lead should classify to fleet, got {result}"
+    assert result["scores"]["fleet"] == 4
+    assert result["scores"]["product"] == 2

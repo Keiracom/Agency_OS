@@ -123,7 +123,7 @@ Per category, the keyword anchors are (full list in `scripts/classifier/discover
 - **archive** (33 keywords): Siege Waterfall (`siege waterfall`, `flow a`, `flow b`), CIS / ALS scoring (`cis`, `als scoring`, `reachability`, `propensity`), T0-T5 enrichment tiers, dead vendors (Leadmagic, Bright Data, Salesforge, ContactOut, Hunter, Kaspr, Proxycurl, Apollo, Clay, Apify, Webshare, SERP API), GMB / ABN / BU, ElevenAgents.
 - **cross-product** (13 keywords): explicit cross-product items (`agency_os_keiracom`, `separation directive`, `phase 1.2.5/1.3/2.0/2.1/2.2`, `3-repo`), MAL infrastructure, tenant model architecture, `ceo:comm_architecture`.
 
-**Tie-break rule:** if the top two buckets are within `MIN_CONFIDENCE_MARGIN = 1` keyword match of each other, the entry routes to manual-review with `reason=tie_or_near_tie`. This prevents marginal misclassification — a "fleet 3 / product 2" entry is genuinely ambiguous and deserves a human pass, not a confident-wrong fleet label.
+**Tie-break rule:** ONLY a true tie (top bucket score equal to next bucket score) routes to manual-review with `reason=tie_or_near_tie`. A 1-point lead is sufficient confidence — a "fleet 3 / product 2" entry classifies as fleet, not manual-review. Updated 2026-05-24 per Max HOLD on PR #1121: original doc said "within `MIN_CONFIDENCE_MARGIN`" implying margin=1 routes to manual-review, but the code does strict `<` (only margin=0 routes). Empirical 10-fleet-1-manual-review distribution on real JSONL confirms the strict semantics are not over-routing — kept the code, fixed the doc.
 
 ## 5. Apply pass — sequenced after concur
 

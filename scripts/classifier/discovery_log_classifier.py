@@ -257,8 +257,14 @@ KEYWORDS: dict[str, tuple[str, ...]] = {
     ),
 }
 
-# Min confidence margin (top score - next score) for a confident classification.
-# Below this, the entry is flagged manual-review.
+# Strict margin threshold — only a TRUE tie (top score equal to next) routes
+# to manual-review. Equal scores = no-confidence; 1-point lead = sufficient
+# confidence. Doc/code-mismatch fix-up per Max HOLD on PR #1121 (2026-05-24):
+# original doc said "within MIN_CONFIDENCE_MARGIN" implying margin=1 routes
+# to manual-review, but code does strict `<` so only margin=0 (true tie)
+# routes. Empirical 10-fleet-1-manual-review distribution on real JSONL
+# confirms the strict semantics are not over-routing — kept the code, fixed
+# the doc to match.
 MIN_CONFIDENCE_MARGIN = 1
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
@@ -306,8 +312,8 @@ def classify(entry: dict) -> dict:
             "matched_keywords": [],
         }
 
-    # Pick highest-scoring bucket. Tie-break: if top two are within
-    # MIN_CONFIDENCE_MARGIN, route to manual-review.
+    # Pick highest-scoring bucket. Tie-break: ONLY a true tie (top == next)
+    # routes to manual-review; a 1-point lead is sufficient confidence.
     ranked = sorted(scores.items(), key=lambda kv: -kv[1])
     top_label, top_score = ranked[0]
     if len(ranked) > 1:

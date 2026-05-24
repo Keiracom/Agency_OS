@@ -21,12 +21,19 @@ import argparse
 import json
 import sys
 import time
+from pathlib import Path
 from urllib import error as urlerror
 from urllib import request as urlrequest
 
 BASE = "http://localhost:8888"
 BANK = "keiracom_smoke"
 TIMEOUT = 120
+
+# S5443 — confined sub-dir (mode 0o700) instead of bare /tmp default path. Same
+# pattern as PR #1119 weaviate_cutover._SNAPSHOT_DIR. Operators override via --out.
+_RUNTIME_DIR = Path("/tmp/hindsight_smoke_data")  # NOSONAR S5443 — created mode-0o700 below
+_RUNTIME_DIR.mkdir(mode=0o700, exist_ok=True)
+DEFAULT_RECALL_RESULTS = _RUNTIME_DIR / "recall_results.json"
 
 TEST_CASES = [
     {
@@ -133,7 +140,7 @@ def run_test(tc: dict, top_k: int = 5, use_filter: bool = True) -> dict:
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--top-k", type=int, default=5)
-    p.add_argument("--out", default="/tmp/hindsight_smoke_recall_results.json")
+    p.add_argument("--out", type=Path, default=DEFAULT_RECALL_RESULTS)
     args = p.parse_args()
     results = [run_test(tc, top_k=args.top_k) for tc in TEST_CASES]
     summary = {

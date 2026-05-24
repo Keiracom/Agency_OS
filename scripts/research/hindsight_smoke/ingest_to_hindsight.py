@@ -27,6 +27,13 @@ BASE = "http://localhost:8888"
 BANK = "keiracom_smoke"
 TIMEOUT = 120
 
+# S5443 — confined sub-dir (mode 0o700) instead of bare /tmp paths. Same pattern as
+# PR #1119 weaviate_cutover._SNAPSHOT_DIR. Operators override via --data-dir / --out.
+_RUNTIME_DIR = Path("/tmp/hindsight_smoke_data")  # NOSONAR S5443 — created mode-0o700 below
+_RUNTIME_DIR.mkdir(mode=0o700, exist_ok=True)
+DEFAULT_DATA_DIR = _RUNTIME_DIR
+DEFAULT_INGEST_LOG = _RUNTIME_DIR / "ingest_log.jsonl"
+
 # MAL node-type → tags (Hindsight infers world/experience fact-type from content;
 # tags carry our MAL classification + the AntiPattern Graveyard marker per
 # eleven_agreed_positions #11 + PR #1129 mapping).
@@ -85,11 +92,11 @@ def retain_one(record: dict) -> tuple[bool, float, dict]:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--data-dir", type=Path, default=Path("/tmp/hindsight_smoke_data"))
+    p.add_argument("--data-dir", type=Path, default=DEFAULT_DATA_DIR)
     p.add_argument(
         "--per-node-limit", type=int, default=5, help="cap per node type for cost-bounded pilot"
     )
-    p.add_argument("--out", type=Path, default=Path("/tmp/hindsight_smoke_ingest_log.jsonl"))
+    p.add_argument("--out", type=Path, default=DEFAULT_INGEST_LOG)
     args = p.parse_args()
     if args.out.exists():
         args.out.unlink()

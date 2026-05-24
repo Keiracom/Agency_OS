@@ -23,6 +23,18 @@ DISCOVERY_LOG = (
     Path.home() / ".claude/projects/-home-elliotbot-clawd-Agency-OS/memory/discovery_log.jsonl"
 )
 
+# S1192 — shared filenames extracted (each appeared 3-4× inline before).
+DECISION_FILENAME = "decision.jsonl"
+TASKCONTEXT_FILENAME = "taskcontext.jsonl"
+ANTIPATTERN_FILENAME = "antipattern.jsonl"
+ARTIFACT_FILENAME = "artifact.jsonl"
+
+# S5443 — confined sub-dir (mode 0o700) instead of bare /tmp. Same pattern as
+# PR #1119 weaviate_cutover._SNAPSHOT_DIR. Operators can override via --out-dir.
+_DATA_DIR = Path("/tmp/hindsight_smoke_data")  # NOSONAR S5443 — created mode-0o700 below
+_DATA_DIR.mkdir(mode=0o700, exist_ok=True)
+DEFAULT_DATA_DIR = _DATA_DIR
+
 
 def emit(out: Path, record: dict) -> None:
     with out.open("a") as f:
@@ -41,7 +53,7 @@ def extract_discovery_log(out_dir: Path, limit: int) -> tuple[int, int]:
         agent = r.get("agent", "?")
         if r.get("failed_path"):
             emit(
-                out_dir / "antipattern.jsonl",
+                out_dir / ANTIPATTERN_FILENAME,
                 {
                     "id": f"discovery:{kei}:antipattern",
                     "type": "antipattern",
@@ -53,7 +65,7 @@ def extract_discovery_log(out_dir: Path, limit: int) -> tuple[int, int]:
             anti_count += 1
         if r.get("verified_path"):
             emit(
-                out_dir / "decision.jsonl",
+                out_dir / DECISION_FILENAME,
                 {
                     "id": f"discovery:{kei}:decision",
                     "type": "decision",
@@ -86,7 +98,7 @@ def extract_bd_issues(out_dir: Path, limit: int) -> tuple[int, int]:
         title = issue.get("title", "")
         desc = issue.get("description", "")[:1000]
         emit(
-            out_dir / "taskcontext.jsonl",
+            out_dir / TASKCONTEXT_FILENAME,
             {
                 "id": f"bd:{bd_id}:taskcontext",
                 "type": "taskcontext",
@@ -102,7 +114,7 @@ def extract_bd_issues(out_dir: Path, limit: int) -> tuple[int, int]:
         tc_count += 1
         if issue.get("status") == "closed":
             emit(
-                out_dir / "decision.jsonl",
+                out_dir / DECISION_FILENAME,
                 {
                     "id": f"bd:{bd_id}:decision",
                     "type": "decision",
@@ -133,7 +145,7 @@ def _extract_bd_text(out_dir: Path, limit: int) -> tuple[int, int]:
         bd_id = parts[1] if len(parts) > 1 else "?"
         title = " ".join(parts[3:])[:300]
         emit(
-            out_dir / "taskcontext.jsonl",
+            out_dir / TASKCONTEXT_FILENAME,
             {
                 "id": f"bd:{bd_id}:taskcontext",
                 "type": "taskcontext",
@@ -144,7 +156,7 @@ def _extract_bd_text(out_dir: Path, limit: int) -> tuple[int, int]:
         )
         tc += 1
         emit(
-            out_dir / "decision.jsonl",
+            out_dir / DECISION_FILENAME,
             {
                 "id": f"bd:{bd_id}:decision",
                 "type": "decision",
@@ -183,7 +195,7 @@ def extract_prs(out_dir: Path, limit: int) -> tuple[int, int, int]:
         body = (pr.get("body") or "")[:1500]
         author = (pr.get("author") or {}).get("login", "?")
         emit(
-            out_dir / "artifact.jsonl",
+            out_dir / ARTIFACT_FILENAME,
             {
                 "id": f"pr:{num}:artifact",
                 "type": "artifact",
@@ -199,7 +211,7 @@ def extract_prs(out_dir: Path, limit: int) -> tuple[int, int, int]:
             ca = (comment.get("author") or {}).get("login", "?")
             if any(tok in cb for tok in ["[REVIEW:approve:", "[CONCUR:", "[FIXED:"]):
                 emit(
-                    out_dir / "decision.jsonl",
+                    out_dir / DECISION_FILENAME,
                     {
                         "id": f"pr:{num}:review:{comment.get('id', '?')}",
                         "type": "decision",
@@ -211,7 +223,7 @@ def extract_prs(out_dir: Path, limit: int) -> tuple[int, int, int]:
                 dec += 1
         # Whole PR is a TaskContext for the review chain
         emit(
-            out_dir / "taskcontext.jsonl",
+            out_dir / TASKCONTEXT_FILENAME,
             {
                 "id": f"pr:{num}:taskcontext",
                 "type": "taskcontext",
@@ -226,7 +238,7 @@ def extract_prs(out_dir: Path, limit: int) -> tuple[int, int, int]:
 
 def main() -> int:
     p = argparse.ArgumentParser()
-    p.add_argument("--out-dir", type=Path, default=Path("/tmp/hindsight_smoke_data"))
+    p.add_argument("--out-dir", type=Path, default=DEFAULT_DATA_DIR)
     p.add_argument("--per-source-limit", type=int, default=10, help="cap per source for pilot")
     args = p.parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)

@@ -44,13 +44,16 @@ The directive is unambiguous: **one bd database**, **tag-based routing**. No per
 
 The bd Dolt store lives in the **fleet repo** (`.beads/issues.jsonl` passive export + Dolt remote at `refs/dolt/data`). The product and archive repos do **not** carry their own bd instances; agents working in product or archive worktrees still issue bd commands against the fleet-repo store.
 
-**Mechanism.** `bd` resolves the workspace by walking up from `$PWD` for `.beads/`. For non-fleet worktrees the lookup short-circuits via an env var:
+**Mechanism.** `bd` resolves the workspace by walking up from `$PWD` for `.beads/*.db` by default. For non-fleet worktrees, point bd at the fleet store via the `--db` flag — wrapped in a per-callsign shell alias so the convention is invisible at the call site:
 
 ```bash
-export BEADS_WORKSPACE_DIR=/path/to/keiracom-fleet/.beads
+# In each non-fleet callsign's IDENTITY.md bootstrap (or shell rc):
+alias bd='bd --db /home/elliotbot/clawd/keiracom-fleet/.beads/issues.db'
 ```
 
 This is set in each agent's `IDENTITY.md` workspace bootstrap so worker sessions (Atlas/Orion/Scout/Nova) and deliberator sessions (Elliot/Aiden/Max) all reach the same store regardless of which repo's worktree they happen to be in.
+
+Empirical: `bd --help` exposes `--db string` ("Database path (default: auto-discover .beads/*.db)") — this is the supported override; there is no env-var equivalent today. A native env var would be a small bd feature request — out of scope for this artefact.
 
 ---
 
@@ -65,7 +68,7 @@ This is set in each agent's `IDENTITY.md` workspace bootstrap so worker sessions
 
 **Hard rule.** Every `bd create` in the product or archive worktree MUST carry an explicit `--repo` tag. Omitting it routes to fleet, which is wrong-but-silent — exactly the divergence class we are trying to prevent.
 
-**Enforcement (Phase 2.0 follow-up KEI).** A `pre-bd-create` hook reads the worktree's `IDENTITY.md` for a `repo:` field; if the worktree is product/archive and the `bd create` command lacks `--repo`, the hook rejects. Out of scope for this artefact (which is the policy doc); filed as bd issue for Phase 2.0.
+**Enforcement (Phase 2.0 follow-up KEI).** A `pre-bd-create` hook reads the worktree's `IDENTITY.md` for a `repo:` field; if the worktree is product/archive and the `bd create` command lacks `--repo`, the hook rejects. Out of scope for this artefact (which is the policy doc); filed as `Agency_OS-j6dy` for Phase 2.0.
 
 ---
 
@@ -248,10 +251,10 @@ bd close KEI-prd-001 --evidence=/tmp/kei-prd-001-evidence.json
 
 ## Open follow-ups (out of scope for this artefact)
 
-Filed at Phase 2.0 sequencing:
+Filed at Phase 2.0 sequencing. All filed as bd issues 2026-05-24 ahead of merge so the policy doc cites real KEIs, not aspirational TODOs:
 
-- **Pre-bd-create hook** — enforces `--repo` requirement in non-fleet worktrees, reading `IDENTITY.md`.
-- **`bd ready --repo` filter** — currently only filters issues created with the tag; needs verification it composes correctly with `--unblocked-only`.
-- **Linear team auto-create** — `Keiracom-Product` and `Keiracom-Archive` teams need to be created in Linear before the first sync attempt. Manual one-shot by an admin.
-- **`bd doctor --convention=cross-repo`** — extension of `bd doctor` to surface issues where the `--repo` tag and the Linear team disagree (drift detection).
-- **Shared-constraints CI gate** — separate consolidated gate ("Cross-repo dependency sync: shared constraints file; CI fails on lockfile drift") — separate artefact.
+- **Pre-bd-create hook** (`Agency_OS-j6dy`, P2 feature) — enforces `--repo` requirement in non-fleet worktrees, reading `IDENTITY.md`.
+- **`bd ready --repo` filter** (`Agency_OS-v2nm`, P3 task) — verify composition with the implicit unblocked-only behaviour of `bd ready` under the 3-repo dependency graph.
+- **Linear team auto-create** (`Agency_OS-rg79`, P2 task) — `Keiracom-Product` and `Keiracom-Archive` teams need to exist in Linear before the first sync attempt. Manual one-shot by an admin OR scripted via Linear API.
+- **`bd doctor --convention=cross-repo`** (`Agency_OS-42dm`, P3 feature) — extension of `bd doctor` to surface issues where the `--repo` tag and the synced Linear team disagree (drift detection).
+- **Shared-constraints CI gate** (`Agency_OS-6xm3`, P2 feature) — implements consolidated gate "Cross-repo dependency sync: shared constraints file; CI fails on lockfile drift" from `ceo:agency_os_keiracom_separation_v1`. Both fleet and product repos pull from shared-constraints.txt; CI in each repo fails on lockfile divergence.

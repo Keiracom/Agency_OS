@@ -1,0 +1,94 @@
+# Product Repo CI Test Allowlist — Agency_OS Phase 1.2.5 bundle artefact 7
+#
+# Authored 2026-05-24 per Elliot dispatch (Phase 1.2.5 artefact, Dave-ratified
+# separation directive AGENCY-OS-KEIRACOM-SEPARATION-V1).
+#
+# WHAT THIS IS:
+# Enumerated list of test paths that survive into the PRODUCT REPO CI matrix.
+# The product repo's CI runs ONLY tests whose path matches an entry here.
+# Any test file in tests/** not matched by this allowlist either (a) stays in
+# the fleet repo, or (b) goes to the archive repo with the dead BDR product.
+#
+# WHY STRIPPED:
+# Per ceo:agency_os_keiracom_separation_v1 sign-off item 2:
+#   "Stripped product-only matrix until first paying customer, with 3
+#    non-negotiable tests (tenant onboarding, MCP wrong-project-id rejection,
+#    namespace boundary negative-paths)."
+# Discipline: keep the matrix small enough that every test is currently green
+# and load-bearing for the V1.0 product surface. New product tests added as
+# product code lands; nothing carried over implicitly.
+#
+# FORMAT:
+#   - One path per line (relative to repo root).
+#   - Glob patterns supported: tests/dispatcher/*.py matches any direct child.
+#   - Recursive globs NOT supported (** disallowed) — keep enumeration explicit.
+#   - Blank lines + lines starting with # are ignored.
+#   - Trailing whitespace trimmed.
+#
+# ENFORCEMENT:
+# scripts/ci/check_product_test_allowlist.py walks tests/** and fails CI if
+# any *.py file is not matched. Run locally before push:
+#   python3 scripts/ci/check_product_test_allowlist.py
+# CI invocation: .github/workflows/product-repo-test-matrix.yml (snippet in
+# docs/migration/test_path_classification.md §6).
+
+# ─────────────────────────────────────────────────────────────────────────────
+# tests/dispatcher/ — V1.0 MCP dispatcher (primary product code)
+#   Auth, container lifecycle, JWT, monitor, reaper, session manager, spend
+#   tracker, Valkey pool, watchdog. All file-by-file enumerated below for
+#   visibility — when a new dispatcher test lands, add the path explicitly.
+# ─────────────────────────────────────────────────────────────────────────────
+tests/dispatcher/test_auth_minter.py
+tests/dispatcher/test_container_jwt.py
+tests/dispatcher/test_container_monitor.py
+tests/dispatcher/test_dispatcher_service_install.py
+tests/dispatcher/test_governance_proxy.py
+tests/dispatcher/test_heartbeat_reaper.py
+tests/dispatcher/test_heartbeat_watchdog.py
+tests/dispatcher/test_interceptor_proxy.py
+tests/dispatcher/test_jwt_hash_rotation.py
+tests/dispatcher/test_main_wiring.py
+tests/dispatcher/test_reaper.py
+tests/dispatcher/test_session_manager.py
+tests/dispatcher/test_spend_tracker.py
+tests/dispatcher/test_tmux_lifecycle.py
+tests/dispatcher/test_valkey_pool.py
+tests/dispatcher/test_watchdog.py
+
+# ─────────────────────────────────────────────────────────────────────────────
+# tests/memory/ — V1.0 Memory Abstraction Layer (primary product code)
+# ─────────────────────────────────────────────────────────────────────────────
+tests/memory/test_environment_hash.py
+tests/memory/test_memory.py
+tests/memory/test_sanitise.py
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Non-negotiable #1 — TENANT ONBOARDING
+# Per ceo:agency_os_keiracom_separation_v1 sign-off item 2.
+# ─────────────────────────────────────────────────────────────────────────────
+tests/test_services/test_onboarding_pipeline.py
+tests/test_flows/test_post_onboarding_flow.py
+tests/scripts/test_seed_demo_tenant.py
+tests/unit/test_set_tenant_session.py
+tests/live/test_onboarding_live.py
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Non-negotiable #3 — NAMESPACE BOUNDARY NEGATIVE-PATHS
+# Per ceo:agency_os_keiracom_separation_v1 sign-off item 2.
+# Note: ceo_memory + tenant-isolation tests cross the namespace boundary.
+# ─────────────────────────────────────────────────────────────────────────────
+tests/governance/test_ceo_memory_context_constraint.py
+tests/governance/test_ceo_memory_writer.py
+tests/integration/test_tenant_isolation.py
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Non-negotiable #2 — MCP WRONG-PROJECT-ID REJECTION
+# Per ceo:agency_os_keiracom_separation_v1 sign-off item 2.
+# TBD — test file not yet written. When the MCP project-id guard ships, the
+# test path expected is tests/dispatcher/test_mcp_project_id_rejection.py
+# (or similar). Add the path here in the same PR as the test file lands.
+# Until then this is a SHIPPING GATE: the product repo CI MUST fail to merge
+# any release-marked PR if this test does not exist.
+# Tracked: bd Agency_OS-TBD (file post-allowlist-merge).
+# ─────────────────────────────────────────────────────────────────────────────
+# tests/dispatcher/test_mcp_project_id_rejection.py    (NOT YET WRITTEN — placeholder)

@@ -16,7 +16,10 @@ Public surface:
 Fail-open everywhere — never raises; returns empty/error dicts so hot-path
 callers don't crash the agent.
 """
+
 from __future__ import annotations
+
+import contextlib
 import json
 import os
 import time
@@ -43,17 +46,19 @@ def get_token() -> str | None:
             pass
     data = urllib.parse.urlencode({"username": LOGIN_USER, "password": LOGIN_PASS}).encode()
     req = urllib.request.Request(
-        f"{BASE}/api/v1/auth/login", data=data, method="POST",
+        f"{BASE}/api/v1/auth/login",
+        data=data,
+        method="POST",
         headers={"Content-Type": "application/x-www-form-urlencoded"},
     )
     try:
         raw = urllib.request.urlopen(req, timeout=5).read()
         token = json.loads(raw).get("access_token")
         if token:
-            try:
-                TOKEN_CACHE.write_text(json.dumps({"token": token, "expires_at": time.time() + TOKEN_TTL_SECONDS}))
-            except OSError:
-                pass
+            with contextlib.suppress(OSError):
+                TOKEN_CACHE.write_text(
+                    json.dumps({"token": token, "expires_at": time.time() + TOKEN_TTL_SECONDS})
+                )
             return token
     except (urllib.error.URLError, urllib.error.HTTPError, json.JSONDecodeError):
         pass
@@ -75,16 +80,29 @@ def _authed_post(path: str, body: dict, timeout: int = 30) -> dict | list | None
         return json.loads(raw)
     except urllib.error.HTTPError as e:
         return {"error": f"HTTP_{e.code}", "body": e.read().decode()[:300]}
-    except (urllib.error.URLError, json.JSONDecodeError) as e:
-        return {"error": str(e)[:200]}
+    except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as e:
+        # TimeoutError fires when urlopen's read() exceeds `timeout` mid-stream
+        # (urllib does not wrap socket timeouts in URLError for read-timeouts).
+        # /cognify can run minutes — without this branch the caller crashes.
+        return {"error": str(e)[:200] or type(e).__name__}
 
 
 def search(query: str, top_k: int = 5, search_type: str = "GRAPH_COMPLETION"):
-    return _authed_post("/api/v1/search", {"query": query, "top_k": top_k, "search_type": search_type})
+    return _authed_post(
+        "/api/v1/search", {"query": query, "top_k": top_k, "search_type": search_type}
+    )
 
 
 def recall(query: str, top_k: int = 5):
     return _authed_post("/api/v1/recall", {"query": query, "top_k": top_k})
+
+
+def cognify(datasets: list[str] | None = None, timeout: int = 600):
+    # Per Agency_OS-cuee: /add stores raw content; only /cognify rebuilds the
+    # knowledge graph that GRAPH_COMPLETION recall reads. /cognify processes
+    # only un-cognified pending data, so per-batch delta cost is bounded.
+    body = {"datasets": datasets} if datasets else {}
+    return _authed_post("/api/v1/cognify", body, timeout=timeout)
 
 
 def health() -> dict:
@@ -103,17 +121,22 @@ def ingest(text: str, source_path: str = "", dataset_name: str = "governance"):
     boundary = f"----cognee_ingest_{uuid.uuid4().hex[:16]}"
     filename = source_path.replace("/", "_") if source_path else f"chunk_{uuid.uuid4().hex[:8]}.txt"
     parts: list[bytes] = []
+
     def add_field(name: str, value: str) -> None:
         parts.append(f"--{boundary}\r\n".encode())
         parts.append(f'Content-Disposition: form-data; name="{name}"\r\n\r\n'.encode())
         parts.append(value.encode())
         parts.append(b"\r\n")
+
     def add_file(name: str, fname: str, content: bytes, ctype: str = "text/markdown") -> None:
         parts.append(f"--{boundary}\r\n".encode())
-        parts.append(f'Content-Disposition: form-data; name="{name}"; filename="{fname}"\r\n'.encode())
-        parts.append(f'Content-Type: {ctype}\r\n\r\n'.encode())
+        parts.append(
+            f'Content-Disposition: form-data; name="{name}"; filename="{fname}"\r\n'.encode()
+        )
+        parts.append(f"Content-Type: {ctype}\r\n\r\n".encode())
         parts.append(content)
         parts.append(b"\r\n")
+
     add_file("data", filename, text.encode("utf-8"))
     add_field("datasetName", dataset_name)
     parts.append(f"--{boundary}--\r\n".encode())
@@ -141,6 +164,7 @@ def ingest(text: str, source_path: str = "", dataset_name: str = "governance"):
 
 if __name__ == "__main__":
     import sys
+
     if len(sys.argv) > 1 and sys.argv[1] == "test":
         print("health:", health())
         print("token:", "ok" if get_token() else "FAIL")

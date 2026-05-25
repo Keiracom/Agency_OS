@@ -21,6 +21,15 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
+# Defensive: tests use `patch("temporalio.client.Client.connect", ...)` which
+# requires temporalio importable AT PATCH-TIME. If the package isn't installed
+# (e.g. requirements.txt mis-ordered, CI install failed), skip module-wide
+# rather than fail with cryptic ModuleNotFoundError from patch internals.
+# This is the PR #1154 Aiden HOLD root cause — local env had temporalio
+# installed (from earlier `pip install temporalio` for integration test); CI
+# did not until requirements.txt update landed alongside this defensive guard.
+pytest.importorskip("temporalio", reason="temporalio SDK required for Temporal client tests")
+
 REPO_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 sys.path.insert(0, str(REPO_ROOT))
 

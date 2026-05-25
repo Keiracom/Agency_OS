@@ -140,6 +140,13 @@ weaviate-client>=4.5,<4.20
 google-api-python-client>=2.100
 google-auth>=2.30
 
+# === Temporal workflow engine (Phase A6 — bd Agency_OS-(A6)) ===
+# src/keiracom_system/temporal/{client,worker_scaffold}.py + production worker
+# entry-point per ceo:dave_decisions_2026_05_26.decision_5_temporal_ephemeral_instance.
+# CI also needs this to resolve `temporalio.client.Client.connect` patch paths
+# in tests/keiracom_system/temporal/test_client.py (PR #1154 Aiden HOLD root cause).
+temporalio>=1.20.0,<2.0
+
 # === Testing ===
 pytest>=7.4.0
 pytest-asyncio>=0.21.0

@@ -1,0 +1,68 @@
+# CodeQL — code analysis layer for the Keiracom System repo.
+#
+# Replaces SonarCloud (Dave + Aiden concur 2026-05-25). CodeQL alerts are
+# native to GitHub: no separate API token, dismissal flows through the
+# repo's Security tab or `gh api` calls.
+#
+# Severity translation (for the discipline-language migration in
+# docs/governance/CONSOLIDATED_RULES.md):
+#   Sonar BLOCKER         → CodeQL error
+#   Sonar CRITICAL/MAJOR  → CodeQL warning
+#   Sonar MINOR/INFO      → CodeQL note
+#   Sonar "hotspot review" → "dismiss CodeQL alert with reason"
+#
+# Two analysed languages:
+#   - python      → src/, scripts/, tests/, supabase/ (Python migrations etc)
+#   - javascript  → frontend/ (covers both .js/.jsx and .ts/.tsx)
+
+name: CodeQL
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    # Weekly drift scan — Mondays 03:00 UTC. Catches dependency-driven regressions.
+    - cron: "0 3 * * 1"
+
+permissions:
+  contents: read
+  security-events: write
+  packages: read
+  actions: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: python
+            build-mode: none
+          - language: javascript
+            build-mode: none
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v3
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          # security-and-quality pack catches the same shape as Sonar's BLOCKER
+          # + CRITICAL (path injection, weak crypto, taint flows) plus quality
+          # smells (duplication, complexity). Default 'security-extended' is the
+          # SARIF-emitting baseline we want.
+          queries: security-and-quality
+
+      - name: Perform CodeQL Analysis
+        uses: github/codeql-action/analyze@v3
+        with:
+          category: "/language:${{ matrix.language }}"

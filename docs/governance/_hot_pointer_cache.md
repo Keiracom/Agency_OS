@@ -56,7 +56,7 @@ Token budget per Layered Governance Matrix v1: **≤2500 tokens**. Regenerator a
 |------|-------|--------|---------|------------|
 | `PERSONA elliot` | Elliot | deliberation layer — implementation lens | PR review on implementation feasibility, dispatch routing | `persona-elliot` |
 | `PERSONA aiden` | Aiden | deliberation layer — governance + architecture lens | PR review on architecture drift, dependency ordering, governance | `persona-aiden` |
-| `PERSONA max` | Max | deliberation layer — code quality + test coverage lens | PR review on Sonar QG, test edge cases, hardcoded values | `persona-max` |
+| `PERSONA max` | Max | deliberation layer — code quality + test coverage lens | PR review on CodeQL findings (errors/warnings/notes), test edge cases, hardcoded values | `persona-max` |
 | `PERSONA john` | John | face layer — Dave-facing communicator; never executes/reviews | Dave-facing summary translation, single-voice presentation | `persona-john` |
 | `PERSONA orion` | Orion | worker layer — unrestricted; claims any worker-lane KEI | engineer-tier build/test/fix work | `persona-orion` |
 | `PERSONA atlas` | Atlas | worker layer — unrestricted; operator-tier ops + builds | Vultr deploys, systemd install scripts, infra ops | `persona-atlas` |

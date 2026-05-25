@@ -45,11 +45,6 @@ def _stream(*lines: str) -> io.StringIO:
     return io.StringIO("\n".join(lines) + "\n")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Happy paths
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 def test_read_events_single_valid_line_emits_event():
     """(1) one well-formed llm_call line → one MeteringEvent."""
     events = list(LogReader(_stream(_line())).read_events())
@@ -111,11 +106,6 @@ def test_read_events_field_map_override_handles_alt_schema():
     assert events[0].model == "claude-opus"
     assert events[0].input_tokens == 5
     assert events[0].output_tokens == 10
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Negative + edge paths
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 def test_read_events_empty_lines_skipped():
@@ -217,11 +207,6 @@ def test_read_events_default_field_map_matches_documented_keys():
     assert DEFAULT_FIELD_MAP["event_type"] == "event"
     assert DEFAULT_FIELD_MAP["timestamp"] == "ts"
     assert DEFAULT_FIELD_MAP["input_tokens"] == "usage.input_tokens"
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Trailing parametrised edge cases
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 @pytest.mark.parametrize(

@@ -39,11 +39,6 @@ def _ev(
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Happy paths
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 def test_single_event_produces_single_row():
     """(1) one event → one row with count=1, tokens carried through."""
     agg = Aggregator()
@@ -90,11 +85,6 @@ def test_flush_resets_internal_state():
     assert second == []
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Bucket-key axis tests — each axis must split buckets
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 def test_different_tenant_id_creates_separate_buckets():
     """(5) (t1, date, model) and (t2, date, model) → 2 rows."""
     agg = Aggregator()
@@ -127,11 +117,6 @@ def test_different_model_creates_separate_buckets():
     rows = agg.flush()
     assert len(rows) == 2
     assert {r.model for r in rows} == {"gpt-4o-mini", "claude-opus"}
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Negative + edge
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 def test_flush_on_empty_aggregator_returns_empty_list():

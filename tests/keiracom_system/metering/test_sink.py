@@ -42,11 +42,6 @@ def _row(tenant: str = "t1", model: str = "x") -> MeteringRow:
     )
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Happy paths
-# ─────────────────────────────────────────────────────────────────────────────
-
-
 def test_write_rows_passes_batch_to_db_and_returns_count():
     """(1) non-empty batch → db.upsert called once, return value bubbled up."""
     db = FakeDB(return_value=3)
@@ -65,11 +60,6 @@ def test_write_rows_preserves_input_order():
     rows = [_row(model="z"), _row(model="a")]
     sink.write_rows(rows)
     assert [r.model for r in db.calls[0]] == ["z", "a"]
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Negative + edge
-# ─────────────────────────────────────────────────────────────────────────────
 
 
 def test_write_rows_empty_input_is_no_op_no_db_call():

@@ -56,10 +56,6 @@ def _b64(s: str) -> str:
     return base64.b64encode(s.encode("utf-8")).decode("ascii")
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Happy paths
-
-
 def test_decrypt_round_trip_returns_plaintext():
     """(1) happy: 200 + valid plaintext base64 -> decoded UTF-8 str."""
     post = _make_post(_resp(200, {"data": {"plaintext": _b64("sk-tenant-secret")}}))
@@ -88,10 +84,6 @@ def test_decrypt_handles_trailing_slash_in_addr():
     url, _, _, _ = post.calls[0]  # type: ignore[attr-defined]
     assert url == "http://vault/v1/transit/decrypt/keiracom-tenant-t1"
     assert "//v1" not in url
-
-
-# ─────────────────────────────────────────────────────────────────────────────
-# Negative + edge
 
 
 def test_decrypt_empty_ciphertext_raises():
@@ -180,10 +172,6 @@ def test_default_key_name_prefix_constant_locked():
     assert DEFAULT_KEY_NAME_PREFIX == "keiracom-tenant-"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# from_env() factory
-
-
 def test_from_env_constructs_with_addr_and_token(monkeypatch):
     """(14) VAULT_ADDR + VAULT_TOKEN set -> factory returns a valid VaultDecryptor."""
     monkeypatch.setenv("VAULT_ADDR", "http://vault.example:8200")
@@ -219,10 +207,6 @@ def test_from_env_custom_key_prefix_honoured(monkeypatch):
     assert d.key_name_prefix == "custom-"
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# Integration test — opt-in against live dev Vault
-
-
 _INTEGRATION_ENABLED = os.environ.get("KEIRACOM_VAULT_INTEGRATION", "").strip() == "1"
 
 
@@ -235,13 +219,18 @@ def test_integration_live_vault_round_trip():
 
     Requires:
       - dev Vault running at $VAULT_ADDR (default http://127.0.0.1:8200)
-      - $EXT_TOKEN env (or /tmp/keiracom_vault_ext_token file) — token bound to keiracom-tenant-extension policy
+      - $EXT_TOKEN env — token bound to keiracom-tenant-extension policy.
+        ENV-ONLY (no /tmp/ fallback) per Aiden HOLD fix #1 (PR #1146) —
+        reading a world-writable /tmp/ path is a token-injection vector even
+        in opt-in integration tests.
       - keiracom-tenant-devtest key pre-created via setup_transit.sh
     """
     import urllib.request as ur
 
     addr = os.environ.get("VAULT_ADDR", "http://127.0.0.1:8200")
-    token = os.environ.get("EXT_TOKEN") or Path("/tmp/keiracom_vault_ext_token").read_text().strip()
+    token = os.environ.get("EXT_TOKEN")
+    if not token:
+        pytest.skip("EXT_TOKEN env required for live-Vault integration test")
     plaintext = "sk-live-test-byok-key"
     b64_plain = base64.b64encode(plaintext.encode("utf-8")).decode("ascii")
 

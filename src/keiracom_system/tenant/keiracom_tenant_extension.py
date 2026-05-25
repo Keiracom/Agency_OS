@@ -166,7 +166,7 @@ class _DBProtocol(Protocol):
 def _passthrough_decryptor(ciphertext: str, tenant_id: str) -> str:  # noqa: ARG001 — tenant_id unused in passthrough
     """Default decryptor for tests + dev envs (no real Vault round-trip).
 
-    Production wires a real decryptor — see src/keiracom_system/secrets/vault_decryptor.py
+    Production wires a real decryptor — see src/keiracom_system/vault/vault_decryptor.py
     (Phase A2, bd Agency_OS-31bk). Vault decryptor calls Transit decrypt for
     /v1/transit/decrypt/keiracom-tenant-{tenant_id} which is why the signature
     takes tenant_id as well as ciphertext.

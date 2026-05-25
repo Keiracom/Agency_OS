@@ -196,7 +196,9 @@ def test_get_tenant_config_returns_decrypted_llm_overrides():
     ext = KeiracomTenantExtension(db=db, decryptor=fake_decrypt)
     overrides = _run(ext.get_tenant_config(_ctx("key-t1")))
     assert overrides == {"llm_api_key": "sk-tenant-secret", "llm_model": "claude-opus-4-7"}
-    assert captured == [("ENC:sk-tenant-secret", "t1")], "decryptor should be called once with (ciphertext, tenant_id)"
+    assert captured == [("ENC:sk-tenant-secret", "t1")], (
+        "decryptor should be called once with (ciphertext, tenant_id)"
+    )
 
 
 def test_get_tenant_config_unknown_api_key_returns_empty_dict():

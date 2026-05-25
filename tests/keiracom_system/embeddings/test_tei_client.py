@@ -24,7 +24,7 @@ import json
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import cast
 
 import pytest
 
@@ -103,14 +103,16 @@ def test_embed_empty_input_returns_empty_no_http_call():
 
 
 def test_embed_non_list_input_raises_client_error():
-    """(3) defensive: caller passes wrong type → TEIClientError (no HTTP call)."""
+    """(3) defensive: caller passes wrong type → TEIClientError (no HTTP call).
+
+    Uses typing.cast() as the standard escape hatch for "I know this is the
+    wrong type but the runtime guard handles it". Defeats Sonar S5655 (which
+    flow-analyses literals through Any-annotated variables) and mypy.
+    """
     post = _make_post(_resp(500, "should not be called"))
     client = TEIClient(base_url="http://test", http_post=post)
-    # Route bad input through `Any` so static type checkers (and Sonar S5655)
-    # don't flag the intentionally-wrong type that the runtime guard catches.
-    bad_input: Any = "not-a-list"
     with pytest.raises(TEIClientError, match="texts must be list"):
-        client.embed(bad_input)
+        client.embed(cast("list[str]", "not-a-list"))
     assert len(post.calls) == 0  # type: ignore[attr-defined]
 
 

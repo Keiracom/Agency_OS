@@ -6,13 +6,36 @@
 
 ---
 
-## Headline finding
+## Headline finding (REVISED 2026-05-25 per Max audit critique)
 
-**4 of 13 classes have NO discoverable writer in current codebase** (`grep -rn '"<ClassName>"'` returns zero hits in `scripts/` or `src/`). They exist in Weaviate (with object counts) but the code that populates them is either deleted, archived, in a separate repo we don't see, or was a one-shot human action via Weaviate Console / curl.
+**Original audit grep methodology missed module-level constant + upsert_object patterns.** After Max applied a broader pattern (`grep -rnE 'class\s*=\s*"<Cls>"|WEAVIATE_CLASS\s*=\s*"<Cls>"|upsert_object\("<Cls>"|_CLASS\s*=\s*"<Cls>"' scripts/`), three classes previously flagged as Category B were empirically reclassified to Category A:
 
-The 4: **SessionTranscripts (117171 objects)**, **SessionFacts (10532)**, **ExternalKnowledge (12521)**, **Global_governance_patterns (5)**.
+- **SessionTranscripts (117k)** — writer found at `session_transcript_indexer.py:237`. **Cold-start critical-path long-pole evaporates.**
+- **SessionFacts (10.5k)** — writer found at `session_transcript_indexer.py:385`. NOT derived (C → A).
+- **ExternalKnowledge (12.5k)** — writer found at `external_knowledge_ingester.py` with module constant `WEAVIATE_CLASS = "ExternalKnowledge"`. NOT orphan.
 
-**SessionTranscripts is the highest-stakes** — 117k objects, no writer. If we cannot find/reconstruct the writer, that data is hand-migration only (Category B), and its size makes hand-migration operationally painful.
+Plus a filename correction: Slack_history writer is `slack_history_ingest.py` (KEI-201 bulk extractor), not `slack_history_indexer.py` as originally cited.
+
+**Revised classification: 10 of 13 classes are Category A pipeline-fed re-ingestible. Only 3 remain Category B hand-migration: Sessions (48k), Discoveries (14k JSONL-source-canonical-but-Weaviate-indexer-absent), Global_governance_patterns (5).**
+
+**Net impact on cold-start plan:** ~140k objects (SessionTranscripts + SessionFacts + ExternalKnowledge) move from hand-migration long-pole to normal pipeline re-ingest. Cold-start simplifies significantly — less risk, less work, less downtime window. See revised §Cold-start recovery plan summary below.
+
+## Methodology correction (audit-discipline lesson)
+
+The original grep used patterns like `grep -rn '"<ClassName>"'` which catches CLASS-NAME-AS-LITERAL-IN-NORMAL-POSITION but misses:
+
+1. **Module-level constants** (`WEAVIATE_CLASS = "Foo"`) where the class name is assigned to a constant once, then referenced via the constant variable. Catching requires extending the pattern to constant-assignment shapes.
+2. **upsert_object/insert/post call sites** where the class name is the FIRST positional argument inside a function call. `grep '"Foo"'` finds these in principle, but my grep used `grep -rln '"<cls>"' | head -10` which only listed FILES, not actual matches — combined with grep's tendency to surface other noise hits in app-data/status.json and bd issue bodies that look like "no real writer" by inspection, I dismissed positive signals.
+3. **Run-against-stale-local-state** — I ran greps from my pr-1039-fix worktree, behind origin/main. `session_transcript_indexer.py` and `external_knowledge_ingester.py` exist on main but were not in my local checkout. Even with broader grep patterns, this would still have missed the writers. **Audits MUST run against a fresh fetch of origin/main, not local worktree state.**
+
+This is the same methodology miss class as PR #1142's LlamaIndex lazy-import case (function-body imports invisible to module-top grep). Both are "grep miss" failures. The corrective discipline is being captured in a feedback memory entry (`feedback_grep_misses_lazy_dynamic_crosstool.md`) plus the `scripts/common/` audit-tooling consolidation KEI I owe.
+
+**The broader grep pattern Max used (canonical form going forward):**
+```
+grep -rnE 'class\s*=\s*"<Cls>"|WEAVIATE_CLASS\s*=\s*"<Cls>"|upsert_object\("<Cls>"|_CLASS\s*=\s*"<Cls>"' scripts/ src/
+```
+
+Run against `git checkout origin/main` state, not local-worktree state.
 
 ---
 
@@ -25,14 +48,14 @@ The 4: **SessionTranscripts (117171 objects)**, **SessionFacts (10532)**, **Exte
 | Keis | 488 | **A pipeline** | Linear API (KEI issues) | ✓ `scripts/orchestrator/linear_state_indexer.py` (`target_class = KEIS_CLASS`) |
 | Codebase | 207 | **A pipeline** | Git commits (this repo) | ✓ `scripts/orchestrator/git_commits_indexer.py` (`target_class = CODEBASE_CLASS`) |
 | StrategicDocuments | 2 | **A pipeline** | Google Drive (`config/drive_index_targets.json`) | ✓ `scripts/orchestrator/drive_strategic_indexer.py` (`STRATEGIC_CLASS = "StrategicDocuments"`); currently failing per dispatch — separate issue |
-| Slack_history | 14772 | **A pipeline** | Slack (channels) | ✓ `scripts/orchestrator/slack_history_indexer.py` (file present; Slack is canonical upstream source) |
+| Slack_history | 14772 | **A pipeline** | Slack (channels via `conversations.history`) | ✓ `scripts/orchestrator/slack_history_ingest.py` (KEI-201 bulk extractor; writes to `Slack_history` class) — **corrected from prior `_indexer.py` filename per Max audit** |
 | ToolCalls | 5289 | **A pipeline** | Supabase `public.tool_call_log` | ✓ `scripts/orchestrator/tool_call_log_indexer.py` (file present) |
-| SessionTranscripts | 117171 | **B HAND-MIGRATION** | Claude session JSONL files (per dispatch) | ✗ NO WRITER FOUND in current codebase — see §Risk surface below |
-| SessionFacts | 10532 | **C DERIVED** | Derived from SessionTranscripts (per dispatch) | ✗ NO WRITER FOUND; classification holds if dispatch source-claim is accurate |
-| Sessions | 48666 | **B HAND-MIGRATION** | Unclear — kei75_sweeps + kei75_sessions_source_id operate on it but neither writes | ✗ NO WRITER FOUND |
-| Discoveries | 14176 | **A pipeline (probable)** | `~/.claude/projects/.../discovery_log.jsonl` written by `bd discover` per `discovery_log.py` docstring | ⚠️ JSONL writer found (`scripts/orchestrator/discovery_log.py`); Weaviate indexer that reads JSONL → Discoveries class NOT found in current code — see §Discoveries note |
-| Global_governance_patterns | 5 | **B HAND-MIGRATION** | Likely human-curated (5 objects = small + structured set) | ✗ NO WRITER FOUND |
-| ExternalKnowledge | 12521 | **B HAND-MIGRATION** | Unknown — zero hits in codebase | ✗ NO WRITER FOUND — orphan class |
+| SessionTranscripts | 117171 | **A pipeline** | Claude session JSONL files | ✓ `scripts/orchestrator/session_transcript_indexer.py:237 upsert_object("SessionTranscripts", ...)` — **RECLASSIFIED B→A per Max audit; original grep missed module-level constant + upsert_object pattern** |
+| SessionFacts | 10532 | **A pipeline** | Same session JSONL files (NOT derived from SessionTranscripts despite earlier claim) | ✓ `scripts/orchestrator/session_transcript_indexer.py:385 upsert_object("SessionFacts", ...)` — **RECLASSIFIED C→A per Max audit; has its OWN writer call, not a derivation pass over SessionTranscripts** |
+| Sessions | 48666 | **B HAND-MIGRATION** | Unclear — `kei75_sessions_source_id.py` has `SESSIONS_CLASS = "Sessions"` constant but no upsert call; kei75_sweeps + kei75_sessions_source_id are READ-only | ✗ NO WRITER FOUND under broader grep — B classification holds |
+| Discoveries | 14176 | **B HAND-MIGRATION** | `~/.claude/projects/.../discovery_log.jsonl` written by `bd discover` per `discovery_log.py` docstring; JSONL→Weaviate indexer absent | ⚠️ JSONL writer found (`scripts/orchestrator/discovery_log.py`); Weaviate indexer that reads JSONL → Discoveries class NOT found under broader grep — B classification holds |
+| Global_governance_patterns | 5 | **B HAND-MIGRATION** | Likely human-curated (5 objects = small + structured set) | ✗ NO WRITER FOUND under broader grep — query target list only |
+| ExternalKnowledge | 12521 | **A pipeline** | Per `external_knowledge_ingester.py` (KEI-201 sibling) | ✓ `scripts/orchestrator/external_knowledge_ingester.py:59 WEAVIATE_CLASS = "ExternalKnowledge"` (module-level constant + ingester runtime) — **RECLASSIFIED B→A per Max audit; NOT orphan as previously claimed** |
 
 ---
 
@@ -56,54 +79,44 @@ These re-index against Hindsight deterministically. Cold-start plan: re-point th
 
 **ToolCalls (5289).** Source: `public.tool_call_log` table. Indexer reads + writes. Re-ingest target: replay all rows. Risk: zero.
 
-### Category B — one-off / hand-migration required (4 classes)
+### Category B — hand-migration required (3 classes — REVISED DOWN from original 5)
 
-These are the audit findings that need a recovery plan before cold-start. Most consequential: SessionTranscripts (117k objects).
+Post-Max-audit reclassifications: SessionTranscripts + SessionFacts + ExternalKnowledge moved out of B to A. The 3 remaining Category B classes are smaller (~62k objects total vs the original ~177k pre-reclassification):
 
-**SessionTranscripts (117171).** Per dispatch: "session-transcript-indexer; pipeline (claude session jsonl is source)". **Indexer not found in current codebase.** The `scripts/orchestrator/` directory has `auto_session_recovery.py` + `kei75_sessions_source_id.py` mentioning sessions, but neither writes to a Weaviate `SessionTranscripts` class. Recovery options:
+**Sessions (48666).** `kei75_sessions_source_id.py` has `SESSIONS_CLASS = "Sessions"` constant but no upsert call; kei75_sweeps + kei75_sessions_source_id are READ-only (operating ON the class, not WRITING TO it). Recovery options:
 
-  - (a) **Source IS reproducible — find the indexer.** The dispatch claims the source is Claude session JSONL files (`~/.claude/projects/-home-elliotbot-clawd-Agency-OS/...`). If we can locate the historical session-transcript-indexer in archived branches, in `scripts/archive/`, or in deleted-but-recoverable git history, restore it + replay against Hindsight. Recovery effort: 1-2 days investigation + restore.
-  - (b) **Source is reproducible but indexer is gone — rewrite the indexer.** ~200-400 LoC: walk Claude session JSONL files (well-defined format), extract transcript records, emit one Hindsight memory per session-turn. Recovery effort: 2-3 days.
-  - (c) **Snapshot is the source of truth — hand-migrate from snapshot.** The 2.1GB snapshot at `backups/memory_pre_hindsight_migration_20260525/` likely contains a Weaviate dump including these 117k objects. Migrate object-by-object via a one-shot script (read snapshot → write Hindsight). Recovery effort: ~1 day for the script + replay-time depending on Hindsight ingest throughput.
+  - (a) **Source IS reproducible — find or restore writer.** If a Sessions writer exists in archived branches OR was deleted post-some-refactor, restore + replay.
+  - (b) **Rewrite writer.** ~100-200 LoC: walk Claude session JSONL files OR Slack listener events (depending on what populated the original 48k); emit one Hindsight memory per session boundary. Effort: 1-2 days.
+  - (c) **Snapshot-based hand-migration.** Read the 48k objects from the `backups/memory_pre_hindsight_migration_20260525/` snapshot; write to Hindsight. ~half-day script + ~5-10 min ingest at the 50 ingests/sec rate.
 
-**Recommended: (c) snapshot-based hand-migration** for cold-start unblock, in parallel with (a)/(b) investigation to restore the indexer for ongoing freshness. Otherwise post-cold-start writes (new session transcripts) don't have a path into Hindsight.
+**Recommended: (c) for cold-start unblock + (b) in parallel for ongoing freshness.** Otherwise post-cold-start session boundaries don't get captured.
 
-**Sessions (48666).** Same shape as SessionTranscripts. `kei75_sweeps` + `kei75_sessions_source_id` operate on the class (sweeps + dedup) but neither writes. Recovery: same (a)/(b)/(c) options. Snapshot-based hand-migration for cold-start; indexer rewrite for ongoing. Effort: similar to SessionTranscripts but cheaper because it's smaller (48k vs 117k).
+**Discoveries (14176).** `scripts/orchestrator/discovery_log.py` writes `~/.claude/projects/.../discovery_log.jsonl` via `bd discover` invocations. The JSONL is the canonical source — verified. What's MISSING is the JSONL → Weaviate Discoveries class indexer. The Weaviate class has 14176 objects but the code path that reads the JSONL and writes to Weaviate isn't in the codebase under broader-grep extended methodology. Possibilities:
 
-**ExternalKnowledge (12521).** Zero hits in codebase. Genuine orphan. Recovery requires investigation: was it populated by a deleted script? A human curated batch? A Cognee import (Cognee operates at a different layer but might have populated Weaviate at some point)? Pre-cold-start action:
+  - The indexer was deleted post-PR-#1196 reingest-with-vectorizer work (the existing kei196 script appears to TRANSFORM existing Discoveries rather than ingest new ones)
+  - Discoveries were populated by a one-shot KEI-196 bootstrap that's gone
 
-  - **Investigate origin first** (~2-4 hours): grep deleted branches; check `~/.bash_history` or shell logs for ad-hoc curl commands; ask Dave/Viktor if they recall a one-time import.
-  - If origin remains unknown after investigation: **snapshot-based hand-migration is the only safe path** — preserves the 12521 objects without understanding their origin. Risk: post-migration these objects exist in Hindsight but no pipeline keeps them fresh; they become stale-by-default. Acceptable for read-only reference data, problematic if they're meant to be ingested-continuously.
+**Recovery: snapshot-based hand-migration for cold-start; indexer rewrite (~200 LoC, reads JSONL → emits Hindsight memories) for ongoing.**
 
-**Global_governance_patterns (5).** Only 5 objects suggests human-curated set. Recovery: easiest of the 4 — copy the 5 objects from snapshot to Hindsight manually + document the canonical content + decide whether they're meant to be re-curated periodically (manual maintenance) or were truly one-time. ~1 hour effort.
+**Global_governance_patterns (5).** Only 5 objects suggests human-curated set. Recovery: easiest of the 3 — copy the 5 objects from snapshot to Hindsight manually + document the canonical content + decide whether they're meant to be re-curated periodically (manual maintenance) or were truly one-time. ~1 hour effort.
 
-### Category C — derived (1 class)
+### Category C — derived (0 classes — REVISED from original 1)
 
-**SessionFacts (10532).** Per dispatch: "derived from SessionTranscripts." Implication: SessionFacts is produced by running an extraction pass over SessionTranscripts content (probably an LLM-graded fact-extraction step). Recovery: re-run the derivation against the post-cold-start Hindsight bank that contains SessionTranscripts. No hand-migration needed because derivation IS the source-of-truth path. **Dependency:** SessionTranscripts must be successfully migrated to Hindsight FIRST (otherwise derivation has no source).
+**SessionFacts moved C→A** per Max audit. The original dispatch claim "SessionFacts is derived from SessionTranscripts" was wrong: empirically `session_transcript_indexer.py:385` has its OWN `upsert_object("SessionFacts", ...)` call alongside the SessionTranscripts call at line 237. SessionFacts is its own pipeline product from the SAME source (Claude session JSONL files), not a derivation pass.
 
-If the derivation logic is itself missing from the codebase (likely, since SessionTranscripts indexer is missing), it needs the same recovery as the missing indexers — find or rewrite.
+No Category C classes remain.
 
 ### Discoveries note
 
-`scripts/orchestrator/discovery_log.py` writes `~/.claude/projects/-home-elliotbot-clawd-Agency-OS/memory/discovery_log.jsonl` via `bd discover` invocations. The JSONL is the canonical source — verified.
-
-What's MISSING is the JSONL → Weaviate Discoveries class indexer. The Weaviate class has 14176 objects but the code path that reads the JSONL and writes to Weaviate isn't in `scripts/orchestrator/`. Options:
-
-- The indexer exists but was missed in my grep (worth spot-checking `scripts/` non-orchestrator dirs OR archived locations)
-- The indexer was deleted post-PR-#1196 reingest-with-vectorizer work (the existing kei196 script appears to TRANSFORM existing Discoveries rather than ingest new ones)
-- Discoveries were populated by a one-shot KEI-196 bootstrap that's gone
-
-If the indexer truly doesn't exist anymore, Discoveries is **Category B** despite the JSONL source being canonical — because we have no automation to re-index from JSONL to Hindsight on an ongoing basis. Hand-migration from snapshot is the safe path; indexer rewrite is the right durable fix.
+Covered in §Category B above. JSONL writer exists; Weaviate indexer absent under broader grep. Hand-migration from snapshot for cold-start; indexer rewrite for ongoing freshness.
 
 ---
 
 ## Risk surface — what could break the cold-start
 
-**Risk 1 — SessionTranscripts hand-migration is the long-pole (117k objects).**
+**Risk 1 — DOWNGRADED post-Max-audit.** Previously: "SessionTranscripts hand-migration is the long-pole (117k objects)." Reclassified: SessionTranscripts is now Category A pipeline-fed via `session_transcript_indexer.py:237`. Cold-start re-points the indexer's writes to Hindsight; existing replay logic backfills from the Claude session JSONL source. **Risk evaporates** for SessionTranscripts, SessionFacts, and ExternalKnowledge (all three: re-point indexer + replay = same risk-zero shape as Decisions/AgentMemories/Keis). Cold-start critical path is no longer the 117k-object SessionTranscripts ingest window.
 
-If Recovery option (c) snapshot-based hand-migration is chosen for SessionTranscripts, Hindsight ingest throughput becomes the cold-start critical path. At a conservative 50 ingests/sec (per PR #1130 measurement on similar payloads), 117k = ~40 minutes. At a worse 5/sec under load = ~6.5 hours. **Plan a single dedicated cold-start window for SessionTranscripts migration; don't interleave with other classes.**
-
-**Risk 2 — ExternalKnowledge origin remains unknown.**
+**Risk 2 — ExternalKnowledge origin remains unknown — RESOLVED post-Max-audit.**
 
 If 2-4 hours of investigation doesn't surface the writer or curator, we proceed with snapshot-based hand-migration and accept that the 12521 objects become stale-by-default in Hindsight (no pipeline keeps them fresh). For a class whose role we don't fully understand, this might be acceptable (treat as reference data); if they were meant to be ingested-continuously, post-cold-start retrieval quality degrades over time. **Mitigation: tag these objects in Hindsight metadata as `provenance: unknown_pre_migration` so post-cold-start operators see them clearly when querying.**
 
@@ -121,26 +134,27 @@ Per dispatch: "drive-strategic-indexer (currently failing)." Until the indexer i
 
 ---
 
-## Cold-start recovery plan summary
+## Cold-start recovery plan summary (REVISED post-Max-audit)
 
 | Class | Migration approach | Effort | Blocker on cold-start? |
 |---|---|---|---|
-| Decisions / AgentMemories / Keis / Codebase / Slack_history / ToolCalls | Re-point indexer's target → Hindsight bank; replay from source | ~1h per indexer × 6 = 6 hours | No |
+| Decisions / AgentMemories / Keis / Codebase / Slack_history / ToolCalls / SessionTranscripts / SessionFacts / ExternalKnowledge | Re-point indexer's target → Hindsight bank; replay from source | ~1h per indexer × 9 = 9 hours | No |
 | StrategicDocuments | Fix indexer first (separate KEI) OR hand-migrate 2 objects from snapshot | ~30 min snapshot path / TBD indexer fix | Soft yes (block on indexer fix preferred) |
-| SessionTranscripts | Snapshot-based hand-migration script + ingest run (Recovery option c) | 1 day script + ~40min-6hr ingest | **YES — long-pole** |
-| SessionFacts | Derived; re-run derivation after SessionTranscripts in Hindsight | depends on derivation script existence | Sequenced after SessionTranscripts |
-| Sessions | Same shape as SessionTranscripts — snapshot-based hand-migration | similar to SessionTranscripts but cheaper (smaller) | Yes |
-| Discoveries | Snapshot-based hand-migration + rewrite indexer for ongoing | ~1 day script + ~2-3 days indexer rewrite | Soft yes |
-| ExternalKnowledge | Investigate origin (2-4h) → snapshot-based hand-migration if unknown | ~1 day | Yes |
+| Sessions | Snapshot-based hand-migration + rewrite writer for ongoing | ~half-day snapshot + ~5-10min ingest / ~1-2 days writer rewrite | Soft yes |
+| Discoveries | Snapshot-based hand-migration + rewrite JSONL→Hindsight indexer for ongoing | ~1 day script + ~2-3 days indexer rewrite | Soft yes |
 | Global_governance_patterns | Manual copy of 5 objects from snapshot + decide curation policy | ~1 hour | No |
 
-**Critical path on cold-start:** SessionTranscripts hand-migration (longest single window, 1-2 days end-to-end including script + ingest). Other classes parallelisable.
+**Critical path on cold-start: simplified dramatically post-reclassification.** No single 117k-object long-pole. The largest hand-migration is Discoveries (~14k objects, ~5min ingest at 50/sec). All other Category B classes are small (Sessions 48k via snapshot is ~16min ingest; Global_governance_patterns 5 is trivial).
 
-**Recommended cold-start sequence:**
-1. Pre-cutover (parallel-safe): fix StrategicDocuments indexer; investigate ExternalKnowledge origin; locate or rewrite SessionTranscripts/Sessions/Discoveries indexers.
-2. Cutover day 1: SessionTranscripts hand-migration (long ingest window).
-3. Cutover day 2: parallel re-ingest of Category A classes + SessionFacts derivation re-run + Global_governance_patterns copy.
-4. Post-cutover validation: query Hindsight, compare object counts per class to pre-migration Weaviate counts, flag any drift >5%.
+**Net effort comparison:**
+- Original audit estimated cold-start critical path at ~1-2 days (SessionTranscripts long-pole)
+- Revised cold-start critical path: ~2-3 days for the Discoveries indexer REWRITE (if we want ongoing freshness), parallel with single-day Category A re-point pass for 9 classes
+
+**Revised cold-start sequence:**
+1. Pre-cutover (parallel-safe): fix StrategicDocuments indexer; rewrite Sessions writer + Discoveries indexer (in parallel — both are <2-day rewrites).
+2. Cutover day 1: parallel re-point of 9 Category A indexers (~9 hours wall-clock if sequential, faster if parallelised); snapshot-based hand-migration of Sessions + Discoveries + Global_governance_patterns (each <1hr ingest at 50/sec).
+3. Cutover day 2: validation + cleanup. Query Hindsight, compare object counts per class to pre-migration Weaviate counts, flag any drift >5%.
+4. Post-cutover: rewritten Sessions writer + Discoveries indexer go live for ongoing freshness.
 
 ---
 
@@ -155,10 +169,12 @@ Per dispatch: "drive-strategic-indexer (currently failing)." Until the indexer i
 
 ## Acceptance criteria
 
-- [x] All 13 classes classified (A/B/C) — see §Classification table.
+- [x] All 13 classes classified (A/B/C) — see §Classification table (REVISED post-Max-audit: 10 A + 3 B + 0 C).
 - [x] Source documented per class (table column + per-class detail).
-- [x] Writer-not-found classes flagged with recovery options (4 classes: SessionTranscripts, Sessions, ExternalKnowledge, Global_governance_patterns + Discoveries partial).
-- [x] Risk surface enumerated with mitigations (5 risks).
+- [x] Writer-not-found classes flagged with recovery options (3 classes post-revision: Sessions, Global_governance_patterns, Discoveries).
+- [x] Risk surface enumerated with mitigations (R1 + R2 downgraded post-reclassification; remaining risks still apply).
+- [x] Methodology-correction note added (§Headline finding + §Methodology correction).
+- [x] Cold-start sequence revised — Category B drops from 5 to 3 classes; SessionTranscripts long-pole evaporates.
 - [x] Cold-start recovery plan summary table.
 - [ ] Elliot impl-feasibility concur.
 - [ ] Max code-quality concur (audit-doc lens = "are the per-class source claims empirically verified / are the recovery options operationally executable?").

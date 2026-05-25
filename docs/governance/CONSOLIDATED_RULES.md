@@ -369,8 +369,8 @@ The set is intentionally small. Each rule names a required section anchor that m
 |---|---|---|---|
 | Dual-concur + author-exclusion (KEI-206) | `## Dual-Concur` | fleet, product | Archive is read-only; no PRs accepted there. |
 | Author-tags every PR title (LAW XVII subset) | `## Callsign Discipline` or `## Author Tags` | fleet, product | Fleet uses callsign tags `[AIDEN]` etc.; product may use bot tags or engineer names — section name normalised. |
-| Sonar QG + issues both verified per `feedback_sonar_qg_not_just_issues` | `## CI + Sonar` | fleet, product | Archive: omit (read-only). |
-| Wait-for-CI-before-review per `feedback_wait_for_ci_before_review` | `## CI + Sonar` (combined with above) | fleet, product | Archive: omit. |
+| CodeQL findings verified per-PR (errors block; warnings reviewed; notes triaged) — replaces Sonar QG discipline | `## CI + CodeQL` | fleet, product | Archive: omit (read-only). Migrated from SonarCloud 2026-05-25 per Dave+Aiden concur. The historical `feedback_sonar_qg_not_just_issues` memory anchor still applies in spirit — the "QG passed but issues remain" trap is the same shape under CodeQL when error-count is 0 but warnings linger. |
+| Wait-for-CI-before-review per `feedback_wait_for_ci_before_review` | `## CI + CodeQL` (combined with above) | fleet, product | Archive: omit. |
 | Step 0 RESTATE if deliberators author (LAW XV-D) | `## Authoring Discipline` | fleet | Product CLAUDE.md only includes this IF deliberators ever author product code directly (currently no; engineers author + deliberators review). |
 | Negative-path tests before approve | `## Test Discipline` | fleet, product | Universal to gate/validator/enforcer PRs. |
 | Canonical-key-query gate (audit-dispatch checklist) | `## Canonical Key Query` | fleet | Fleet-specific (ceo_memory keys are fleet substrate). Product gets analogous discipline via MCP schema versioning when authored. |

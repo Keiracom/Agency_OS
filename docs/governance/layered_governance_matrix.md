@@ -445,7 +445,7 @@ Each triggers so frequently that recall-on-demand has too much latency cost. Aid
 
 1. `feedback_silence_is_status` — every Dave-facing post
 2. `feedback_pre_revenue_reality` — every marketing/positioning decision
-3. `feedback_sonar_qg_not_just_issues` — every PR review
+3. `feedback_sonar_qg_not_just_issues` — every PR review (post-2026-05-25 Sonar→CodeQL migration: same "verify the gate AND the underlying findings" discipline, now phrased as "verify CodeQL error-count==0 AND triage warnings/notes — not just one of them")
 4. `feedback_wait_for_ci_before_review` — every PR review
 5. `feedback_no_pass_fail_annotation` — every test-output report
 6. `feedback_ceo_plain_english_summaries` — every Dave-facing post

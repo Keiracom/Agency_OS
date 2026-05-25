@@ -223,3 +223,31 @@ Events stream to:
 - Max quality/coverage lens — are the emit events sufficient for observability + compliance audit?
 - Elliot impl-feasibility — this doc IS my impl-feasibility statement
 - Orion build dispatch — when this contract concurs, A6 first-workflow-migrated step unblocks
+
+## Phase 2 amendments (folded from Aiden CONCUR observations 2026-05-25)
+
+Non-blocking; track for Phase 2 implementation discipline:
+
+1. **Schema extension for V1.x regulated verticals.** Add to common audit event schema:
+   - `session_id` / `chat_thread_id` — multi-call correlation within a customer session (HIPAA episode tracking, legal-privilege grouping)
+   - `event_id` + `trace_id` — distributed-trace correlation across audit-sink pipeline (Temporal → mem.wrap.trace → Layer 12)
+   - `signature` / `audit_hmac` — tamper-resistance for compliance verticals; HMAC-keyed via Vault Transit (`infra.secrets_management`); pairs with Atlas Go Sidecar NIT-7 HMAC-signed-config
+   - Explicit PHI policy on `detail` field: `phi_filtered: bool` flag confirming strip pass ran (HIPAA is broader than "secrets" or "payload")
+
+2. **Sandbox token_gate calibration — abuse vector closure.** Current warn-only on Sandbox is unbounded fleet-cost risk (10K tokens/task × 10 tasks/day × N tenants). Suggested:
+   - ENFORCE with generous-cap (e.g., 50K tokens/day total per Sandbox tenant)
+   - WARN below 50% of cap (visibility into paid-tier behaviour)
+   - ENFORCE at 100%
+   Calibration tune in Phase 2 with actual Sandbox usage data; communicate cap honestly in Sandbox onboarding flow
+
+3. **Cache-hit short-circuit in pre-call sequencing.** When `cache_check` returns `valkey_hit` (no LLM call needed), `token_gate` firing afterward is wasteful. Suggested re-ordering:
+   - tier_gate (always)
+   - content_check (always)
+   - cache_check
+     - if HIT: SHORT-CIRCUIT (skip token_gate; emit cache-hit-pass; return cached response)
+     - if MISS: continue
+   - token_gate (only on cache MISS)
+   - LLM call
+   - Inline post-call: listener → audit
+   - Async: post_validation
+   Cleaner cost-flow + better audit signal

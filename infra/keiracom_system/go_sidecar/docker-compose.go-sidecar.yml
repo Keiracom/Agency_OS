@@ -1,0 +1,29 @@
+# Keiracom System — Go Sidecar (security interceptor + tool-call validator).
+#
+# Cat 10 mcp.go_sidecar (RATIFIED-DM). Per-tenant sidecar — same per-tenant
+# docker-compose project pattern as the TEI sidecar at infra/keiracom_system/
+# embeddings/docker-compose.tei.yml.
+#
+# Agents POST tool calls to http://sidecar:4100/validate before invoking MCP.
+# Engineer-tier ships the agent-side client + forward-or-deny half; scaffold
+# proves the listener shape compiles.
+
+services:
+  sidecar:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "4100:4100"
+    volumes:
+      # Per-tenant config mounted read-only — static config not knowledge graph.
+      - ./config.example.json:/etc/keiracom/sidecar.json:ro
+    environment:
+      SIDECAR_CONFIG_PATH: /etc/keiracom/sidecar.json
+      SIDECAR_ADDR: ":4100"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:4100/health"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+    restart: unless-stopped

@@ -1,0 +1,24 @@
+{
+  "tenants": {
+    "tenant_demo": {
+      "id": "tenant_demo",
+      "allowed_tools": ["read_file", "write_file", "http_get"],
+      "allowed_domains": ["api.example.com", "docs.example.com"],
+      "allowed_paths": ["/workspace/tenant_demo/"],
+      "system_path_deny": [
+        "/var/keiracom/system/",
+        "/var/keiracom/reasoning_traces/",
+        "/var/keiracom/system_prompts/",
+        "/var/keiracom/governance/",
+        "/var/keiracom/temporal_state/"
+      ],
+      "secret_patterns": ["sk-ant-", "sk-proj-", "AIza"]
+    }
+  },
+  "global_secret_patterns": [
+    "BEGIN RSA PRIVATE KEY",
+    "BEGIN OPENSSH PRIVATE KEY",
+    "hvs.",
+    "ghp_"
+  ]
+}

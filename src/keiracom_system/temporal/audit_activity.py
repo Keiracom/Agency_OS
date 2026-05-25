@@ -35,6 +35,7 @@ Per contract V1 cross-cutting principle "Fail-closed default":
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, datetime
 from typing import Any, Literal
@@ -101,6 +102,13 @@ async def emit_audit_event(event: dict[str, Any]) -> str:
     the wrapper-instance is available via env config. Logged at INFO when
     skipped so deliberators see the missing-integration explicitly.
     """
+    # Stream 2 mem.wrap.trace integration TODO — for now, async wrapper is
+    # required by Temporal SDK (@activity.defn) even when internal logic is
+    # sync. Explicit no-op await surfaces the async contract intent + clears
+    # Sonar S7503 false-positive (Aiden HOLD fix #2). Removable once the
+    # Hindsight integration actually awaits something here.
+    await asyncio.sleep(0)
+
     # Stream 1 — Temporal event history (automatic via this activity call).
     # Log at INFO so the audit event payload is visible in Temporal UI.
     log.info(

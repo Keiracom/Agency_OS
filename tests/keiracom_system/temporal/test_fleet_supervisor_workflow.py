@@ -113,7 +113,7 @@ def test_build_audit_event_elapsed_ms_coerced_to_float():
         detail="y",  # int input
     )
     assert isinstance(event["elapsed_ms"], float)
-    assert event["elapsed_ms"] == 42.0
+    assert event["elapsed_ms"] == pytest.approx(42.0)  # S1244 — pytest.approx per Aiden HOLD fix #1
 
 
 def test_build_audit_event_timestamp_is_iso8601_utc():

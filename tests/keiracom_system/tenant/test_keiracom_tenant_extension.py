@@ -184,17 +184,21 @@ def test_get_tenant_config_returns_decrypted_llm_overrides():
         ]
     )
     # Injected decryptor strips the ENC: prefix to prove the call happens.
-    captured: list[str] = []
+    # Signature (ct, tenant_id) reflects Phase A2 Vault Transit per-tenant keying
+    # (Agency_OS-31bk) — decryptor needs tenant_id to pick the right Vault key.
+    captured: list[tuple[str, str]] = []
 
-    def fake_decrypt(ct: str) -> str:
-        captured.append(ct)
+    def fake_decrypt(ct: str, tenant_id: str) -> str:
+        captured.append((ct, tenant_id))
         assert ct.startswith("ENC:"), f"decryptor expected ciphertext, got {ct!r}"
         return ct[len("ENC:") :]
 
     ext = KeiracomTenantExtension(db=db, decryptor=fake_decrypt)
     overrides = _run(ext.get_tenant_config(_ctx("key-t1")))
     assert overrides == {"llm_api_key": "sk-tenant-secret", "llm_model": "claude-opus-4-7"}
-    assert captured == ["ENC:sk-tenant-secret"], "decryptor should be called exactly once"
+    assert captured == [("ENC:sk-tenant-secret", "t1")], (
+        "decryptor should be called once with (ciphertext, tenant_id)"
+    )
 
 
 def test_get_tenant_config_unknown_api_key_returns_empty_dict():

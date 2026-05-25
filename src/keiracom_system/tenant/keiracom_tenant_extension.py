@@ -163,12 +163,13 @@ class _DBProtocol(Protocol):
     def list_active_tenants(self) -> list[dict[str, Any]]: ...
 
 
-def _passthrough_decryptor(ciphertext: str) -> str:
-    """Default decryptor for tests + dev envs (no real pgcrypto round-trip).
+def _passthrough_decryptor(ciphertext: str, tenant_id: str) -> str:  # noqa: ARG001 — tenant_id unused in passthrough
+    """Default decryptor for tests + dev envs (no real Vault round-trip).
 
-    Production wires a real decryptor that calls pgcrypto.pgp_sym_decrypt
-    against the keys_service pattern from src/api/services/customer_api_keys.py
-    (existing Agency_OS-era code; pattern is reusable for Keiracom System).
+    Production wires a real decryptor — see src/keiracom_system/secrets/vault_decryptor.py
+    (Phase A2, bd Agency_OS-31bk). Vault decryptor calls Transit decrypt for
+    /v1/transit/decrypt/keiracom-tenant-{tenant_id} which is why the signature
+    takes tenant_id as well as ciphertext.
     """
     return ciphertext
 
@@ -193,7 +194,7 @@ class KeiracomTenantExtension(_HindsightTenantExtension):
     def __init__(
         self,
         db: _DBProtocol,
-        decryptor: Callable[[str], str] | None = None,
+        decryptor: Callable[[str, str], str] | None = None,
         api_key_header: str | None = None,
     ):
         """Construct with injected db client + decryptor (testability)."""
@@ -261,7 +262,7 @@ class KeiracomTenantExtension(_HindsightTenantExtension):
         except KeiracomTenantProvisioningError as exc:
             log.warning("get_tenant_config: %s", exc)
             return {}
-        decrypted_key = self._decrypt(cfg.llm_api_key)
+        decrypted_key = self._decrypt(cfg.llm_api_key, str(tenant_id))
         return {
             "llm_api_key": decrypted_key,
             "llm_model": cfg.llm_model,

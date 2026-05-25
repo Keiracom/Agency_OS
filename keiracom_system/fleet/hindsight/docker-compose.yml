@@ -1,0 +1,66 @@
+# keiracom_system/fleet/hindsight — fleet Hindsight engine (Phase A1).
+#
+# bd: Agency_OS-njhl (Phase A1 — Hindsight fleet deployment + wired wrappers
+# + fleet tenant in control-plane). Anchor: ceo:keiracom_build_priority
+# phase_a_build_unblockers.a1.
+#
+# IMPL-FEASIBILITY CALL (Atlas, dispatch 2026-05-25): Vultr (this host) via
+# systemd-managed docker-compose, mirroring the cognee.service pattern.
+# Reasoning: zero new infra to provision, same operational shape as the rest
+# of the fleet, Orion's dev variant proves the image+compose recipe end-to-end
+# on this host. Railway considered + rejected for V1 — adds a separate deploy
+# surface for one container with no horizontal-scale need yet.
+#
+# Differs from keiracom_system/dev/hindsight/docker-compose.yml:
+#   - Port 8889 (NOT 8888) so fleet runs alongside Orion's dev instance on
+#     the same host without conflict. Dev stays available for spike work.
+#   - Container name keiracom-fleet-hindsight (NOT keiracom-dev-hindsight).
+#   - Volume keiracom_fleet_hindsight_pg_data (separate from dev volume).
+#   - Restart policy 'always' (NOT 'unless-stopped' — survives daemon restart
+#     since this is the fleet's memory engine, not a dev convenience).
+#
+# Image: ghcr.io/vectorize-io/hindsight:latest (Orion verified 0.6.2 working
+# locally; same image used here for parity).
+#
+# Persistence: named docker volume keiracom_fleet_hindsight_pg_data mounted at
+# /home/hindsight/.pg0 (the upstream embedded-PG default path). Survives compose
+# down/up + daemon restart.
+#
+# Secrets: OPENAI_API_KEY sourced from .env in this directory (host-side,
+# created at bring-up from /home/elliotbot/.config/agency-os/.env — NOT
+# checked in).
+#
+# Ports:
+#   8889 → Hindsight API (fleet)
+#   10000 → Hindsight UI (fleet — UI is operator-only, not customer-facing)
+
+# Distinct compose project so the fleet variant coexists with
+# keiracom_system/dev/hindsight/ on the same host without recreating each other.
+name: keiracom-fleet-hindsight
+
+services:
+  hindsight:
+    image: ghcr.io/vectorize-io/hindsight:latest
+    container_name: keiracom-fleet-hindsight
+    pull_policy: always
+    environment:
+      HINDSIGHT_API_LLM_PROVIDER: openai
+      HINDSIGHT_API_LLM_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY required — set in .env}
+    ports:
+      # Fleet variant: 8889 / 10000 to coexist with Orion's dev variant on 8888 / 9999.
+      - "8889:8888"
+      - "10000:9999"
+    volumes:
+      - keiracom_fleet_hindsight_pg_data:/home/hindsight/.pg0
+    restart: always
+    healthcheck:
+      # Same /health endpoint as dev — returns {"status":"healthy","database":"connected"}.
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8888/health >/dev/null 2>&1 || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+volumes:
+  keiracom_fleet_hindsight_pg_data:
+    driver: local

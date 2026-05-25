@@ -110,6 +110,7 @@ def post_object(obj: dict) -> bool:
         try:
             with _http_request("POST", "/v1/objects", obj) as resp:
                 if 200 <= resp.status < 300:
+                    _post_object_hindsight_mirror(obj)
                     return True
                 logger.warning(
                     "post_object id=%s rc=%s attempt=%d",
@@ -122,6 +123,7 @@ def post_object(obj: dict) -> bool:
                 logger.debug(
                     "post_object id=%s already exists (422 idempotent no-op)", obj.get("id")
                 )
+                _post_object_hindsight_mirror(obj)
                 return True
             logger.warning(
                 "post_object id=%s HTTPError=%s attempt=%d",
@@ -140,6 +142,96 @@ def post_object(obj: dict) -> bool:
             time.sleep(backoff)
             backoff *= 2
     return False
+
+
+# ============================================================================
+# Phase A3 — Hindsight dual-write
+# ============================================================================
+# Per Phase A3 dispatch (Agency_OS-q492 — "Re-point indexers at A1-deployed
+# Hindsight"). Implementation as DUAL-WRITE (Weaviate + Hindsight) opt-in via
+# env var INDEXER_HINDSIGHT_MIRROR=on (default off).
+#
+# Rationale (Atlas impl-feasibility, dispatch 2026-05-25):
+# - Cutover-as-swap risks data divergence if Hindsight write fails mid-batch
+# - Dual-write preserves Weaviate as the reader-of-record during transition;
+#   Weaviate readers (today: src/retrieval/orchestrator via LlamaIndex) keep
+#   working unchanged
+# - Hindsight failures are LOGGED-WARN-NOT-FAIL — they do not break the
+#   Weaviate write or fail the indexer batch
+# - Migration sequence: enable mirror (off→on) per-indexer + verify both
+#   stores converge → wire readers to Hindsight (separate PR) → disable mirror
+#   (Weaviate writes stop) → cold-start Weaviate + retire
+#
+# Class → Hindsight bank mapping below; one bank per Weaviate class for
+# clarity. Bank ids prefixed with "fleet_" so customer banks (post-Phase-C)
+# do not collide.
+HINDSIGHT_MIRROR_ENABLED = os.environ.get("INDEXER_HINDSIGHT_MIRROR", "off").lower() == "on"
+HINDSIGHT_BASE = os.environ.get("HINDSIGHT_BASE", "http://localhost:8889")  # NOSONAR S5332 loopback
+HINDSIGHT_TIMEOUT = 30
+
+CLASS_TO_BANK = {
+    "Decisions": "fleet_decisions",
+    "Keis": "fleet_keis",
+    "Codebase": "fleet_codebase",
+    "AgentMemories": "fleet_agent_memories",
+    "ToolCalls": "fleet_tool_calls",
+    "SessionTranscripts": "fleet_session_transcripts",
+    "StrategicDocuments": "fleet_strategic_documents",
+}
+
+
+def _post_object_hindsight_mirror(obj: dict) -> None:
+    """Best-effort mirror write to Hindsight after a successful Weaviate POST.
+
+    Failures log a warning and return — they do NOT fail the indexer batch.
+    Hindsight is the secondary store during the dual-write window; Weaviate
+    remains reader-of-record until step 5-B redirects consumers.
+    """
+    if not HINDSIGHT_MIRROR_ENABLED:
+        return
+    class_name = obj.get("class")
+    bank_id = CLASS_TO_BANK.get(class_name)
+    if not bank_id:
+        logger.debug("hindsight_mirror: no bank mapping for class=%s — skipping", class_name)
+        return
+    props = obj.get("properties", {}) or {}
+    content = props.get("raw_text") or props.get("content") or json.dumps(props)[:8000]
+    metadata = {k: str(v) for k, v in props.items() if k != "raw_text" and v is not None}
+    metadata["mirror_source"] = "indexer_base.post_object"
+    metadata["weaviate_class"] = class_name or ""
+    metadata["external_id"] = obj.get("id", "")
+    item = {"content": content, "tags": [f"weaviate_class:{class_name}"], "metadata": metadata}
+    body = {"items": [item], "async": False}
+    data = json.dumps(body).encode()
+    req = urlrequest.Request(
+        f"{HINDSIGHT_BASE}/v1/default/banks/{bank_id}/memories",
+        data=data,
+        method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        with urlrequest.urlopen(req, timeout=HINDSIGHT_TIMEOUT) as resp:
+            if 200 <= resp.status < 300:
+                logger.debug(
+                    "hindsight_mirror: %s → %s OK id=%s",
+                    class_name,
+                    bank_id,
+                    obj.get("id"),
+                )
+            else:
+                logger.warning(
+                    "hindsight_mirror: %s rc=%s id=%s",
+                    bank_id,
+                    resp.status,
+                    obj.get("id"),
+                )
+    except (urlerror.URLError, OSError, TimeoutError) as exc:
+        logger.warning(
+            "hindsight_mirror: %s transient %s id=%s — Weaviate write was OK; mirror skipped",
+            bank_id,
+            exc,
+            obj.get("id"),
+        )
 
 
 def aggregate_count(class_name: str) -> int | None:

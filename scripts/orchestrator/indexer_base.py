@@ -49,6 +49,9 @@ MAX_RETRIES = 3
 INITIAL_BACKOFF_SECONDS = 1.0
 REQUEST_TIMEOUT_SECONDS = 10.0
 
+# S1192 fix (Aiden 2026-05-25 PR #1147) — extracted from 3 inline occurrences.
+JSON_CONTENT_TYPE = "application/json"
+
 # Stable namespace for deterministic-UUID derivation across indexer runs.
 # Different from random uuid4 — same source key always maps to same Weaviate id.
 INDEXER_UUID_NAMESPACE = uuid.UUID("9b5b5d51-2a32-4b71-9c5f-7b6c1e3a4d11")
@@ -70,10 +73,10 @@ def deterministic_uuid(source: str, key: str) -> str:
 @contextmanager
 def _http_request(method: str, path: str, body: dict | None = None) -> Iterator[Any]:
     data = None
-    headers = {"Accept": "application/json"}
+    headers = {"Accept": JSON_CONTENT_TYPE}
     if body is not None:
         data = json.dumps(body).encode("utf-8")
-        headers["Content-Type"] = "application/json"
+        headers["Content-Type"] = JSON_CONTENT_TYPE
     req = urlrequest.Request(
         f"{WEAVIATE_BASE}{path}",
         data=data,
@@ -207,7 +210,7 @@ def _post_object_hindsight_mirror(obj: dict) -> None:
         f"{HINDSIGHT_BASE}/v1/default/banks/{bank_id}/memories",
         data=data,
         method="POST",
-        headers={"Content-Type": "application/json"},
+        headers={"Content-Type": JSON_CONTENT_TYPE},
     )
     try:
         with urlrequest.urlopen(req, timeout=HINDSIGHT_TIMEOUT) as resp:
@@ -225,7 +228,10 @@ def _post_object_hindsight_mirror(obj: dict) -> None:
                     resp.status,
                     obj.get("id"),
                 )
-    except (urlerror.URLError, OSError, TimeoutError) as exc:
+    except (urlerror.URLError, OSError) as exc:
+        # NOTE: TimeoutError is a subclass of OSError in Python 3.3+; not listed
+        # separately here. Test test_timeout_logs_warn_does_not_raise verifies
+        # the timeout path is still handled.
         logger.warning(
             "hindsight_mirror: %s transient %s id=%s — Weaviate write was OK; mirror skipped",
             bank_id,

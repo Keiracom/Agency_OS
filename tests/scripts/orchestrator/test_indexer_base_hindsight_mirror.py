@@ -25,7 +25,10 @@ def mod(monkeypatch):
     """Reload indexer_base under controlled env so HINDSIGHT_MIRROR_ENABLED
     + HINDSIGHT_BASE are deterministic per test."""
     monkeypatch.setenv("INDEXER_HINDSIGHT_MIRROR", "on")
-    monkeypatch.setenv("HINDSIGHT_BASE", "http://fake-hindsight:8889")
+    monkeypatch.setenv(
+        "HINDSIGHT_BASE",
+        "http://fake-hindsight:8889",  # NOSONAR S5332 test fixture URL, never resolved
+    )
     if "indexer_base" in sys.modules:
         del sys.modules["indexer_base"]
     return importlib.import_module("indexer_base")
@@ -212,8 +215,12 @@ def test_post_object_calls_mirror_on_422_already_exists(mod, monkeypatch):
 
     @contextmanager
     def _raise_422(method, path, body=None):
+        # contextmanager generator requirement — yield exists for syntactic
+        # validity but is unreachable because HTTPError fires first. The
+        # `if False` makes the unreachability explicit (clears S6466 shape).
+        if False:  # pragma: no cover
+            yield
         raise error.HTTPError(url=path, code=422, msg="exists", hdrs=None, fp=None)
-        yield  # unreachable
 
     monkeypatch.setattr(mod, "_http_request", _raise_422)
     ok = mod.post_object({"class": "Decisions", "id": "x", "properties": {"raw_text": "y"}})

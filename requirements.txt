@@ -107,9 +107,18 @@ slack_sdk>=3.41.0,<4.0.0
 # FlashRank reranker stay deferred to follow-up KEIs; PR1 ships raw
 # ANN against the current line so the empirical pin matrix is
 # captured in lock-step with the build.
-llama-index>=0.12,<0.16
-llama-index-vector-stores-weaviate>=1.6,<2
-llama-index-embeddings-huggingface>=0.5,<1
+#
+# PINNED 2026-05-25 during Hindsight migration (Elliot direction (c) per
+# Atlas HOLD report 2026-05-25). The earlier Aiden+Elliot+Viktor analysis
+# of "LlamaIndex is orchestration-only no data" was wrong about production
+# usage — see docs/migration/llamaindex_consumers_inventory.md for the
+# empirical consumer chain. Pinning to exact installed versions removes
+# upgrade-risk during the Hindsight cutover (Aiden PR #1141). Remove these
+# three pins when the Hindsight cutover step 5-B redirects consumers to
+# the MAL primitives (Ingest/Recall/etc) via Hindsight.
+llama-index==0.14.22
+llama-index-vector-stores-weaviate==1.6.0
+llama-index-embeddings-huggingface==0.7.0
 # FlashRank cross-encoder reranker — Scout design §6, KEI-75 PR2. ms-marco-
 # MiniLM-L-12-v2 model runs CPU-only at ~30ms per 20-node rerank pass.
 # orchestrator.retrieve_nodes bypass-falls back to raw ANN when FlashRank

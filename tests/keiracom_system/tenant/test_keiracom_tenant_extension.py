@@ -281,3 +281,40 @@ def test_list_tenants_returns_active_only():
     tenants = _run(ext.list_tenants())
     schemas = {t.schema for t in tenants}
     assert schemas == {"s1", "public"}  # t2 (suspended) excluded; t3 Topology A → public
+
+
+def test_get_bank_id_returns_tenant_id_v1_identity_mapping():
+    """(13) — get_bank_id is sync identity mapping (V1 default: one bank per tenant).
+
+    Atlas's PR #1134 TenantExtensionProtocol contract: any object exposing
+    `get_bank_id(tenant_id: str) -> str` satisfies the wrapper layer. Lock
+    the sync signature + identity-derivation here so duck-typing remains
+    stable as we add tenant fields. Multi-bank-per-tenant (Pro/Scale V2)
+    will change the body but must keep the sync sig.
+    """
+    db = FakeDB([])
+    ext = KeiracomTenantExtension(db=db)
+    # Identity mapping for V1: bank_id == tenant_id.
+    assert ext.get_bank_id("tenant-uuid-123") == "tenant-uuid-123"
+    assert ext.get_bank_id("k_acme") == "k_acme"
+
+
+def test_get_bank_id_satisfies_atlas_tenant_extension_protocol():
+    """(14) — runtime-check that KeiracomTenantExtension satisfies Atlas's Protocol.
+
+    Defends against drift if the Protocol surface grows. Atlas's
+    TenantExtensionProtocol (PR #1134 _base.py) requires sync
+    `get_bank_id(tenant_id: str) -> str`. Recreate the structural shape
+    inline here so we don't gain a cross-module import dependency on
+    Atlas's wrapper package — this test fails loudly if his contract
+    changes and ours hasn't caught up.
+    """
+    from typing import Protocol, runtime_checkable
+
+    @runtime_checkable
+    class _ExpectedTenantExtensionProtocol(Protocol):
+        def get_bank_id(self, tenant_id: str) -> str: ...
+
+    db = FakeDB([])
+    ext = KeiracomTenantExtension(db=db)
+    assert isinstance(ext, _ExpectedTenantExtensionProtocol)

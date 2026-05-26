@@ -471,9 +471,7 @@ _R11_HEADER_RE = re.compile(r"^\s*\*\*[^*]+\*\*", re.MULTILINE)
 # Middle character class explicitly excludes box-drawing chars + newline to bound
 # backtracking (closes Sonar S5852 ReDoS risk from naive `.*?` greedy-lazy).
 # Either this OR a bold header satisfies the scannability requirement (Viktor voice authorisation 2026-05-26).
-_R11_DIVIDER_RE = re.compile(
-    r"^\s*[─━]{3,}\s+[^─━\n]{1,200}\s+[─━]{3,}\s*$", re.MULTILINE
-)
+_R11_DIVIDER_RE = re.compile(r"^\s*[─━]{3,}\s+[^─━\n]{1,200}\s+[─━]{3,}\s*$", re.MULTILINE)
 
 # Viktor-voice italic-bold section header — `*Bold Section*` at line start (single asterisks, Slack mrkdwn).
 # Either this OR markdown bold or divider satisfies scannability.
@@ -616,8 +614,7 @@ def check_r11(text: str, *, channel: str | None = None) -> dict | None:
         "violation": True,
         "rule_number": 11,
         "rule_name": "CEO-FORMAT-GATE",
-        "detail": "#ceo post violates plain-English convention: "
-        + "; ".join(violations),
+        "detail": "#ceo post violates plain-English convention: " + "; ".join(violations),
         "should_have": (
             "Use one of: **Bold Category** headers, ─── DIVIDER ─── lines, OR "
             "*Italic Section* headers (Viktor voice). Lead with OUTCOME + business "

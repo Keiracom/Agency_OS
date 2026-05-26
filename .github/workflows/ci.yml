@@ -182,6 +182,23 @@ jobs:
       - name: (d) Governance policy (ceo:*) forbidden in Hindsight wrappers
         run: ./scripts/ci/check_no_governance_policy_in_hindsight.sh
 
+  # ============================================
+  # Guard: Phase A7 cache discipline (CB-10)
+  # ============================================
+  # Source: docs/architecture/design/a7_cache_architecture.md §13 CB-10.
+  # All Valkey key construction MUST go through ValkeyClient.canonical_cache_key().
+  # Complements src/keiracom_system/cache/valkey_client.py runtime guard
+  # (defence-in-depth: linter at PR-review time + runtime guard at request time).
+  cache-discipline-guards:
+    name: Cache Discipline Guards (A7 CB-10)
+    runs-on: ubuntu-latest
+    needs: backend-lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No raw redis/valkey calls outside ValkeyClient
+        run: ./scripts/ci/check_no_raw_valkey_outside_client.sh
+
   backend-typecheck:
     name: Backend Type Check (MyPy)
     runs-on: ubuntu-latest

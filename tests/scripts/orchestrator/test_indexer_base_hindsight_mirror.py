@@ -130,6 +130,39 @@ def test_discoveries_class_maps_to_fleet_discoveries_bank(mod, monkeypatch):
     assert captured[0].endswith("/v1/default/banks/fleet_discoveries/memories")
 
 
+def test_global_governance_patterns_class_maps_to_fleet_bank(mod, monkeypatch):
+    """A3 step 5-A (Agency_OS-x0p7): Global_governance_patterns →
+    fleet_global_governance_patterns is live.
+
+    Locks the new mapping in CLASS_TO_BANK so a future revert is caught.
+    """
+    captured = []
+
+    class _FakeResp:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return None
+
+    def _fake_urlopen(req, timeout=None):
+        captured.append(req.full_url)
+        return _FakeResp()
+
+    monkeypatch.setattr(mod.urlrequest, "urlopen", _fake_urlopen)
+    mod._post_object_hindsight_mirror(
+        {
+            "class": "Global_governance_patterns",
+            "id": "ggp-xyz",
+            "properties": {"raw_text": "anchored", "agent": "aiden"},
+        }
+    )
+    assert len(captured) == 1
+    assert captured[0].endswith("/v1/default/banks/fleet_global_governance_patterns/memories")
+
+
 def test_mapped_class_posts_to_bank_with_items_envelope(mod, monkeypatch):
     captured = []
 

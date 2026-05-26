@@ -180,6 +180,13 @@ CLASS_TO_BANK = {
     "ToolCalls": "fleet_tool_calls",
     "SessionTranscripts": "fleet_session_transcripts",
     "StrategicDocuments": "fleet_strategic_documents",
+    # A3 step 5-A (Agency_OS-4bsc, 2026-05-26): Discoveries is one of the 3
+    # cold-start hand-migration classes per mem.weaviate_coldstart. Backfill
+    # of existing rows runs once via scripts/migrations/
+    # discoveries_hand_migration.py; this mapping then catches all new writes.
+    # Sibling classes Sessions + Global_governance_patterns are filed as
+    # Agency_OS-9u2m + Agency_OS-x0p7 (parallel hand-migration PRs).
+    "Discoveries": "fleet_discoveries",
 }
 
 

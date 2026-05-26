@@ -39,10 +39,10 @@
 | mem.mcp_swap | MCP swappability: agents call memory MCP tools, never SQL/Cypher | RATIFIED-CEO | eleven_agreed_positions #9; PR #1136 Gate E proof | nothing | V1-launch |
 | mem.reasoning_listener | Reasoning Listener as Temporal workflow activity | RATIFIED-CEO | eleven_agreed_positions #10 | nothing | V1-launch |
 | mem.synthesis | Supersession-via-AntiPattern V1; active concept-synthesis V2 | RATIFIED-CEO | eleven_agreed_positions #4 | nothing | V1-launch |
-| mem.cognee_retired | Cognee retired (cold-start, snapshot preserved) | RATIFIED-CEO | PR #1143 (2026-05-25) | nothing | V1-launch |
+| mem.cognee_retired | Cognee retired (cold-start, snapshot preserved). Bridging-window addendum 2026-05-26 (Aiden adjudication, Agency_OS-asi1 close): cognee.service + cognee-auto-ingest.service remain Active during paired-retirement bridging-window with mem.llamaindex_pinned. End condition: Atlas A3-c2 LlamaIndex retirement step 5-B completes + reader-cutover to Hindsight lands → services stop+disable. Per ceo:cognee_retirement_posture_2026_05_26. | RATIFIED-CEO | PR #1143 (2026-05-25); bridging-window per ceo:cognee_retirement_posture_2026_05_26 | nothing | V1-launch |
 | mem.llamaindex_pinned | LlamaIndex pinned; retire during cutover step 5-B | RATIFIED-CEO | PR #1142 (2026-05-25) | nothing | V1-launch |
 | mem.weaviate_coldstart | Weaviate cold-start; 7 pipeline-fed classes re-ingest + 3 hand-migration (Sessions, Global_governance_patterns, Discoveries). **A3 addendum 2026-05-25 (Elliot operational call):** empirically Weaviate live state is byte-identical to snapshot per snapshot README verification chain; the cold-start framing was prescriptive about HOW to reach the destination state, not structural about WHAT state. Cold-start ops skipped — live Weaviate already represents the post-cutover target. Net new A3 work: criterion 1 (re-point indexers to Hindsight) + criterion 4 (LlamaIndex retirement). | RATIFIED-CEO | PR #1141 (Aiden + Max audit 2026-05-25) + A3 empirical-state addendum (Atlas + Elliot 2026-05-25) | nothing | V1-launch |
-| mem.snapshot_archive | Pre-Hindsight memory snapshot 2.1GB chmod 444 at /backups/memory_pre_hindsight_migration_20260525/ | RATIFIED-CEO | Orion snapshot complete 2026-05-25 ts 1779687930 | nothing | V1-launch (audit-only) |
+| mem.snapshot_archive | Pre-Hindsight memory snapshot 2.1GB chmod 444 at /home/elliotbot/clawd/backups/memory_pre_hindsight_migration_20260525/ | RATIFIED-CEO | Orion snapshot complete 2026-05-25 ts 1779687930 | nothing | V1-launch (audit-only) |
 
 ## Category 2 — Memory Wrappers (owner: Atlas; Aiden reviews)
 
@@ -98,7 +98,7 @@
 | temp.inline.content_check | Pre-call content checks (privacy/regulated) — INLINE | RATIFIED-CEO | temporal_interception_layer | nothing | V1-launch |
 | temp.async.post_validation | Post-call validation (response shape + citation validity) — ASYNC continuation | RATIFIED-CEO | temporal_interception_layer (Aiden refinement) | nothing | V1-launch |
 | temp.contract_doc | One-page contract definition (emit guarantees + enforce-vs-warn semantics per gate) — ELLIOT OWES BEFORE BUILD | LOOSE | temporal_interception_layer open_action_elliot_owns | nothing | V1-launch (BLOCKER for build) |
-| temp.dispatcher | Temporal as workflow execution engine for dispatcher (replaces NATS-loop/tmux-pane-injection) | RATIFIED-CEO | v1_completion_criteria criterion 1; ephemeral scoping PR #1140 | nothing | V1-launch |
+| temp.dispatcher | Temporal as workflow execution engine for dispatcher (progressively replaces NATS-loop/tmux-pane-injection (Phase A6 first-workflow shipped; legacy path retire-by-default after seven-day observation window completes)) | RATIFIED-CEO | v1_completion_criteria criterion 1; ephemeral scoping PR #1140 | nothing | V1-launch |
 
 ## Category 6 — NATS Substrate + Comms (owner: Elliot)
 
@@ -125,7 +125,7 @@
 |---|---|---|---|---|---|
 | repo.fleet | keiracom-fleet repo (internal agent runtime) | RATIFIED-CEO | ceo:agency_os_keiracom_separation_v1 | nothing | V1-launch |
 | repo.product | keiracom-system repo (V1.0 customer product; name locked 2026-05-24) | RATIFIED-CEO | product_name_lock in canonical | nothing | V1-launch |
-| repo.archive | agency-os repo (read-only archive; URL preserved) | RATIFIED-CEO | separation directive (Dave 2026-05-25) | nothing | V1-launch |
+| repo.archive | agency-os repo (destination read-only archive (current state accepts writes during transition; read-only flip is a future cutover step)) | RATIFIED-CEO | separation directive (Dave 2026-05-25) | nothing | V1-launch |
 | repo.carveout_doc | Three-repo carve-out execution plan with file-by-file ownership matrix | RATIFIED-CEO | PR #1122 docs/architecture/three_repo_carveout_execution.md | nothing | V1-launch |
 | repo.cross_import_gate | No platform→fleet imports CI gate | LOOSE | repo.carveout_doc; Phase 2.0 build item | nothing | V1-launch |
 | repo.fair_source | Fair-Source license at launch (LICENSE + README header + CLA + commit hygiene) — currently 0 of 4 implemented | GAP | none in repo today | install (legal/compliance) | V1-launch |
@@ -138,7 +138,7 @@
 | tenant.extension | KeiracomTenantExtension (per-request config lookup + field-level permission gate) | RATIFIED-CEO | PR #1132 | nothing | V1-launch |
 | tenant.mcp_tier_router | Tier-aware MCP server (Gate E proof) | RATIFIED-CEO | PR #1136 | chat/dashboard (tier limits) | V1-launch |
 | tenant.routing_implementation | Connection routing for schema-per-tenant (Solo/Pro) vs per-VPC (Scale) — implementation detail | LOOSE | Phase 2 build item; Viktor noted | nothing | V1-launch |
-| tenant.single_supabase | One Supabase + one dashboard; Dave is tenant_id=1; customers are tenant_id=2+ | RATIFIED-DM | Aiden Phase 1 §3.A item 21 + 23 + Atlas PR #1126 | dashboard | V1-launch |
+| tenant.single_supabase | One Supabase + one dashboard; Dave is tenant_id 00000000-0000-0000-0000-000000000001 (first UUID); customers are subsequent UUIDs | RATIFIED-DM | Aiden Phase 1 §3.A item 21 + 23 + Atlas PR #1126 | dashboard | V1-launch |
 
 ## Category 10 — MCP Tool Access (owner: Atlas + Orion)
 
@@ -658,7 +658,7 @@ Added per Dave directive KEI-CUSTOMER-LENS-GAPS 2026-05-25 ~1779749200. Twenty-n
 |---|---|---|---|---|---|
 | op.worker_idling | Worker idling fix (yvz P1 in_progress; KEI-17 regression) | LOOSE | Agency_OS-yvz tracked but assignee unclear | nothing | V1-launch |
 | op.probe_daemon | memory-core-fact-probe.service in FAILED state | LOOSE | Elliot status check 2026-05-25; paused per Viktor | nothing | DEFERRED (reconfigure against V2.0) |
-| op.nova_state | Nova: missing self-claim loop (i9vrrt P0), Cognee silent drops (cjeo P1), identity runbook (e02v P2), keepalive sd_notify (x4jl P2) | LOOSE | bd open issues | nothing | V1-launch |
+| op.nova_state | Nova: all 4 items CLOSED-IN-FACT per Nova self-audit 2026-05-26 + Aiden CONCUR. (1) i9vrrt self-claim loop running; (2) e02v 4 identity runbooks present; (3) x4jl NotifyAccess applied; (4) cjeo Cognee silent-drops SUPERSEDED via bridging-window + end-condition (ceo:cognee_retirement_posture_2026_05_26). | RESOLVED-IN-FACT | bd open issues | nothing | V1-launch |
 | op.orchestrator_merge | orchestrator-merge-after-NATS-concur pattern + KEI-206 author-exclusion | RATIFIED-CEO | _orchestrator.md PR #1116 | nothing | running |
 | op.discovery_log | Discovery log + bd + Beads/Linear integration | RATIFIED-CEO | bd routing policy PR #1120 | nothing | running |
 | op.audit_dispatch_checklist | Canonical-key-query gate + query-and-paste + deliberator cross-check | RATIFIED-CEO | _orchestrator.md audit-dispatch checklist | nothing | running |

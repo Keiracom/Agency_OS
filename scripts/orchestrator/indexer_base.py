@@ -193,6 +193,12 @@ CLASS_TO_BANK = {
     # global_governance_patterns_hand_migration.py; this mapping then catches
     # all new writes. Sibling Sessions is filed as Agency_OS-9u2m (parallel).
     "Global_governance_patterns": "fleet_global_governance_patterns",
+    # A3 step 5-A (Agency_OS-9u2m, 2026-05-26): Sessions is the second of the
+    # 3 hand-migration classes. Backfill of existing rows runs once via
+    # scripts/migrations/sessions_hand_migration.py; this mapping then catches
+    # all new writes. NOTE: distinct from SessionTranscripts (fleet_session_-
+    # transcripts above) — Sessions is the agent-session-event class.
+    "Sessions": "fleet_sessions",
 }
 
 

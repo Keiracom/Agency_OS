@@ -58,6 +58,13 @@ HINDSIGHT_BANK_BY_CLASS = {
     "SessionTranscripts": "fleet_session_transcripts",
     "StrategicDocuments": "fleet_strategic_documents",
     "Discoveries": "fleet_discoveries",
+    # A3 step 5-A trio (Agency_OS-x0p7 + Agency_OS-9u2m, 2026-05-26):
+    # Global_governance_patterns + Sessions joined the canonical mapping; the
+    # parity test in tests/retrieval/test_orchestrator_hindsight_reader.py
+    # asserts equality with scripts/orchestrator/indexer_base.CLASS_TO_BANK so
+    # these mirror that addition.
+    "Global_governance_patterns": "fleet_global_governance_patterns",
+    "Sessions": "fleet_sessions",
 }
 
 DEFAULT_K_INITIAL = 20

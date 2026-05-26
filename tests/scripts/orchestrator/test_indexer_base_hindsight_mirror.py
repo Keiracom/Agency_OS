@@ -79,12 +79,12 @@ def test_off_short_circuits_before_any_http(mod_off, monkeypatch):
 def test_unmapped_class_skips_cleanly(mod, monkeypatch):
     """Unknown Weaviate class → log debug + return; no HTTP call.
 
-    A3 step 5-A (Agency_OS-4bsc, 2026-05-26): "Discoveries" used to be the
-    canonical unmapped class for this test, but the Discoveries hand-migration
-    PR added it to CLASS_TO_BANK. "Sessions" (Agency_OS-9u2m) and
-    "Global_governance_patterns" (Agency_OS-x0p7) remain unmapped until their
-    own hand-migration PRs land; using "Sessions" here keeps the
-    unmapped-class contract under test.
+    A3 step 5-A trio complete (Agency_OS-4bsc + Agency_OS-x0p7 + Agency_OS-9u2m,
+    2026-05-26): Discoveries + Global_governance_patterns + Sessions all map.
+    With the trio mapped, no canonical Weaviate class is currently unmapped,
+    so we use a synthetic sentinel class name that will never collide with a
+    real class. Preserves the unmapped-contract negative test for any future
+    refactor that introduces a new unmapped class.
     """
     called = []
     monkeypatch.setattr(
@@ -93,7 +93,7 @@ def test_unmapped_class_skips_cleanly(mod, monkeypatch):
         lambda *a, **kw: called.append(1) or pytest.fail("must not call urlopen"),
     )
     mod._post_object_hindsight_mirror(
-        {"class": "Sessions", "id": "x", "properties": {"raw_text": "y"}}
+        {"class": "_UnmappedSentinel_NeverMapMe", "id": "x", "properties": {"raw_text": "y"}}
     )
     assert called == []
 
@@ -161,6 +161,74 @@ def test_global_governance_patterns_class_maps_to_fleet_bank(mod, monkeypatch):
     )
     assert len(captured) == 1
     assert captured[0].endswith("/v1/default/banks/fleet_global_governance_patterns/memories")
+
+
+def test_sessions_class_maps_to_fleet_sessions_bank(mod, monkeypatch):
+    """A3 step 5-A (Agency_OS-9u2m): Sessions → fleet_sessions is live.
+
+    Locks the new mapping in CLASS_TO_BANK so a future revert is caught.
+    NOTE: distinct from SessionTranscripts → fleet_session_transcripts which
+    pre-existed in the map and is a different Weaviate class.
+    """
+    captured = []
+
+    class _FakeResp:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return None
+
+    def _fake_urlopen(req, timeout=None):
+        captured.append(req.full_url)
+        return _FakeResp()
+
+    monkeypatch.setattr(mod.urlrequest, "urlopen", _fake_urlopen)
+    mod._post_object_hindsight_mirror(
+        {
+            "class": "Sessions",
+            "id": "sess-xyz",
+            "properties": {"raw_text": "session-anchored", "agent": "orion"},
+        }
+    )
+    assert len(captured) == 1
+    assert captured[0].endswith("/v1/default/banks/fleet_sessions/memories")
+
+
+def test_sessions_distinct_from_session_transcripts(mod, monkeypatch):
+    """Sessions and SessionTranscripts MUST route to different banks.
+
+    Defence against a future refactor accidentally collapsing the two classes
+    or mapping Sessions to the wrong bank.
+    """
+    captured = []
+
+    class _FakeResp:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return None
+
+    def _fake_urlopen(req, timeout=None):
+        captured.append(req.full_url)
+        return _FakeResp()
+
+    monkeypatch.setattr(mod.urlrequest, "urlopen", _fake_urlopen)
+    mod._post_object_hindsight_mirror(
+        {"class": "Sessions", "id": "s1", "properties": {"raw_text": "a"}}
+    )
+    mod._post_object_hindsight_mirror(
+        {"class": "SessionTranscripts", "id": "st1", "properties": {"raw_text": "b"}}
+    )
+    assert len(captured) == 2
+    assert "/banks/fleet_sessions/" in captured[0]
+    assert "/banks/fleet_session_transcripts/" in captured[1]
+    assert captured[0] != captured[1]
 
 
 def test_mapped_class_posts_to_bank_with_items_envelope(mod, monkeypatch):

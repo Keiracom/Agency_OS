@@ -77,7 +77,15 @@ def test_off_short_circuits_before_any_http(mod_off, monkeypatch):
 
 
 def test_unmapped_class_skips_cleanly(mod, monkeypatch):
-    """Unknown Weaviate class → log debug + return; no HTTP call."""
+    """Unknown Weaviate class → log debug + return; no HTTP call.
+
+    A3 step 5-A (Agency_OS-4bsc, 2026-05-26): "Discoveries" used to be the
+    canonical unmapped class for this test, but the Discoveries hand-migration
+    PR added it to CLASS_TO_BANK. "Sessions" (Agency_OS-9u2m) and
+    "Global_governance_patterns" (Agency_OS-x0p7) remain unmapped until their
+    own hand-migration PRs land; using "Sessions" here keeps the
+    unmapped-class contract under test.
+    """
     called = []
     monkeypatch.setattr(
         mod.urlrequest,
@@ -85,9 +93,41 @@ def test_unmapped_class_skips_cleanly(mod, monkeypatch):
         lambda *a, **kw: called.append(1) or pytest.fail("must not call urlopen"),
     )
     mod._post_object_hindsight_mirror(
-        {"class": "Discoveries", "id": "x", "properties": {"raw_text": "y"}}
+        {"class": "Sessions", "id": "x", "properties": {"raw_text": "y"}}
     )
     assert called == []
+
+
+def test_discoveries_class_maps_to_fleet_discoveries_bank(mod, monkeypatch):
+    """A3 step 5-A (Agency_OS-4bsc): Discoveries → fleet_discoveries is live.
+
+    Locks the new mapping in CLASS_TO_BANK so a future revert is caught.
+    """
+    captured = []
+
+    class _FakeResp:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return None
+
+    def _fake_urlopen(req, timeout=None):
+        captured.append(req.full_url)
+        return _FakeResp()
+
+    monkeypatch.setattr(mod.urlrequest, "urlopen", _fake_urlopen)
+    mod._post_object_hindsight_mirror(
+        {
+            "class": "Discoveries",
+            "id": "disc-xyz",
+            "properties": {"raw_text": "anchored", "agent": "atlas"},
+        }
+    )
+    assert len(captured) == 1
+    assert captured[0].endswith("/v1/default/banks/fleet_discoveries/memories")
 
 
 def test_mapped_class_posts_to_bank_with_items_envelope(mod, monkeypatch):

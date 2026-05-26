@@ -1,0 +1,22 @@
+[Unit]
+Description=Agency OS — Phase A6 dual-publish observation alert (Agency_OS-vjcq)
+Documentation=https://github.com/Keiracom/Agency_OS/pull/1162
+After=network-online.target nats-server.service
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/a6_observation_check.sh --alert
+StandardOutput=append:/home/elliotbot/clawd/logs/a6-observation-alert.log
+StandardError=append:/home/elliotbot/clawd/logs/a6-observation-alert.log
+TimeoutStartSec=120
+# Exit 2 (FAIL_CLOSED or ALARM) is informational from the timer's perspective —
+# the alert has been published to keiracom.elliot.inbox. SuccessExitStatus
+# whitelist keeps the unit in 'active (exited)' rather than 'failed' state,
+# preserving the timer's regular cadence.
+SuccessExitStatus=0 1 2
+
+[Install]
+WantedBy=default.target

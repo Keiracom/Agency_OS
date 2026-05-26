@@ -33,36 +33,155 @@
 #   1 — mismatch 1-5%                            (WARN — investigate)
 #   2 — mismatch > 5%, no events, or fail-closed (ALARM — block Temporal-only flip)
 #
+# --alert flag (Agency_OS-vjcq): on FAIL_CLOSED_NO_DATA, publish a Viktor-voice
+# formatted alert to NATS subject 'keiracom.elliot.inbox'. Elliot's relay path
+# surfaces the alert to #ceo. Direct slack_relay.py invocation to #ceo from
+# nova is BLOCKED by `_ALLOWED_CHANNELS_BY_CALLSIGN["nova"]` (slack_relay.py:175,
+# 2026-05-19 elliot-only restriction). The NATS→elliot path is the canonical
+# nova→#ceo route per `ceo:comm_architecture` (3-comms-path architecture:
+# inter-agent inbound = NATS→file inbox→tmux, inter-agent outbound = NATS publish,
+# elliot→Dave = Slack relay).
+#
+# Grace period: when the producer timer (fleet-supervisor.timer) has been
+# re-enabled in the last 2 hours, --alert suppresses the publish and emits a
+# one-line `grace_period: producer re-enabled <X>min ago, awaiting accumulation`
+# stderr notice. Threshold is 2h / 24 fires of the 5-min producer cadence —
+# any real outage will re-surface after the window. Without this, a freshly
+# restarted producer trips the 24h-lookback FAIL_CLOSED check until enough
+# fires accumulate, producing alert fatigue + false-positive noise to Dave.
+#
 # Usage (manual):
 #   bash scripts/a6_observation_check.sh
 #   bash scripts/a6_observation_check.sh --since "12h ago"
-#   bash scripts/a6_observation_check.sh --since "2026-05-26 00:50"
+#   bash scripts/a6_observation_check.sh --alert                   # alert on FAIL_CLOSED
+#   bash scripts/a6_observation_check.sh --since "6h ago" --alert  # cron mode
 #
-# Usage (daily cron during observation window):
-#   0 8 * * * /home/elliotbot/clawd/Agency_OS/scripts/a6_observation_check.sh \
-#       >> /home/elliotbot/clawd/logs/a6_observation_check.log 2>&1
+# Usage (6-hour systemd timer during observation window):
+#   infra/systemd/a6-observation-alert.timer (OnUnitActiveSec=6h)
+#   → infra/systemd/a6-observation-alert.service (--alert flag)
 
 set -euo pipefail
 
-# ----- args -----
+# ----- args (parse in any order, accept --since, --alert, -h) -----
 SINCE="24h ago"
-if [ "${1:-}" = "--since" ] && [ -n "${2:-}" ]; then
-    SINCE="$2"
-elif [ "${1:-}" = "-h" ] || [ "${1:-}" = "--help" ]; then
-    sed -n '2,40p' "$0"
-    exit 0
-fi
+ALERT_MODE=0
+while [ "$#" -gt 0 ]; do
+    case "$1" in
+        --since)
+            [ -z "${2:-}" ] && { echo "ERROR: --since requires a value" >&2; exit 2; }
+            SINCE="$2"; shift 2 ;;
+        --alert)
+            ALERT_MODE=1; shift ;;
+        -h|--help)
+            sed -n '2,55p' "$0"; exit 0 ;;
+        *)
+            echo "ERROR: unknown arg '$1' (accepted: --since '<window>' | --alert | --help)" >&2
+            exit 2 ;;
+    esac
+done
 
 # ----- constants -----
 SERVICE="fleet-supervisor.service"
-LOG_FILE="/home/elliotbot/clawd/logs/fleet-supervisor.log"
+WORKER_SERVICE="keiracom-temporal-worker.service"
+# LOG_FILE env-overridable for negative-path tests (point at /dev/null to
+# force FAIL_CLOSED_NO_DATA without touching the production log).
+LOG_FILE="${A6_LOG_FILE:-/home/elliotbot/clawd/logs/fleet-supervisor.log}"
+NATS_SUBJECT="keiracom.elliot.inbox"
 TMP="$(mktemp)"
 trap 'rm -f "$TMP"' EXIT
+
+# Post-restart grace period: when the producer timer (fleet-supervisor.timer)
+# was re-enabled in the last 2 hours, suppress alerts because the 24h lookback
+# window cannot yet contain meaningful accumulation. Two hours = 24 fires of
+# the 5-min producer cadence, enough for any real outage to re-surface.
+GRACE_THRESHOLD_S=7200  # 2 hours
+
+# Returns 0 (success) if the producer timer was activated <GRACE_THRESHOLD_S
+# ago AND we should suppress the alert; returns 1 otherwise. Also echoes a
+# one-line grace_period notice to stderr when suppressing.
+_in_grace_period() {
+    local producer_timer="fleet-supervisor.timer"
+    local ts_str epoch_active epoch_now delta_s delta_min
+    ts_str="$(systemctl --user show "${producer_timer}" --property=ActiveEnterTimestamp --value 2>/dev/null || true)"
+    # Empty / 'n/a' / unparseable means timer never activated → no grace period
+    [ -z "${ts_str}" ] && return 1
+    [ "${ts_str}" = "n/a" ] && return 1
+    epoch_active=$(date -d "${ts_str}" +%s 2>/dev/null || echo 0)
+    [ "${epoch_active}" -eq 0 ] && return 1
+    epoch_now=$(date +%s)
+    delta_s=$(( epoch_now - epoch_active ))
+    [ "${delta_s}" -lt 0 ] && return 1   # future timestamp → ignore
+    if [ "${delta_s}" -lt "${GRACE_THRESHOLD_S}" ]; then
+        delta_min=$(( delta_s / 60 ))
+        echo "grace_period: producer re-enabled ${delta_min}min ago, awaiting accumulation" >&2
+        return 0
+    fi
+    return 1
+}
+
+# ----- helper: Viktor-voice alert publish to NATS keiracom.elliot.inbox -----
+publish_alert() {
+    local diagnostic="$1"
+    local action_required="$2"
+    local producer_state consumer_state alert_body payload
+
+    # Honour 2h post-restart grace period before publishing.
+    if _in_grace_period; then
+        return 0
+    fi
+
+    producer_state="$(systemctl --user is-active "${SERVICE}" 2>/dev/null || echo 'unknown')"
+    consumer_state="$(systemctl --user is-active "${WORKER_SERVICE}" 2>/dev/null || echo 'unknown')"
+
+    alert_body=$(printf -- '─── A6 OBSERVATION FAIL_CLOSED ───\n\n*Diagnostic:* %s\n*Producer:* %s=%s\n*Consumer:* %s=%s\n*Window:* %s\n\n▸ ACTION REQUIRED: %s' \
+        "${diagnostic}" \
+        "${SERVICE}" "${producer_state}" \
+        "${WORKER_SERVICE}" "${consumer_state}" \
+        "${SINCE}" \
+        "${action_required}")
+
+    if ! command -v nats >/dev/null 2>&1; then
+        echo "ALERT_PUBLISH_FAILED: nats CLI not found (alert body follows):" >&2
+        echo "${alert_body}" >&2
+        return 1
+    fi
+
+    # Build a JSON envelope keiracom-elliot-inbox bridge accepts. python3 is
+    # used inline (not added as a runtime dep — already required by every
+    # other operational script in scripts/).
+    payload=$(python3 -c "
+import json, sys, time
+print(json.dumps({
+    'sender': 'nova',
+    'sender_name': 'nova',
+    'ts': time.time(),
+    'kind': 'alert',
+    'to': 'elliot',
+    'severity': 'critical',
+    'task_ref': 'Agency_OS-vjcq',
+    'text': sys.argv[1],
+}))
+" "${alert_body}")
+
+    if ! nats pub "${NATS_SUBJECT}" "${payload}" >/dev/null 2>&1; then
+        echo "ALERT_PUBLISH_FAILED: nats pub ${NATS_SUBJECT} returned non-zero (alert body follows):" >&2
+        echo "${alert_body}" >&2
+        return 1
+    fi
+    echo "  alert_published=1 subject=${NATS_SUBJECT}"
+    return 0
+}
 
 # ----- 1. primary source: journalctl -----
 if ! journalctl --user -u "${SERVICE}" --since "${SINCE}" --no-pager >"${TMP}" 2>/dev/null; then
     echo "FAIL-CLOSED: journalctl --user -u ${SERVICE} returned non-zero" >&2
     echo "    Diagnostic: ensure user journald is reachable and the unit exists." >&2
+    if [ "${ALERT_MODE}" -eq 1 ]; then
+        publish_alert \
+            "journalctl unavailable for ${SERVICE}" \
+            "verify user journald reachable: 'journalctl --user-unit=${SERVICE} --since 1h'" \
+            || true
+    fi
     exit 2
 fi
 
@@ -106,6 +225,12 @@ a6_observation_check  window=${SINCE}
   mismatch_pct=NaN
   status=FAIL_CLOSED_NO_DATA
 EOF
+    if [ "${ALERT_MODE}" -eq 1 ]; then
+        publish_alert \
+            "zero dual-publish events observed in window — producer not firing" \
+            "re-enable producer: 'systemctl --user enable --now fleet-supervisor.timer'; or confirm Phase A6 producer migration is intentional and stop this observation cadence" \
+            || true
+    fi
     exit 2
 fi
 
@@ -156,7 +281,7 @@ if [ -n "${EXAMPLES}" ]; then
     echo "${EXAMPLES}" | sed 's/^/    /'
 fi
 
-# ----- 8. exit code per spec -----
+# ----- 8. exit code per spec (--alert only fires on FAIL_CLOSED, not WARN/ALARM) -----
 if [ "${mismatch_pct}" -lt 1 ]; then
     echo "  status=CLEAN"
     exit 0

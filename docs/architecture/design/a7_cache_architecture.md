@@ -401,6 +401,243 @@ Total: ~400 LoC across 4 sub-builds + 1 config update + 1 migration. Atlas revie
 
 **Dependency on contract V2 amendment 3** (cache-hit short-circuit re-ordering, `Agency_OS-ucf8`): A7 build SHOULD wait for contract V2 ratify so the cache-check ordering is canonical. If V2 stalls, A7 builds under V1 sequence + we accept the inefficient `token_gate` firing on cache hits as a known V1 cost; refactor when V2 lands.
 
+## §13 Build clarifications (post-design-review fold-in)
+
+Added post-PR-#1156-merge per **Max review** (10 observations, [REVIEW:approve:max] 2026-05-26T00:10:58Z) + **Atlas NIT** (defence-in-depth tenant_id prefix guard, NATS 2026-05-26 ~00:08 UTC). Both reviews concurred substantively on the design; these are engineer-tier-blocker resolutions for the build dispatch.
+
+Original §1-§12 stand as the architectural design; §13 supersedes-where-conflict for build-time decisions.
+
+### CB-1 — Valkey Python client library + version pin (Max obs #1, sub-task 1)
+
+**Decision: `redis>=5.0.0,<6.0`** (existing repo dep — already in `requirements.txt` per Cat 4 `cost.semantic_cache_valkey` "Valkey running today"). Valkey is Redis-protocol-compatible; `redis-py` is the mature client.
+
+**Rationale:**
+- `redis-py` is in production use by Keiracom for KEI-117 rate limiting + KV state (per existing `requirements.txt` and KEI-205 boundary)
+- `valkey-py` (Valkey's official client) exists but is newer + smaller community. Adopting now adds dep without proven win.
+- Migration path: if Valkey-specific features ever needed (CLUSTER pubsub differences etc.), swap to `valkey-py` as a separate PR with version-pinned override
+
+**No requirements.txt change needed** — this is the win vs PR #1154's `temporalio` gap. Engineer should verify via `grep -E '^redis' requirements.txt` before code commit + flag if absent.
+
+### CB-2 — TEI sidecar integration shape for `canonical_cache_key()` (Max obs #2, sub-task 1)
+
+**Decision: dependency-injection at `valkey_client.py.__init__()`.** Mirrors PR #1133 `TEIClient` injectable-transport pattern + PR #1132 `KeiracomTenantExtension` injectable `_DBProtocol`.
+
+```python
+# src/keiracom_system/cache/valkey_client.py (sketch)
+from src.keiracom_system.embeddings import TEIClient  # PR #1133
+
+class ValkeyClient:
+    def __init__(
+        self,
+        redis_client: redis.Redis,
+        tei_client: TEIClient,
+        tenant_id: str,
+    ):
+        self._redis = redis_client
+        self._tei = tei_client
+        self._tenant_id = tenant_id
+
+    def canonical_cache_key(self, *, tool_name: str, args: dict, query_text: str | None = None) -> str:
+        # ... uses self._tei.embed(...) when query_text is set ...
+```
+
+**Rationale:** caller (workflow #2 activity factory) constructs both `redis.Redis` + `TEIClient` from env and passes in. Test path uses fakes (matches PR #1132 / PR #1133 / PR #1146 testability pattern).
+
+**Lazy-import** at module level — keeps `valkey_client.py` importable on hosts without the embeddings module loaded (test env safety).
+
+### CB-3 — `keiracom_tenant_budgets` schema contradiction (Max obs #3, sub-task 2)
+
+**Decision: option (a) — POINT-IN-TIME only.** Drop `effective_from` + `effective_until` columns. Schema becomes:
+
+```sql
+CREATE TABLE keiracom_tenant_budgets (
+  tenant_id              UUID         PRIMARY KEY REFERENCES keiracom_tenants(tenant_id) ON DELETE CASCADE,
+  tier                   TEXT         NOT NULL CHECK (tier IN ('sandbox','solo','pro','team','enterprise')),
+  per_call_cap_tokens    BIGINT       NOT NULL,
+  daily_pool_tokens      BIGINT       NOT NULL,
+  monthly_pool_tokens    BIGINT       NOT NULL,
+  model_cost_calibration JSONB        NOT NULL,
+  updated_at             TIMESTAMPTZ  NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX idx_keiracom_tenant_budgets_tier
+  ON keiracom_tenant_budgets (tier);
+```
+
+Plus a trigger (or app-layer UPSERT) to `updated_at = NOW()` on policy change.
+
+**Rationale:**
+- V1 pre-revenue — historical "what was Pro's per-call-cap in March?" queries are not customer-facing requirements yet
+- Historical audit STILL POSSIBLE via the metering pipeline (PR #1137 `keiracom_tenant_metering` rolls up by day; effective-budget-at-time can be reconstructed from rollup + budget UPDATE events)
+- Simpler schema; smaller storage; lower error surface
+- If time-travel becomes needed later: separate `keiracom_tenant_budgets_history` table + trigger to log diffs. Pure additive change, no V1 schema migration
+
+**Folds Max obs #9** (CHECK constraint on tier) — already in the SQL above.
+
+**Index decision per Max obs #3:** `idx_keiracom_tenant_budgets_tier` for "all Pro tenants" queries. No index on `(effective_until IS NULL)` needed — column removed per option (a).
+
+### CB-4 — Verify LiteLLM `cache_control_enabled` is real (Max obs #4, sub-task 3)
+
+**Decision: UNVERIFIED — sub-task 3 scope GROWS to include caller-side cache_control marker injection. ~30-50 LoC code addition. NOT config-only.**
+
+Per Anthropic API spec, `cache_control: {"type": "ephemeral"}` is set per content block at message-construction time. LiteLLM transparently passes through any per-call `extra_headers` and per-block `cache_control` fields, but does NOT have a global "auto-inject breakpoints on stable prefix" YAML option I recognise.
+
+**Sub-task 3 actually contains:**
+1. ~20-30 LoC LiteLLM YAML config (Dave's tenant virtual key + rate limits + budget) — UNCHANGED from original §5
+2. ~30-50 LoC NEW Python helper `inject_cache_control_markers(messages, breakpoint_policy)` at the caller layer (lives in `src/keiracom_system/cache/litellm_helpers.py`)
+3. Engineer step: verify by grepping LiteLLM source / docs whether `cache_control_enabled` is a real upstream option (may have landed in a recent release I don't track). If yes, ditch the helper; if no, ship the helper.
+
+**Total sub-task 3: ~50-80 LoC** (was originally claimed "~50 LoC config / 0 code change").
+
+### CB-5 — Anthropic prompt cache hit rate metric name for Better Stack (Max obs #5, sub-task 4)
+
+**Decision: `keiracom.cache.anthropic.input_tokens{type=create|read|standard, tenant_id, model}`** parallel to existing Valkey metric.
+
+`type` enum semantics:
+- `create` → Anthropic API response `usage.cache_creation_input_tokens` (cache breakpoint populated this call)
+- `read` → Anthropic API response `usage.cache_read_input_tokens` (cache breakpoint hit this call → 0.10× cost saving)
+- `standard` → Anthropic API response `usage.input_tokens` (uncached portion of input)
+
+Sub-task 4 hooks the metric emission at the LiteLLM response-processing layer (after each LLM call returns). Sums attributable to Better Stack chart query.
+
+§7 baseline interpretation thresholds:
+- `read / (create + read + standard) > 50%` → healthy prompt-cache utilisation
+- `read / (...) < 20%` → breakpoint placement misaligned with actual call shape (re-tune)
+
+**Cardinality flag per Max:** `tenant_id × tool_name × outcome` at 200+ tenants × 50 tools × 2 outcomes = 20K active series. Better Stack billing-limit risk at scale. **Pre-aggregation hook needed for production scale** — file as Phase 2 follow-up bd post-A7-build. V1 (Dave N=1) is unaffected.
+
+### CB-6 — LoC re-estimates (Max obs #6, all sub-tasks)
+
+Updated estimates per Max's quality-lens re-estimate. Build dispatch acceptance criteria use these:
+
+| Sub-task | Original | Revised | Notes |
+|---|---|---|---|
+| 1 constants.py + valkey_client.py | ~150 LoC | **~250 LoC** | constants ~40 + Valkey client (incl. write-time prefix guard per Atlas NIT) ~120 + tests ~90 |
+| 2 token_budget_policy.py + Postgres migration | ~100 LoC | **~150 LoC** | dataclass+factory ~50 + SQL migration+seeds+CHECK ~60 + tests ~40 |
+| 3 LiteLLM config + cache_control helper | ~50 LoC config / 0 code | **~50-80 LoC** | YAML ~25 + helper ~30-50 if cache_control_enabled is not real (verify first) |
+| 4 Better Stack instrumentation | ~50 LoC | **~50 LoC** | Unchanged |
+| 5 48h baseline observation script | ~50 LoC | **~50 LoC** | Unchanged |
+| **Total** | **~400 LoC** | **~550-580 LoC** | Engineer scopes accordingly |
+
+### CB-7 — LAW II currency translation (Max obs #7, §5)
+
+**Decision: bilingual format `$X USD = $Y AUD` in all dollar-denominated fields.**
+
+§5 LiteLLM virtual key updated:
+
+```yaml
+virtual_keys:
+  - key_alias: "dave-v1-dogfooding"
+    tenant_id: "dave-internal"
+    models: [...]
+    rate_limit_rpm: 60
+    rate_limit_tpm: 200000
+    budget:
+      daily_usd: 50      # = $77.50 AUD (per Dave LAW II — 1 USD = 1.55 AUD)
+      monthly_usd: 1000  # = $1,550 AUD
+    cache_control_enabled: true   # NOTE: per CB-4 above, this flag is UNVERIFIED — engineer must verify in build dispatch
+    metadata:
+      tier: "team"
+```
+
+LiteLLM's `daily_usd` field name is platform-native (we don't change the field), but the inline comment shows AUD per LAW II.
+
+### CB-8 — 48h baseline action thresholds (Max obs #8, §7)
+
+**Decision: `<10% Valkey hit rate = BLOCKING-V1`.**
+
+Verbatim addition to §7: "If 48h baseline reports Valkey hit rate <10% for any tool category, V1 customer onboard is BLOCKED until `_quantise_to_bucket` num_buckets is re-tuned and a follow-up 48h baseline reports >=10%. Engineer-discipline gate before first-paying-customer."
+
+`<10% < hit rate < 40%` is the TRACK-AND-IMPROVE band (not blocking, but flagged).
+
+Anthropic prompt-cache hit rate threshold (`<20% = breakpoint misaligned`) is TRACK-AND-IMPROVE (Anthropic-side measurement; non-customer-facing).
+
+### CB-9 — Schema CHECK constraint (Max obs #9)
+
+**Folded into CB-3 SQL** — `CHECK (tier IN ('sandbox','solo','pro','team','enterprise'))` is in the schema definition above.
+
+### CB-10 — Valkey key construction hard rule + PR-linter (Max obs #10, §4)
+
+**Decision: ratified as hard rule + PR-linter pattern.**
+
+Hard rule (engineer discipline): "All Valkey key construction MUST go through `ValkeyClient.canonical_cache_key()`. Direct `redis.set / redis.get` calls outside `src/keiracom_system/cache/valkey_client.py` are forbidden."
+
+PR-linter pattern (CI check):
+```bash
+# scripts/ci/check_no_raw_valkey_outside_client.sh
+violations=$(grep -rE '\b(redis|valkey)\.(set|get|hset|hget|delete)\s*\(' \
+  --include='*.py' \
+  --exclude-dir=tests \
+  src/ scripts/ \
+  | grep -v 'src/keiracom_system/cache/valkey_client.py' \
+  || true)
+if [ -n "$violations" ]; then
+  echo "ERROR: direct redis/valkey calls outside valkey_client.py — must use ValkeyClient.canonical_cache_key()"
+  echo "$violations"
+  exit 1
+fi
+```
+
+Test additions for sub-task 1:
+- Unit test that `ValkeyClient.set()` rejects any key not starting with `v1:{self._tenant_id}:` (CB-Atlas defence-in-depth — see below)
+- Grep-based test in `tests/keiracom_system/cache/test_no_raw_valkey_outside_client.py` that scans repo for violations
+
+### CB-Atlas — Write-time tenant_id prefix guard (Atlas NIT 2026-05-26 ~00:08 UTC)
+
+**Decision: ratified.** Folded into sub-task 1 acceptance:
+
+```python
+# src/keiracom_system/cache/valkey_client.py
+class ValkeyClient:
+    # ... __init__ as in CB-2 ...
+
+    def _enforce_tenant_prefix(self, key: str) -> None:
+        """Reject any key not matching v1:{self._tenant_id}:* at the read/write boundary.
+        Defence-in-depth: even if a caller bypasses canonical_cache_key(), this guard catches it."""
+        expected_prefix = f"v1:{self._tenant_id}:"
+        if not key.startswith(expected_prefix):
+            raise ValueError(
+                f"valkey key {key!r} does not match expected tenant prefix {expected_prefix!r} — "
+                "all keys MUST go through canonical_cache_key()"
+            )
+
+    def get(self, key: str) -> str | None:
+        self._enforce_tenant_prefix(key)
+        return self._redis.get(key)
+
+    def set(self, key: str, value: str, ttl: int = 0) -> None:
+        self._enforce_tenant_prefix(key)
+        if ttl > 0:
+            self._redis.setex(key, ttl, value)
+        else:
+            self._redis.set(key, value)
+```
+
+Test coverage (sub-task 1 acceptance criterion 2 extension):
+- `test_valkey_get_rejects_wrong_tenant_prefix` — different tenant_id prefix → ValueError
+- `test_valkey_get_rejects_missing_prefix` — raw key without `v1:` → ValueError
+- `test_valkey_get_accepts_canonical_key` — key from canonical_cache_key() passes
+
+Atlas's reasoning: closes the "future code path bypasses canonicalisation + writes raw" hole at the write/read boundary, complementing the PR-linter pattern from CB-10. Two-layer defence: linter catches at PR-review time; runtime guard catches at runtime if the linter is bypassed.
+
+### Summary of §13 deltas for engineer-tier dispatch
+
+| Item | Affects | Effort delta |
+|---|---|---|
+| CB-1 redis>=5.0.0 verify | sub-task 1 | 0 (already in repo) |
+| CB-2 DI tei_client at ValkeyClient.__init__ | sub-task 1 | minor — clarifies constructor signature |
+| CB-3 schema drop effective_from/until | sub-task 2 | -10 LoC (simpler schema) |
+| CB-4 cache_control helper code | sub-task 3 | +30-50 LoC (if cache_control_enabled unverified) |
+| CB-5 Anthropic prompt cache metric name | sub-task 4 | 0 (naming clarification) |
+| CB-6 LoC re-estimates | scope tracking | n/a — for resource planning |
+| CB-7 currency bilingual | doc only | 0 |
+| CB-8 <10% blocking threshold | sub-task 5 acceptance | 0 |
+| CB-9 schema CHECK constraint | sub-task 2 | folded into CB-3 |
+| CB-10 PR-linter pattern + hard rule | sub-task 1 (test) + CI scripts/ | +10 LoC linter script + 1 unit test |
+| CB-Atlas write-time prefix guard | sub-task 1 | +5-10 LoC + 3 unit tests |
+
+Net updated total: **~550-600 LoC** for the full A7 build (Max's re-estimate + CB-4 verify-then-grow path + CB-10 linter + CB-Atlas guard).
+
 ## Sources
 
 - `ceo:cache_framework_canonical` (queried 2026-05-26)

@@ -498,12 +498,17 @@ def test_r11_ceo_missing_bold_header_fires():
     out = check_r11(no_header, channel=CEO_CH)
     assert out is not None
     assert out["rule_number"] == 11
-    assert "no bold category header" in out["detail"]
+    # Failure mode renamed per Viktor voice authorisation 2026-05-26 — now
+    # checks for any scannable structure (bold header OR divider OR italic header).
+    assert "no scannable structure" in out["detail"]
 
 
 def test_r11_ceo_prose_paragraph_fires():
     from src.bot_common.enforcer_deterministic import check_r11
 
+    # Un-scaffolded prose with header BUT prose paragraph still in body — fires
+    # the prose-paragraph rule because bold header alone counts as structure but
+    # the prose line is checked for length + sentence count separately.
     prose = (
         "**Header**\n"
         "This is one long sentence about something. "
@@ -512,7 +517,96 @@ def test_r11_ceo_prose_paragraph_fires():
     )
     out = check_r11(prose, channel=CEO_CH)
     assert out is not None
+    # Failure mode renamed per Viktor voice authorisation 2026-05-26 — now
+    # "un-scaffolded prose paragraph" (with Viktor divider scaffolding, prose
+    # paragraphs are explicitly allowed; without it, this still fires).
     assert "prose paragraph" in out["detail"]
+
+
+# ---------------------------------------------------------------------------
+# Viktor voice authorisation 2026-05-26 — 4 new permanent regression tests
+# Per Aiden CONCUR NIT on PR #1160 + feedback_negative_path_test_before_approve.
+# ---------------------------------------------------------------------------
+
+
+def test_r11_banned_token_blocks_even_with_divider():
+    """Safety net intact: banned tokens (PR #N) fire even with Viktor divider
+    scaffolding. Divider scaffolding does NOT bypass token discipline."""
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    with_divider = "─── TEST ───\n\nThis post references PR #1234 which should be blocked."
+    out = check_r11(with_divider, channel=CEO_CH)
+    assert out is not None
+    assert out["rule_number"] == 11
+    assert "PR #1234" in out["detail"] or "banned technical tokens" in out["detail"]
+
+
+def test_r11_viktor_voice_prose_with_divider_passes():
+    """Viktor voice authorisation 2026-05-26: prose paragraphs ARE allowed when
+    the post uses divider scaffolding."""
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    viktor_post = """─── PHASE A6 STATUS ───
+
+The first Temporal workflow merged tonight and runs cleanly against the production instance. The seven-day dual-publish observation window begins from this merge timestamp, with the NATS fallback path remaining in place until the window completes successfully.
+
+*Action required:* none right now. Surface when the seven-day window completes."""
+    assert check_r11(viktor_post, channel=CEO_CH) is None
+
+
+def test_r11_viktor_italic_header_with_prose_passes():
+    """Italic-bold section header (*Section*) also satisfies the scannable
+    structure requirement; prose paragraphs allowed alongside."""
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    italic_post = """*Status Update*
+
+The fleet is running cleanly across all engineer-tier callsigns and the deliberator layer has caught up on all four open reviews this session. No blockers requiring CEO attention right now."""
+    assert check_r11(italic_post, channel=CEO_CH) is None
+
+
+def test_r11_triangle_bullet_recognised():
+    """Viktor's ▸ triangle bullet should be recognised as a valid bullet marker
+    alongside the existing - * • numbered markers."""
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    triangle_post = """**Status**
+
+▸ Phase A6 merged cleanly
+▸ Phase A7 design canonical
+▸ No new decisions needed"""
+    assert check_r11(triangle_post, channel=CEO_CH) is None
+
+
+def test_r11_unscaffolded_prose_wall_still_blocked():
+    """Backward compat: prose walls without dividers/headers/bullets still fire.
+    The Viktor voice update relaxes the rule when scaffolding is present; it does
+    NOT eliminate the rule entirely."""
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    wall = (
+        "This is a long prose paragraph that has multiple sentences. "
+        "It contains no dividers, no headers, no bullets. "
+        "It should be blocked because it has no scannable structure and is just "
+        "a wall of dense text running on for more than 150 characters."
+    )
+    out = check_r11(wall, channel=CEO_CH)
+    assert out is not None
+    # Two violations expected: no scannable structure AND un-scaffolded prose.
+    assert "no scannable structure" in out["detail"]
+
+
+def test_r11_old_style_bold_header_still_passes():
+    """Backward compat: existing **Bold Header** + bullet pattern still works
+    without modification. The Viktor voice update is additive, not replacement."""
+    from src.bot_common.enforcer_deterministic import check_r11
+
+    old_style = """**Status**
+
+- Phase A6 merged
+- Phase A7 design canonical
+- No new decisions needed"""
+    assert check_r11(old_style, channel=CEO_CH) is None
 
 
 def test_r11_ceo_pr_number_banned():
@@ -585,11 +679,12 @@ def test_r11_concur_request_replacement_exempt():
 def test_r11_multiple_violations_stacked_in_detail():
     from src.bot_common.enforcer_deterministic import check_r11
 
-    bad = "merged PR #774 in scripts/foo.py"  # no header, PR, path
+    bad = "merged PR #774 in scripts/foo.py"  # no structure, PR, path
     out = check_r11(bad, channel=CEO_CH)
     assert out is not None
     detail = out["detail"]
-    assert "no bold category header" in detail
+    # Failure mode renamed per Viktor voice authorisation 2026-05-26.
+    assert "no scannable structure" in detail
     assert "banned technical tokens" in detail
 
 

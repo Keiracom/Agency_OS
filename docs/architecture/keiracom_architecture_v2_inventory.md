@@ -508,6 +508,54 @@ Vault is on TWO V1 critical paths (this UX one + Aiden's backup-DR critical path
 
 Memory cutover steps 4 and 5 remain on hold per V2.0 directive. UX work runs in parallel — does not block on architecture lock.
 
+## Category 19.1 — Chat UX Pattern Additions (Phase B chat UX scope per Dave directive 2026-05-26)
+
+Added per Dave directive 2026-05-26 ~00:25 UTC. Four V1 must-have patterns identified from chat UX research + Dave review. Design philosophy: Apple-grade restraint (Linear / Arc Browser / Apple Intelligence reference); avoid ChatGPT / Cursor / Material Design.
+
+**V1 critical-path additions (4 items):**
+
+| ID | Element | Status | Source | Customer-visible | Phase |
+|---|---|---|---|---|---|
+| ux.chat.artifacts_side_panel | Artifacts side panel (chat as engine, document as dashboard). Substantive outputs (proposals, roadmaps, drafts, tables, code) open in side panel (desktop) or full-screen overlay (mobile). Customer iterates on artifact while chat continues. Reference: Claude Artifacts + ChatGPT Canvas + Cursor side pane. Architectural ask: chat message types beyond plain text — render structured artifact blocks that open in side panel on tap | LOOSE V1 HARD GATE | Dave directive 2026-05-26 #1 | chat | V1-launch |
+| ux.chat.streaming_text | Streaming text token-by-token reveal. Anthropic SDK supports natively; server-sent events from chat agent → client renders progressively. Absence feels broken to power users | LOOSE V1 HARD GATE | Dave directive 2026-05-26 #2 | chat | V1-launch |
+| ux.chat.stage_indicators | Stage indicators (system activity visibility). During Keira's processing, customer sees progress: "Routing to deliberators → Workers researching providers → Synthesizing proposal → Done". Implementation: stage events emitted from Temporal workflow → SSE channel to client → render as collapsible status block above response. Without this, customer experiences silence during multi-minute deliberations and assumes system froze | LOOSE V1 HARD GATE | Dave directive 2026-05-26 #3 | chat | V1-launch |
+| ux.chat.memory_chips | Memory chips (compounding memory made visible). Compact context display at top of chat: "Context: AI BDR project · Solo tier · 5 days in · 3 prior decisions". Tappable to expand into Memory Inspector. Implementation: chat agent computes context summary from Hindsight queries → renders as chip block above conversation. Makes the differentiator tangible | LOOSE V1 HARD GATE | Dave directive 2026-05-26 #4 | chat | V1-launch |
+
+**Foundational UI hygiene (no separate scope — lands during B6 build):**
+- Action buttons (already in B11)
+- Typing indicator ("Keira is thinking...")
+- Skeleton loaders instead of spinners
+- Inline OAuth (with Composio white-label B11)
+- Subtle spring animations (iOS-style, not Material)
+
+**V1.x deferred (within 3 months post-launch):**
+- Slash commands (/research, /draft, /summarize)
+- Reasoning expansion ("show thinking")
+- Confidence indicators on outputs
+- Diff views for content changes
+- Voice input
+- Image upload
+
+**V2+ (after first 10 customers):**
+- Carousel cards
+- Command palette (Cmd+K)
+- @-mentions for subsystems
+- Live preview (v0-style)
+- Camera input
+
+**Design philosophy LOCKED:**
+- Apple-grade restraint — animation reinforces state change, never decorates
+- Reference: Linear, Arc Browser, Apple Intelligence
+- Avoid: ChatGPT (too plain), Cursor (too dense), Material Design (too bouncy)
+- Reduce-motion respected (accessibility)
+- No celebration confetti (feels infantile in B2B)
+
+**Deliberation request (per Dave):**
+1. Aiden: architecture-fit lens on each of the 4 items (SSE infrastructure, message type schema, Temporal stage emission)
+2. Atlas: implementation-feasibility on each + effort estimate
+3. Viktor: cross-check against the 29-item customer-lens gap list (Cat 22) — any overlap or conflict
+4. Cross-reference Phase B6 scope to identify what's already implicit vs needs explicit addition
+
 ## Category 20 — System Deep-Dive Per-Layer Audit (owner: Elliot orchestrates; each layer has named owner)
 
 Added per Dave directive KEI-SYSTEM-DEEP-DIVE 2026-05-25 ~1779746500. Twelve layers each owner produces a one-page deep-dive at `docs/architecture/deep_dives/layer_NN_name.md` answering six questions: Designed / Built / Measured / Token+Cost / Cache strategy / LOOSE items, plus per-tier variation + per-agent-type variation where applicable.
@@ -579,7 +627,7 @@ Added per Dave directive KEI-CUSTOMER-LENS-GAPS 2026-05-25 ~1779749200. Twenty-n
 **Theme 7 — Onboarding + Migration**
 - gap.migration_tools_competitors — Migration tools from competitors (ChatGPT history, Claude projects, Cursor chats) | LOOSE V2
 - gap.use_case_wizard — Use case wizard at onboarding | LOOSE V2
-- gap.push_notifications_async — Push notifications for async completion (APNs/FCM) | LOOSE V1 HARD GATE (async work pattern is the value prop)
+- gap.push_notifications_async — Push notifications for async completion. V1: WEB-PUSH (browser permission API + service worker; reuses Slack-alert notification routing substrate). V1.1: APNs + FCM with native mobile per ux.mobile_strategy_web_v1 | RATIFIED-CEO V1 web-push + V1.1 native (Dave 2026-05-25 ~1779750900)
 
 **Theme 8 — Developer / Power User**
 - gap.cli_api_access — CLI / API access (script Keiracom from terminal) | LOOSE V2

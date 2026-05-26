@@ -466,8 +466,21 @@ def check_r10(
 # Bold category header — markdown ** ** at line start.
 _R11_HEADER_RE = re.compile(r"^\s*\*\*[^*]+\*\*", re.MULTILINE)
 
-# Bullet markers: -, *, •, numbered (1.) at line start.
-_R11_BULLET_RE = re.compile(r"^\s*(?:[-*•]|\d+\.)\s+", re.MULTILINE)
+# Viktor-voice divider scaffolding — Unicode box-drawing divider lines.
+# Pattern: `─── HEADER ───` (three or more box-drawing horizontals, optional spaces, header text, more horizontals).
+# Middle character class explicitly excludes box-drawing chars + newline to bound
+# backtracking (closes Sonar S5852 ReDoS risk from naive `.*?` greedy-lazy).
+# Either this OR a bold header satisfies the scannability requirement (Viktor voice authorisation 2026-05-26).
+_R11_DIVIDER_RE = re.compile(
+    r"^\s*[─━]{3,}\s+[^─━\n]{1,200}\s+[─━]{3,}\s*$", re.MULTILINE
+)
+
+# Viktor-voice italic-bold section header — `*Bold Section*` at line start (single asterisks, Slack mrkdwn).
+# Either this OR markdown bold or divider satisfies scannability.
+_R11_ITALIC_HEADER_RE = re.compile(r"^\s*\*[^*\n]+\*\s*$", re.MULTILINE)
+
+# Bullet markers: -, *, •, numbered (1.), Viktor triangle ▸ at line start.
+_R11_BULLET_RE = re.compile(r"^\s*(?:[-*•▸]|\d+\.)\s+", re.MULTILINE)
 
 # Banned tokens that indicate technical-density (not plain-English):
 _R11_BANNED_RES = (
@@ -494,13 +507,32 @@ _R11_EXEMPT_RE = re.compile(
 )
 
 
+def _r11_has_viktor_scaffolding(text: str) -> bool:
+    """Viktor-voice scaffolding test — divider lines OR italic-bold section headers
+    serve the same scannability purpose as bold category headers per Viktor voice
+    authorisation 2026-05-26. Either signal satisfies the structure requirement.
+
+    Per Dave directive: prose paragraphs ARE allowed when divider/italic-header
+    scaffolding is present.
+    """
+    return bool(_R11_DIVIDER_RE.search(text) or _R11_ITALIC_HEADER_RE.search(text))
+
+
 def _r11_prose_paragraph_present(text: str) -> bool:
     """Heuristic: any 'line' that's >150 chars AND has 2+ sentences (period followed
     by space) AND has NO bullet marker is a prose paragraph.
 
+    Per Viktor voice authorisation 2026-05-26: prose paragraphs are ALLOWED when
+    the post uses divider scaffolding (─── HEADER ───) or italic-bold section
+    headers (*Bold Section*). Only un-scaffolded prose-walls trip the rule.
+
     Threshold deliberately conservative — single long bulleted explanation is fine;
-    only un-bulleted multi-sentence runs trip the rule.
+    only un-bulleted multi-sentence runs without scaffolding trip the rule.
     """
+    # Viktor scaffolding present → prose paragraphs allowed; skip the check.
+    if _r11_has_viktor_scaffolding(text):
+        return False
+
     for line in text.splitlines():
         s = line.strip()
         if len(s) < 150:
@@ -523,11 +555,19 @@ def check_r11(text: str, *, channel: str | None = None) -> dict | None:
       - message body violates the plain-English bullets convention.
 
     Failure modes:
-      (a) Lacks any **bold category header** (markdown ** ** at line start)
-      (b) Contains a prose paragraph (>=150 char un-bulleted line with 2+ sentences)
+      (a) Lacks scannable structure — needs at least one of:
+          - **bold category header** (markdown ** ** at line start), OR
+          - Viktor-voice divider line (─── HEADER ───), OR
+          - Viktor-voice italic-bold section header (*Bold Section* at line start)
+      (b) Contains an UN-SCAFFOLDED prose paragraph (>=150 char un-bulleted line
+          with 2+ sentences AND no divider/italic-header scaffolding anywhere in post)
       (c) Contains banned technical tokens: PR #N, commit SHAs, file paths
           under scripts/|src/|.claude/, env var names ending _API_KEY|_PROVIDER,
           code fences ```
+
+    Per Viktor voice authorisation 2026-05-26: prose paragraphs ARE allowed when
+    the post uses divider or italic-header scaffolding. Banned-token check + outcome-
+    first lead discipline preserved.
 
     `channel` defaults to None (treat as non-ceo → pass).
     `text` body of the message.
@@ -543,13 +583,22 @@ def check_r11(text: str, *, channel: str | None = None) -> dict | None:
 
     violations: list[str] = []
 
-    # (a) Missing bold header
-    if not _R11_HEADER_RE.search(text):
-        violations.append("no bold category header (**...** at line start)")
+    # (a) Missing scannable structure — bold header OR divider OR italic-bold header
+    has_structure = (
+        _R11_HEADER_RE.search(text)
+        or _R11_DIVIDER_RE.search(text)
+        or _R11_ITALIC_HEADER_RE.search(text)
+    )
+    if not has_structure:
+        violations.append(
+            "no scannable structure (need **bold header** OR ─── divider ─── OR *italic header*)"
+        )
 
-    # (b) Prose paragraph
+    # (b) Prose paragraph WITHOUT scaffolding
     if _r11_prose_paragraph_present(text):
-        violations.append("prose paragraph (un-bulleted line ≥150 chars with 2+ sentences)")
+        violations.append(
+            "un-scaffolded prose paragraph (≥150 chars + 2+ sentences without dividers/headers/bullets)"
+        )
 
     # (c) Banned technical tokens
     banned_found: list[str] = []
@@ -567,13 +616,14 @@ def check_r11(text: str, *, channel: str | None = None) -> dict | None:
         "violation": True,
         "rule_number": 11,
         "rule_name": "CEO-FORMAT-GATE",
-        "detail": "#ceo post violates plain-English bullets-only convention: "
+        "detail": "#ceo post violates plain-English convention: "
         + "; ".join(violations),
         "should_have": (
-            "Rewrite as: **Bold Category** headers + bullet list (- or •) only. "
-            "Lead with OUTCOME + business meaning. No PR numbers, commit SHAs, "
-            "file paths, env vars, or code fences. Technical detail stays in "
-            "#execution. See feedback_ceo_plain_english_summaries.md."
+            "Use one of: **Bold Category** headers, ─── DIVIDER ─── lines, OR "
+            "*Italic Section* headers (Viktor voice). Lead with OUTCOME + business "
+            "meaning. No PR numbers, commit SHAs, file paths, env vars, or code "
+            "fences. Per Viktor voice authorisation 2026-05-26 — see "
+            "feedback_viktor_voice_format_authorised_2026-05-26.md."
         ),
     }
 

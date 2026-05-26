@@ -131,7 +131,14 @@ def _nats_publish_state(callsign: str, state: str) -> None:
                 await nc.close()
 
         asyncio.run(_publish())
-        log.debug("[%s] NATS PUBLISH %s → %s", callsign, subject, state)
+        # INFO not DEBUG so the line lands in fleet-supervisor.log at the default
+        # log level. Required by scripts/a6_observation_check.sh (Nova PR #1162)
+        # which counts NATS PUBLISH lines as one side of the dual-publish ledger;
+        # without this the counter is structurally 0 in production + every run
+        # reports mismatch_pct=100% / status=ALARM. Symmetric with the Temporal
+        # signal-sent line which is already INFO in src/keiracom_system/temporal/
+        # signal_helpers.py:55.
+        log.info("[%s] NATS PUBLISH %s → %s", callsign, subject, state)
     except Exception as exc:  # noqa: BLE001
         log.warning("[%s] NATS publish failed (non-fatal): %s", callsign, exc)
     # Phase A6 dual-publish: signal FleetSupervisorWorkflow alongside NATS.

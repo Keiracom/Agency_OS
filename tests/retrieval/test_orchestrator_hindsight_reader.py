@@ -114,9 +114,17 @@ def test_hindsight_recall_empty_response_returns_empty_list(monkeypatch):
 
 
 def test_gather_ann_pool_skips_unmapped_collection(monkeypatch):
-    """Sessions + Global_governance_patterns are not yet mapped (parallel
-    Agency_OS-9u2m + Agency_OS-x0p7). Read path should skip them gracefully
-    (warn + continue) rather than crash or call Hindsight with a missing bank."""
+    """Read path skips collections with no bank mapping gracefully (warn +
+    continue) rather than crash or call Hindsight with a missing bank.
+
+    Rebase note (Agency_OS-9u2m, 2026-05-26): PR #1175 originally used
+    "Sessions" as the canonical unmapped collection, but Sessions was added
+    to HINDSIGHT_BANK_BY_CLASS by this PR (and Global_governance_patterns
+    by Agency_OS-x0p7). With the mem.weaviate_coldstart trio fully mapped,
+    we use a synthetic sentinel class name that will never collide with a
+    real class — preserves the unmapped-contract negative test for any
+    future refactor that introduces a new unmapped class.
+    """
     called = []
 
     def _spy_recall(text, bank_id, *, top_k):
@@ -126,11 +134,11 @@ def test_gather_ann_pool_skips_unmapped_collection(monkeypatch):
     monkeypatch.setattr(orchestrator, "_hindsight_recall", _spy_recall)
     pool = orchestrator._gather_ann_pool(
         text="q",
-        collections=("Sessions", "Decisions"),
+        collections=("_UnmappedSentinel_NeverMapMe", "Decisions"),
         k_initial=5,
         weaviate_client=None,
     )
-    assert called == ["fleet_decisions"]  # Sessions skipped, Decisions called
+    assert called == ["fleet_decisions"]  # Sentinel skipped, Decisions called
     assert pool == []  # spy returned [] for Decisions
 
 

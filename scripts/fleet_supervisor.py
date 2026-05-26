@@ -82,7 +82,18 @@ def _temporal_signal_state(callsign: str, state: str) -> None:
     if os.environ.get("TEMPORAL_DUAL_PUBLISH_ENABLED", "").strip() != "1":
         return
     try:
-        from keiracom_system.temporal import signal_fleet_supervisor_sync  # noqa: PLC0415
+        # Ensure repo root is on sys.path so `src.keiracom_system.*` resolves when
+        # fleet_supervisor.py runs as a standalone script (fleet-supervisor.service
+        # invokes `python3 scripts/fleet_supervisor.py` with no PYTHONPATH override).
+        # The src.* prefix matches the test convention (tests/keiracom_system/temporal/
+        # test_*.py) — the prior PR #1155 used `keiracom_system.*` which resolved only
+        # under PYTHONPATH=.../src and crashed under the default service env.
+        from pathlib import Path as _Path  # noqa: PLC0415
+
+        _repo_root = str(_Path(__file__).resolve().parent.parent)
+        if _repo_root not in sys.path:
+            sys.path.insert(0, _repo_root)
+        from src.keiracom_system.temporal import signal_fleet_supervisor_sync  # noqa: PLC0415
 
         signal_fleet_supervisor_sync(callsign, state)
     except Exception as exc:  # noqa: BLE001 — dual-publish must never crash supervisor

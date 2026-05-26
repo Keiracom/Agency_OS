@@ -187,6 +187,12 @@ CLASS_TO_BANK = {
     # Sibling classes Sessions + Global_governance_patterns are filed as
     # Agency_OS-9u2m + Agency_OS-x0p7 (parallel hand-migration PRs).
     "Discoveries": "fleet_discoveries",
+    # A3 step 5-A (Agency_OS-x0p7, 2026-05-26): Global_governance_patterns is
+    # the third trio member per mem.weaviate_coldstart. Backfill of existing
+    # rows runs once via scripts/migrations/
+    # global_governance_patterns_hand_migration.py; this mapping then catches
+    # all new writes. Sibling Sessions is filed as Agency_OS-9u2m (parallel).
+    "Global_governance_patterns": "fleet_global_governance_patterns",
 }
 
 

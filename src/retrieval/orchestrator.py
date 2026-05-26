@@ -1,29 +1,64 @@
-"""LlamaIndex orchestration: build CitationQueryEngine on top of Weaviate.
+"""Retrieval orchestration: read-path sources nodes from Hindsight; write-path
+still uses LlamaIndex (transitional).
 
-Sits between `agent_query.query()` and the Weaviate vector store. Owns:
-    * Multi-collection routing (one VectorStoreIndex per collection).
-    * Two-stage retrieval: Weaviate k_initial vector hits → FlashRank
-      cross-encoder rerank → k_returned final. Bypass-falls-back to raw
-      ANN when FlashRank is unavailable or exceeds its latency budget.
+Sits between `agent_query.query()` and the underlying vector store. Owns:
+    * Multi-collection routing (one bank per collection).
+    * Two-stage retrieval: Hindsight `/memories/recall` k_initial vector
+      hits → FlashRank cross-encoder rerank → k_returned final.
+      Bypass-falls-back to raw ANN when FlashRank is unavailable or
+      exceeds its latency budget.
     * Citation extraction — every retrieved node carries a source_id,
       collection, score, and 80-char excerpt back to the caller.
 
 The 500-token response budget (KEI-55) is enforced at the response-synth
-step via `response_mode="compact"` + a max-output cap. Empty corpus or
-low-confidence matches fall through to the anti-hallucination guard in
-`agent_query.query()` — this module returns the raw nodes; the public
-entry decides whether to synthesise.
+step via a max-output cap. Empty corpus or low-confidence matches fall
+through to the anti-hallucination guard in `agent_query.query()` — this
+module returns the raw nodes; the public entry decides whether to
+synthesise.
+
+A3-c2 step 5-B (Agency_OS-0zv1, 2026-05-26): the read path (`_gather_ann_pool`)
+was cut over from `LlamaIndex.VectorStoreIndex` over Weaviate to direct
+Hindsight `POST /v1/default/banks/{bank_id}/memories/recall`. Precondition
+was Agency_OS-4bsc (Discoveries hand-migration) so all three default
+collections (Discoveries / Decisions / Keis) have Hindsight bank coverage.
+The write path (`_build_index` + `index_document`) still uses LlamaIndex
+until a follow-up PR — kept here so the orthogonal-scope discipline holds.
 """
 
 from __future__ import annotations
 
+import json
 import logging
+import os
 from dataclasses import dataclass
 from typing import Any
+from urllib import request as urlrequest
 
 from src.retrieval import rerankers, weaviate_store
 
 logger = logging.getLogger(__name__)
+
+# Hindsight read endpoint — POST /v1/default/banks/{bank_id}/memories/recall
+# with body {"query": str, "max_tokens": int, "top_k": int, "tags"?: list,
+# "tags_match"?: "all"|"any"}. Returns {"memories": [...]} or {"results": [...]}.
+HINDSIGHT_BASE = os.environ.get("HINDSIGHT_BASE", "http://localhost:8889")  # NOSONAR S5332 loopback
+HINDSIGHT_RECALL_TIMEOUT_SECONDS = 30.0
+HINDSIGHT_RECALL_MAX_TOKENS = 2000
+
+# Local mirror of scripts/orchestrator/indexer_base.CLASS_TO_BANK so src/
+# doesn't import from scripts/. Drift between the two is caught by
+# `tests/retrieval/test_orchestrator_class_to_bank_parity.py` (locks the
+# canonical-source pointer).
+HINDSIGHT_BANK_BY_CLASS = {
+    "Decisions": "fleet_decisions",
+    "Keis": "fleet_keis",
+    "Codebase": "fleet_codebase",
+    "AgentMemories": "fleet_agent_memories",
+    "ToolCalls": "fleet_tool_calls",
+    "SessionTranscripts": "fleet_session_transcripts",
+    "StrategicDocuments": "fleet_strategic_documents",
+    "Discoveries": "fleet_discoveries",
+}
 
 DEFAULT_K_INITIAL = 20
 DEFAULT_K_RETURNED = 5
@@ -92,27 +127,65 @@ class RetrievalOutcome:
     rerank_elapsed_ms: int
 
 
+def _hindsight_recall(text: str, bank_id: str, *, top_k: int) -> list[dict[str, Any]]:
+    """POST /v1/default/banks/{bank_id}/memories/recall — returns memories list.
+
+    Empty list on any HTTP/JSON failure (caller logs at the call site for
+    per-collection visibility).
+    """
+    body = {"query": text, "max_tokens": HINDSIGHT_RECALL_MAX_TOKENS, "top_k": top_k}
+    data = json.dumps(body).encode("utf-8")
+    req = urlrequest.Request(
+        f"{HINDSIGHT_BASE}/v1/default/banks/{bank_id}/memories/recall",
+        data=data,
+        method="POST",
+        headers={"Content-Type": "application/json", "Accept": "application/json"},
+    )
+    with urlrequest.urlopen(req, timeout=HINDSIGHT_RECALL_TIMEOUT_SECONDS) as resp:
+        raw = resp.read().decode("utf-8")
+    parsed = json.loads(raw) if raw else {}
+    return parsed.get("memories") or parsed.get("results") or []
+
+
 def _gather_ann_pool(
     text: str,
     collections: tuple[str, ...],
     k_initial: int,
     weaviate_client: Any,
 ) -> list[RetrievedNode]:
+    """Source the ANN pool from Hindsight `/memories/recall` per collection.
+
+    `weaviate_client` is retained for backwards-compat with the public
+    `retrieve_with_outcome(client=...)` signature; ignored on the Hindsight
+    path. Removed entirely in the next PR (after the write-path cutover).
+    A3-c2 step 5-B, Agency_OS-0zv1.
+    """
+    del weaviate_client  # noqa: ARG001 — retained for ABI; intentional ignore
     pool: list[RetrievedNode] = []
     for collection in collections:
-        try:
-            index = _build_index(weaviate_client, collection)
-            retriever = index.as_retriever(similarity_top_k=k_initial)
-            nodes = retriever.retrieve(text)
-        except Exception:  # noqa: BLE001
-            logger.warning("retrieve failed for %s", collection, exc_info=True)
+        bank_id = HINDSIGHT_BANK_BY_CLASS.get(collection)
+        if bank_id is None:
+            logger.warning(
+                "no Hindsight bank mapping for collection=%s — skipping (see "
+                "HINDSIGHT_BANK_BY_CLASS canonical at scripts/orchestrator/"
+                "indexer_base.CLASS_TO_BANK)",
+                collection,
+            )
             continue
-        for node in nodes:
+        try:
+            memories = _hindsight_recall(text, bank_id, top_k=k_initial)
+        except Exception:  # noqa: BLE001
+            logger.warning("hindsight recall failed for %s", collection, exc_info=True)
+            continue
+        for mem in memories:
+            content = mem.get("content") or mem.get("text") or ""
+            score = float(mem.get("score") or mem.get("relevance") or 0.0)
+            metadata = dict(mem.get("metadata") or {})
             pool.append(
                 RetrievedNode(
-                    text=node.get_content(),
-                    score=float(node.score or 0.0),
-                    metadata=dict(node.metadata or {}),
+                    text=content,
+                    score=score,
+                    metadata=metadata,
                     collection=collection,
                 )
             )
@@ -129,14 +202,15 @@ def retrieve_with_outcome(
     rerank: bool = True,
     client: Any | None = None,
 ) -> RetrievalOutcome:
-    """Run the two-stage retrieval and surface the bypass flag verbatim."""
-    owned = client is None
-    weaviate_client = client if client is not None else weaviate_store._connect_client()
-    try:
-        pool = _gather_ann_pool(text, collections, k_initial, weaviate_client)
-    finally:
-        if owned:
-            weaviate_store.close_client(weaviate_client)
+    """Run the two-stage retrieval and surface the bypass flag verbatim.
+
+    A3-c2 step 5-B (2026-05-26): `client` is retained in the signature for
+    backwards-compat but ignored — Hindsight is now the recall backend and
+    does not need a Weaviate client. Removed from the signature in the next
+    PR after callers stop passing it.
+    """
+    del client  # noqa: ARG001 — retained for ABI; intentional ignore
+    pool = _gather_ann_pool(text, collections, k_initial, weaviate_client=None)
     if not pool:
         return RetrievalOutcome((), False, "empty_pool", 0)
     if not rerank:

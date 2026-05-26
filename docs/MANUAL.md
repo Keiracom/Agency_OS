@@ -1427,3 +1427,7 @@ Pipeline validated via integration test #300 (730 domains, all 11 stages). Segme
 ### Directive #10028 — KEI-CEO-BOUNDARY-MATRIX-V1 (RATIFIED-CEO via CONCUR-Full)
 
 Ratified 2026-05-26 via CONCUR-Full (Aiden + Max + Viktor APPROVE). Canonical state: ceo:boundary_matrix_v1 + ceo:directive_10028_complete. Scaffold landed via PR #1169 at 08:53:44Z. Four CI guards in scripts/ci/ + governance doc at docs/governance/boundary_matrix_v1.md enforce the 8-layer ownership contracts + 7 boundary violations at runtime. Five-store completion: first end-to-end application of the five-store rule (ratified directive 10028) closes here.
+
+### Directive #10029 — UNIVERSAL ATOMIZATION (RATIFIED-CEO via CONCUR-Full)
+
+Ratified 2026-05-26 (Dave proposer/author + Viktor APPROVE + Elliot APPROVE). Atomization is the canonical memory primitive. Pilot-first scope: skills directory atomization with Gemini Flash atomizer + Gemini Pro verifier. 9 locked decisions + 5 hard constraints in ceo:atomization_architecture_v1 canonical key. Pilot timeline 3 weeks Dave-usable. Five-store completion closes when pilot service ships and Dave starts daily use.

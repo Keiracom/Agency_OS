@@ -27,6 +27,7 @@ import uuid
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
+from relay.envelope_schema import KNOWN_ENVELOPE_TYPES, validate_envelope  # noqa: E402
 from relay.redis_relay import dispatch_queue
 from relay.redis_relay import push_sync as redis_push_sync  # noqa: E402
 from security.dispatch_audit import emit_audit, fingerprint  # noqa: E402
@@ -54,7 +55,12 @@ def main() -> int:
 
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--target", required=True, choices=list(VALID_TARGETS))
-    parser.add_argument("--type", default="task_dispatch")
+    parser.add_argument(
+        "--type",
+        default="task_dispatch",
+        choices=sorted(KNOWN_ENVELOPE_TYPES),
+        help="Envelope type — see docs/architecture/inbox_envelope_schema.md",
+    )
     parser.add_argument("--from", dest="sender", required=True)
     parser.add_argument("--brief", required=True)
     parser.add_argument("--max-task-minutes", type=int, default=30)
@@ -78,6 +84,11 @@ def main() -> int:
         "max_task_minutes": args.max_task_minutes,
         "created_at": int(time.time()),
     }
+    # sign_dispatch.py is task_dispatch-only — other envelope types come from
+    # different producers (paused_pending_decision from the paused agent;
+    # decision_request/_response from the orchestrator). Validating here
+    # catches future shape drift before HMAC wrapping.
+    validate_envelope(payload)
     signed = sign(payload)
 
     inbox = Path(VALID_TARGETS[args.target])

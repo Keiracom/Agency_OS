@@ -1,0 +1,15 @@
+[Unit]
+Description=Agency OS — Phase A6 observation alert cadence (6h, Agency_OS-vjcq)
+
+[Timer]
+# First fire 10min after boot to surface a fast post-restart breach signal,
+# then every 6h. Persistent=true catches a missed fire if the host was offline
+# at the scheduled time. RandomizedDelaySec spreads any co-fired timers.
+OnBootSec=10min
+OnUnitActiveSec=6h
+RandomizedDelaySec=300
+Persistent=true
+Unit=a6-observation-alert.service
+
+[Install]
+WantedBy=timers.target

@@ -64,6 +64,31 @@ def _is_v2(callsign: str) -> bool:
     return _supervisor_v2_enabled() and _agent_routing(callsign) == "v2"
 
 
+def _temporal_signal_state(callsign: str, state: str) -> None:
+    """Phase A6 first-workflow dual-publish: signal FleetSupervisorWorkflow alongside NATS.
+
+    Per first-target scope-confirm 2026-05-25: dual-publish (NATS + Temporal Signal)
+    for V1; flip to Temporal-only after 7 days of clean signal delivery (separate
+    dispatch). Best-effort — failure logs at WARNING but does NOT crash supervisor
+    (NATS remains source of truth during dual-publish window).
+
+    Gated on TEMPORAL_DUAL_PUBLISH_ENABLED env to allow operator kill-switch
+    without code change. Default OFF for V1 rollout — enable per-agent or
+    fleet-wide via env when ready to observe Temporal stream.
+
+    Cross-reference: src/keiracom_system/temporal/signal_helpers.py +
+    fleet_supervisor_workflow.py (PR for Phase A6 first-workflow-migrated step).
+    """
+    if os.environ.get("TEMPORAL_DUAL_PUBLISH_ENABLED", "").strip() != "1":
+        return
+    try:
+        from keiracom_system.temporal import signal_fleet_supervisor_sync  # noqa: PLC0415
+
+        signal_fleet_supervisor_sync(callsign, state)
+    except Exception as exc:  # noqa: BLE001 — dual-publish must never crash supervisor
+        log.warning("[%s] temporal dual-publish failed (non-fatal): %s", callsign, exc)
+
+
 def _nats_publish_state(callsign: str, state: str) -> None:
     """KEI-183 v2 / KEI-205: publish agent state to NATS subject keiracom.agent.status.<callsign>.
 
@@ -73,6 +98,9 @@ def _nats_publish_state(callsign: str, state: str) -> None:
 
     Note: Valkey stays for KEI-117 rate limiting + KV state only;
     NATS is the canonical messaging backbone per KEI-205.
+
+    Phase A6 dual-publish: this function also fires _temporal_signal_state when
+    TEMPORAL_DUAL_PUBLISH_ENABLED=1 — see _temporal_signal_state docstring.
     """
     try:
         import asyncio  # noqa: PLC0415 - lazy import inside try; nats-py optional on v1 path
@@ -95,6 +123,9 @@ def _nats_publish_state(callsign: str, state: str) -> None:
         log.debug("[%s] NATS PUBLISH %s → %s", callsign, subject, state)
     except Exception as exc:  # noqa: BLE001
         log.warning("[%s] NATS publish failed (non-fatal): %s", callsign, exc)
+    # Phase A6 dual-publish: signal FleetSupervisorWorkflow alongside NATS.
+    # Gated on TEMPORAL_DUAL_PUBLISH_ENABLED env (default OFF). Best-effort.
+    _temporal_signal_state(callsign, state)
 
 
 def _nats_publish_stall(callsign: str, task_id: str, signature: str) -> None:

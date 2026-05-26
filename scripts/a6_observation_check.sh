@@ -82,6 +82,12 @@ done
 
 # ----- constants -----
 SERVICE="fleet-supervisor.service"
+# Producer is a Type=oneshot service fired by fleet-supervisor.timer.
+# Between fires the .service is correctly 'inactive (dead)' — the TIMER is
+# the canonical liveness signal. Diagnostic + alert text probe the timer
+# rather than the service to avoid the false 'producer=inactive' read that
+# misled an early HOLD pass.
+PRODUCER_TIMER="fleet-supervisor.timer"
 WORKER_SERVICE="keiracom-temporal-worker.service"
 # LOG_FILE env-overridable for negative-path tests (point at /dev/null to
 # force FAIL_CLOSED_NO_DATA without touching the production log).
@@ -130,12 +136,14 @@ publish_alert() {
         return 0
     fi
 
-    producer_state="$(systemctl --user is-active "${SERVICE}" 2>/dev/null || echo 'unknown')"
+    # Probe the TIMER, not the .service — producer is a oneshot fired on
+    # cadence, so .service is 'inactive' between fires by design.
+    producer_state="$(systemctl --user is-active "${PRODUCER_TIMER}" 2>/dev/null || echo 'unknown')"
     consumer_state="$(systemctl --user is-active "${WORKER_SERVICE}" 2>/dev/null || echo 'unknown')"
 
     alert_body=$(printf -- '─── A6 OBSERVATION FAIL_CLOSED ───\n\n*Diagnostic:* %s\n*Producer:* %s=%s\n*Consumer:* %s=%s\n*Window:* %s\n\n▸ ACTION REQUIRED: %s' \
         "${diagnostic}" \
-        "${SERVICE}" "${producer_state}" \
+        "${PRODUCER_TIMER}" "${producer_state}" \
         "${WORKER_SERVICE}" "${consumer_state}" \
         "${SINCE}" \
         "${action_required}")
@@ -208,12 +216,12 @@ count_temporal=${count_temporal:-0}
 # ----- 4. fail-closed: no events on either side -----
 if [[ "${count_nats}" -eq 0 && "${count_temporal}" -eq 0 ]]; then
     echo "FAIL-CLOSED: zero publish events in window (--since '${SINCE}')" >&2
-    echo "    Diagnostic checks:" >&2
-    echo "      systemctl --user status fleet-supervisor.service" >&2
-    echo "      systemctl --user status fleet-supervisor.timer" >&2
+    echo "    Diagnostic checks (canonical liveness = the TIMER, not the oneshot service):" >&2
+    echo "      systemctl --user is-active fleet-supervisor.timer    # 'active' = healthy" >&2
+    echo "      systemctl --user status fleet-supervisor.timer       # last/next fire" >&2
     echo "      grep TEMPORAL_DUAL_PUBLISH_ENABLED /home/elliotbot/.config/agency-os/.env" >&2
-    echo "    Producer-side dual-publish requires fleet-supervisor.service" >&2
-    echo "    to fire during the window AND TEMPORAL_DUAL_PUBLISH_ENABLED=1." >&2
+    echo "    Producer-side dual-publish requires fleet-supervisor.timer ACTIVE" >&2
+    echo "    in the window AND TEMPORAL_DUAL_PUBLISH_ENABLED=1." >&2
     cat <<EOF
 a6_observation_check  window=${SINCE}
   count_nats=0

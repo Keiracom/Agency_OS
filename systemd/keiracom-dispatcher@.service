@@ -1,0 +1,54 @@
+[Unit]
+# Phase A8 ephemeral-agent dispatcher template (Agency_OS-awec, §7 piece 4 from PR #1140).
+#
+# Template instance unit: enable per-callsign via:
+#   systemctl --user enable --now keiracom-dispatcher@elliot.service
+#   systemctl --user enable --now keiracom-dispatcher@aiden.service
+#   ... etc for max / atlas / orion / scout / nova
+#
+# %i = instance name (the callsign).
+#
+# DEPENDS ON §7 pieces 1 + 5 (P1 KEIs, not yet shipped at template-author time):
+#   - Piece 1: scripts/dispatcher/dispatcher_main.py — the dispatcher binary
+#   - Piece 5: spawn-with-context composer library imported by dispatcher_main
+#
+# ExecStartPre below blocks the unit from starting until the binary exists,
+# so this template is safe to land + safe to leave unenabled until pieces 1+5
+# merge. After they merge, operators run install_keiracom_dispatcher.sh which
+# enables the per-callsign instance.
+Description=Keiracom ephemeral-agent dispatcher for %i (Phase A8 piece 4)
+Documentation=https://github.com/Keiracom/Agency_OS/pull/1140
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+# Callsign from instance name; per-callsign overrides (worktree path etc.) in
+# the optional env file. `-` prefix on second EnvironmentFile = missing-file
+# is non-fatal (template can be enabled even if no per-callsign override
+# exists; sensible defaults via app code).
+Environment="CALLSIGN=%i"
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+EnvironmentFile=-/home/elliotbot/.config/agency-os/dispatcher-%i.env
+
+# Per §7 piece 1: the dispatcher binary lives at scripts/dispatcher/dispatcher_main.py
+# under the elliot worktree (canonical Agency_OS path; non-clone callsigns
+# delegate compose-logic to this single binary). Per-callsign worktree paths
+# live in the dispatcher-%i.env override (above) if a callsign needs a
+# different working directory.
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+
+ExecStartPre=/usr/bin/test -x /home/elliotbot/clawd/Agency_OS/scripts/dispatcher/dispatcher_main.py
+ExecStart=/usr/bin/python3 -B /home/elliotbot/clawd/Agency_OS/scripts/dispatcher/dispatcher_main.py --callsign %i
+
+Restart=on-failure
+RestartSec=10
+
+# Per-instance log files keep per-callsign noise separated.
+StandardOutput=append:/home/elliotbot/clawd/logs/keiracom-dispatcher-%i.log
+StandardError=append:/home/elliotbot/clawd/logs/keiracom-dispatcher-%i.log
+
+[Install]
+WantedBy=default.target

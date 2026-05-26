@@ -468,8 +468,12 @@ _R11_HEADER_RE = re.compile(r"^\s*\*\*[^*]+\*\*", re.MULTILINE)
 
 # Viktor-voice divider scaffolding — Unicode box-drawing divider lines.
 # Pattern: `─── HEADER ───` (three or more box-drawing horizontals, optional spaces, header text, more horizontals).
+# Middle character class explicitly excludes box-drawing chars + newline to bound
+# backtracking (closes Sonar S5852 ReDoS risk from naive `.*?` greedy-lazy).
 # Either this OR a bold header satisfies the scannability requirement (Viktor voice authorisation 2026-05-26).
-_R11_DIVIDER_RE = re.compile(r"^\s*[─━]{3,}\s+\S.*?\s+[─━]{3,}\s*$", re.MULTILINE)
+_R11_DIVIDER_RE = re.compile(
+    r"^\s*[─━]{3,}\s+[^─━\n]{1,200}\s+[─━]{3,}\s*$", re.MULTILINE
+)
 
 # Viktor-voice italic-bold section header — `*Bold Section*` at line start (single asterisks, Slack mrkdwn).
 # Either this OR markdown bold or divider satisfies scannability.

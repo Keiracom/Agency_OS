@@ -199,6 +199,24 @@ jobs:
       - name: No raw redis/valkey calls outside ValkeyClient
         run: ./scripts/ci/check_no_raw_valkey_outside_client.sh
 
+  # ============================================
+  # Guard: Atomization pilot atom-store discipline
+  # ============================================
+  # Source: docs/architecture/design/atomization_pilot_schema_lock_proposal.md §6
+  # (PR #1178 merged 2026-05-26). All keiracom_atoms / supersession_edges /
+  # atomizer_jobs access MUST go through AtomStore (tenant-prefix guard +
+  # frozen vocabulary checks). Complements the AtomStore._enforce_tenant_match
+  # runtime guard (defence-in-depth pattern; mirrors A7 CB-10 + BMV1 guard b).
+  atom-store-discipline-guards:
+    name: Atom Store Discipline Guards (Atomization Pilot)
+    runs-on: ubuntu-latest
+    needs: backend-lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No raw atom-store SQL outside atomization module
+        run: ./scripts/ci/check_no_raw_atom_store_outside_module.sh
+
   backend-typecheck:
     name: Backend Type Check (MyPy)
     runs-on: ubuntu-latest

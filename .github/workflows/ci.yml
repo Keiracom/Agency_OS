@@ -156,6 +156,32 @@ jobs:
       - name: Run ruff formatter check
         run: ruff format src/ --check
 
+  # ============================================
+  # Guard: boundary-matrix-v1 (directive #10028)
+  # ============================================
+  # Source: ceo:boundary_matrix_v1 (RATIFIED-CEO 2026-05-26, CONCUR-Full
+  # Aiden + Max + Viktor). Full text at docs/governance/boundary_matrix_v1.md.
+  # Four guards run as separate steps so the failing one is obvious in CI log;
+  # set -e + non-zero exit on any guard fails the job.
+  boundary-matrix-guards:
+    name: Boundary Matrix v1 Guards
+    runs-on: ubuntu-latest
+    needs: backend-lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: (a) NATS forbidden in Temporal workflow files
+        run: ./scripts/ci/check_no_nats_in_temporal_workflow_files.sh
+
+      - name: (b) Direct DB drivers forbidden outside MAL + control_plane
+        run: ./scripts/ci/check_no_direct_db_outside_mal.sh
+
+      - name: (c) Composio imports forbidden outside MCP layer
+        run: ./scripts/ci/check_no_direct_composio_outside_mcp.sh
+
+      - name: (d) Governance policy (ceo:*) forbidden in Hindsight wrappers
+        run: ./scripts/ci/check_no_governance_policy_in_hindsight.sh
+
   backend-typecheck:
     name: Backend Type Check (MyPy)
     runs-on: ubuntu-latest

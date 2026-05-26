@@ -65,10 +65,10 @@ set -euo pipefail
 # ----- args (parse in any order, accept --since, --alert, -h) -----
 SINCE="24h ago"
 ALERT_MODE=0
-while [ "$#" -gt 0 ]; do
+while [[ "$#" -gt 0 ]]; do
     case "$1" in
         --since)
-            [ -z "${2:-}" ] && { echo "ERROR: --since requires a value" >&2; exit 2; }
+            [[ -z "${2:-}" ]] && { echo "ERROR: --since requires a value" >&2; exit 2; }
             SINCE="$2"; shift 2 ;;
         --alert)
             ALERT_MODE=1; shift ;;
@@ -104,14 +104,14 @@ _in_grace_period() {
     local ts_str epoch_active epoch_now delta_s delta_min
     ts_str="$(systemctl --user show "${producer_timer}" --property=ActiveEnterTimestamp --value 2>/dev/null || true)"
     # Empty / 'n/a' / unparseable means timer never activated → no grace period
-    [ -z "${ts_str}" ] && return 1
-    [ "${ts_str}" = "n/a" ] && return 1
+    [[ -z "${ts_str}" ]] && return 1
+    [[ "${ts_str}" == "n/a" ]] && return 1
     epoch_active=$(date -d "${ts_str}" +%s 2>/dev/null || echo 0)
-    [ "${epoch_active}" -eq 0 ] && return 1
+    [[ "${epoch_active}" -eq 0 ]] && return 1
     epoch_now=$(date +%s)
     delta_s=$(( epoch_now - epoch_active ))
-    [ "${delta_s}" -lt 0 ] && return 1   # future timestamp → ignore
-    if [ "${delta_s}" -lt "${GRACE_THRESHOLD_S}" ]; then
+    [[ "${delta_s}" -lt 0 ]] && return 1   # future timestamp → ignore
+    if [[ "${delta_s}" -lt "${GRACE_THRESHOLD_S}" ]]; then
         delta_min=$(( delta_s / 60 ))
         echo "grace_period: producer re-enabled ${delta_min}min ago, awaiting accumulation" >&2
         return 0
@@ -176,7 +176,7 @@ print(json.dumps({
 if ! journalctl --user -u "${SERVICE}" --since "${SINCE}" --no-pager >"${TMP}" 2>/dev/null; then
     echo "FAIL-CLOSED: journalctl --user -u ${SERVICE} returned non-zero" >&2
     echo "    Diagnostic: ensure user journald is reachable and the unit exists." >&2
-    if [ "${ALERT_MODE}" -eq 1 ]; then
+    if [[ "${ALERT_MODE}" -eq 1 ]]; then
         publish_alert \
             "journalctl unavailable for ${SERVICE}" \
             "verify user journald reachable: 'journalctl --user-unit=${SERVICE} --since 1h'" \
@@ -186,16 +186,13 @@ if ! journalctl --user -u "${SERVICE}" --since "${SINCE}" --no-pager >"${TMP}" 2
 fi
 
 # ----- 2. fallback source: log file (only if journalctl has no publish lines) -----
-if ! grep -qE "NATS PUBLISH|temporal signal sent" "${TMP}"; then
-    if [ -r "${LOG_FILE}" ]; then
-        # fleet-supervisor.log is python-logger-formatted ('YYYY-MM-DD HH:MM:SS,sss LEVEL ...').
-        # We accept all lines in the file; the observation window is bounded
-        # by --since at the journalctl call above. If the log file's retention
-        # exceeds the window, we will over-count slightly — flagged in the
-        # output as a source-augmentation note.
-        echo "[note] journalctl had no publish lines; augmenting from ${LOG_FILE}" >&2
-        cat "${LOG_FILE}" >>"${TMP}"
-    fi
+# fleet-supervisor.log is python-logger-formatted ('YYYY-MM-DD HH:MM:SS,sss LEVEL ...').
+# We accept all lines in the file; the observation window is bounded by --since
+# at the journalctl call above. If the log file's retention exceeds the window
+# we will over-count slightly — flagged in stderr below.
+if ! grep -qE "NATS PUBLISH|temporal signal sent" "${TMP}" && [[ -r "${LOG_FILE}" ]]; then
+    echo "[note] journalctl had no publish lines; augmenting from ${LOG_FILE}" >&2
+    cat "${LOG_FILE}" >>"${TMP}"
 fi
 
 # ----- 3. counts -----
@@ -209,7 +206,7 @@ count_nats=${count_nats:-0}
 count_temporal=${count_temporal:-0}
 
 # ----- 4. fail-closed: no events on either side -----
-if [ "${count_nats}" -eq 0 ] && [ "${count_temporal}" -eq 0 ]; then
+if [[ "${count_nats}" -eq 0 && "${count_temporal}" -eq 0 ]]; then
     echo "FAIL-CLOSED: zero publish events in window (--since '${SINCE}')" >&2
     echo "    Diagnostic checks:" >&2
     echo "      systemctl --user status fleet-supervisor.service" >&2
@@ -225,7 +222,7 @@ a6_observation_check  window=${SINCE}
   mismatch_pct=NaN
   status=FAIL_CLOSED_NO_DATA
 EOF
-    if [ "${ALERT_MODE}" -eq 1 ]; then
+    if [[ "${ALERT_MODE}" -eq 1 ]]; then
         publish_alert \
             "zero dual-publish events observed in window — producer not firing" \
             "re-enable producer: 'systemctl --user enable --now fleet-supervisor.timer'; or confirm Phase A6 producer migration is intentional and stop this observation cadence" \
@@ -235,7 +232,7 @@ EOF
 fi
 
 # ----- 5. mismatch + percentage (integer arithmetic) -----
-if [ "${count_nats}" -gt "${count_temporal}" ]; then
+if [[ "${count_nats}" -gt "${count_temporal}" ]]; then
     mismatch_count=$(( count_nats - count_temporal ))
     denominator=${count_nats}
 else
@@ -276,16 +273,16 @@ a6_observation_check  window=${SINCE}
   mismatch_pct=${mismatch_pct}%
 EOF
 
-if [ -n "${EXAMPLES}" ]; then
+if [[ -n "${EXAMPLES}" ]]; then
     echo "  mismatch_examples (first 5 by delta desc):"
     echo "${EXAMPLES}" | sed 's/^/    /'
 fi
 
 # ----- 8. exit code per spec (--alert only fires on FAIL_CLOSED, not WARN/ALARM) -----
-if [ "${mismatch_pct}" -lt 1 ]; then
+if [[ "${mismatch_pct}" -lt 1 ]]; then
     echo "  status=CLEAN"
     exit 0
-elif [ "${mismatch_pct}" -lt 5 ]; then
+elif [[ "${mismatch_pct}" -lt 5 ]]; then
     echo "  status=WARN"
     exit 1
 else

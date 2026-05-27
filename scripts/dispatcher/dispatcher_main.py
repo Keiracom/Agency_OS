@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from scripts.dispatcher import _envelope_route, _inbox_loop, _spawn
+from scripts.dispatcher import _budget_gate, _envelope_route, _inbox_loop, _spawn
 
 log = logging.getLogger("dispatcher_main")
 
@@ -35,7 +35,12 @@ DEFAULT_INBOX_ROOT = Path("/tmp")
 DEFAULT_REPO_ROOT = Path("/home/elliotbot/clawd/Agency_OS")
 
 
-def main(argv: list[str] | None = None, *, db_factory: Any = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    db_factory: Any = None,
+    budget_gate: Any = None,
+) -> int:
     args = _parse_args(argv)
     logging.basicConfig(
         level=args.log_level,
@@ -88,6 +93,17 @@ def main(argv: list[str] | None = None, *, db_factory: Any = None) -> int:
             _envelope_route.RouteAction.QUARANTINE,
             _envelope_route.RouteAction.LOG_PAUSED,
         ):
+            continue
+        budget_action, budget_result = _budget_gate.evaluate(envelope, budget_gate=budget_gate)
+        if budget_action == _budget_gate.BudgetAction.SKIP_SPAWN:
+            log.info(
+                "budget gate skipped spawn from=%s type=%s decision=%s spend_aud=%.2f budget_aud=%.2f",
+                envelope.get("from"),
+                envelope.get("type"),
+                budget_result.decision.value if budget_result else None,
+                budget_result.current_day_spend_aud if budget_result else 0.0,
+                budget_result.daily_budget_aud if budget_result else 0.0,
+            )
             continue
         _spawn.handle_envelope(
             callsign=args.callsign,

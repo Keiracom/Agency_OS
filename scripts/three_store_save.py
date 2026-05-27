@@ -2,11 +2,14 @@
 """
 three_store_save.py — Canonical 3-store save for directive completion (LAW XV).
 
+Amended 2026-05-27 (PR #1214 Agency_OS-uik): docs/MANUAL.md ARCHIVED;
+Supabase ceo_memory is now the sole SSOT. Drive mirror is best-effort,
+non-blocking (LAW_XV_DRIVE_MIRROR_FAIL on failure).
+
 Stores:
-  1. docs/MANUAL.md  — append entry under target SECTION
-  2. public.ceo_memory — upsert key ceo:directive_{directive}_complete
-  3. public.cis_directive_metrics — insert execution metrics row
-  4. Google Drive mirror via write_manual_mirror.py (best-effort)
+  1. public.ceo_memory — upsert key ceo:directive_{directive}_complete (PRIMARY)
+  2. public.cis_directive_metrics — insert execution metrics row
+  3. Google Drive mirror via write_manual_mirror.py (best-effort, non-blocking)
 
 Usage:
     python scripts/three_store_save.py --directive D1.8 --pr-number 329 --summary "..."
@@ -21,7 +24,7 @@ import os
 import re
 import subprocess
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
@@ -104,12 +107,6 @@ def parse_args():
         "--summary", required=True, help='Completion summary text, or "-" to read from stdin'
     )
     parser.add_argument(
-        "--manual-section",
-        type=int,
-        default=13,
-        help="Manual section number to append entry under (default: 13)",
-    )
-    parser.add_argument(
         "--dry-run",
         action="store_true",
         help="Print what would be written without writing anything",
@@ -117,75 +114,11 @@ def parse_args():
     return parser.parse_args()
 
 
-# ---------------------------------------------------------------------------
-# STORE 1 — MANUAL.md
-# ---------------------------------------------------------------------------
-
 REPO_ROOT = Path(__file__).resolve().parent.parent
 
 
-def manual_entry(directive: str, pr_number: int, summary: str, callsign: str) -> str:
-    date_str = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-    tag = f"[{callsign.upper()}] " if callsign else ""
-    return f"\n### {tag}Directive {directive} (PR #{pr_number}, {date_str})\n{summary}\n"
-
-
-def save_manual(
-    directive: str,
-    pr_number: int,
-    summary: str,
-    section: int,
-    dry_run: bool,
-    callsign: str = "elliot",
-) -> bool:
-    manual_path = REPO_ROOT / "docs" / "MANUAL.md"
-    if not manual_path.exists():
-        print(f"[STORE 1/4] Manual: FAILED — docs/MANUAL.md not found at {manual_path}")
-        return False
-
-    content = manual_path.read_text()
-    lines = content.splitlines(keepends=True)
-
-    target_marker = f"## SECTION {section}"
-    target_idx = None
-    next_idx = None
-
-    for i, line in enumerate(lines):
-        if line.strip() == target_marker or line.strip().startswith(f"{target_marker} "):
-            target_idx = i
-        elif target_idx is not None and re.match(r"^## SECTION \d+", line.strip()):
-            next_idx = i
-            break
-
-    if target_idx is None:
-        print(f"[STORE 1/4] Manual: FAILED — marker '{target_marker}' not found in docs/MANUAL.md")
-        return False
-
-    entry = manual_entry(directive, pr_number, summary, callsign)
-
-    if dry_run:
-        insert_before = next_idx if next_idx is not None else len(lines)
-        print(
-            f"[DRY-RUN][STORE 1/4] Would insert before line {insert_before + 1} in docs/MANUAL.md:"
-        )
-        print("---")
-        print(entry.strip())
-        print("---")
-        return True
-
-    insert_at = next_idx if next_idx is not None else len(lines)
-    lines.insert(insert_at, entry)
-    try:
-        manual_path.write_text("".join(lines))
-        print(f"[STORE 1/4] Manual: OK — entry inserted under SECTION {section}")
-        return True
-    except Exception as exc:
-        print(f"[STORE 1/4] Manual: FAILED — {exc}")
-        return False
-
-
 # ---------------------------------------------------------------------------
-# STORE 2 — ceo_memory
+# STORE 1 — ceo_memory (PRIMARY, sole SSOT per LAW XV amended 2026-05-27)
 # ---------------------------------------------------------------------------
 
 
@@ -198,26 +131,26 @@ def save_ceo_memory(
         "directive": directive,
         "pr": pr_number,
         "summary": summary,
-        "completed_at": datetime.now(timezone.utc).isoformat(),
+        "completed_at": datetime.now(UTC).isoformat(),
         "source": callsign,  # LAW XVII: tag write with callsign
     }
 
     if dry_run:
-        print(f"[DRY-RUN][STORE 2/4] Would upsert ceo_memory key={key!r}")
+        print(f"[DRY-RUN][STORE 1/3] Would upsert ceo_memory key={key!r}")
         print(f"  value={json.dumps(value)}")
         return True
 
     try:
         upsert_ceo_memory_key(callsign, key, value)
-        print(f"[STORE 2/4] ceo_memory: OK — key={key!r}")
+        print(f"[STORE 1/3] ceo_memory: OK — key={key!r}")
         return True
     except Exception as exc:  # noqa: BLE001
-        print(f"[STORE 2/4] ceo_memory: FAILED — {exc}")
+        print(f"[STORE 1/3] ceo_memory: FAILED — {exc}")
         return False
 
 
 # ---------------------------------------------------------------------------
-# STORE 3 — cis_directive_metrics
+# STORE 2 — cis_directive_metrics
 # ---------------------------------------------------------------------------
 
 
@@ -233,7 +166,7 @@ def save_metrics(
         directive_id = 0
         directive_ref = directive
 
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     row_preview = {
         "directive_id": directive_id,
         "directive_ref": directive_ref,
@@ -250,13 +183,13 @@ def save_metrics(
     }
 
     if dry_run:
-        print("[DRY-RUN][STORE 3/4] Would insert cis_directive_metrics row:")
+        print("[DRY-RUN][STORE 2/3] Would insert cis_directive_metrics row:")
         print(f"  {json.dumps(row_preview)}")
         return True
 
     dsn = _resolve_dsn()
     if not dsn:
-        print("[STORE 3/4] cis_directive_metrics: FAILED — DATABASE_URL / SUPABASE_DB_URL not set")
+        print("[STORE 2/3] cis_directive_metrics: FAILED — DATABASE_URL / SUPABASE_DB_URL not set")
         return False
 
     async def _insert() -> None:
@@ -310,29 +243,39 @@ def save_metrics(
     try:
         asyncio.run(_insert())
         print(
-            f"[STORE 3/4] cis_directive_metrics: OK — directive_ref={directive_ref!r}, directive_id={directive_id}"
+            f"[STORE 2/3] cis_directive_metrics: OK — directive_ref={directive_ref!r}, directive_id={directive_id}"
         )
         return True
     except Exception as exc:  # noqa: BLE001
-        print(f"[STORE 3/4] cis_directive_metrics: FAILED — {exc}")
+        print(f"[STORE 2/3] cis_directive_metrics: FAILED — {exc}")
         return False
 
 
 # ---------------------------------------------------------------------------
-# STORE 4 — Drive mirror (best-effort)
+# STORE 3 — Drive mirror (best-effort, non-blocking per LAW XV 2026-05-27)
 # ---------------------------------------------------------------------------
 
 
 def run_drive_mirror(dry_run: bool) -> None:
+    """Best-effort Drive mirror. Failure is LOGGED (LAW_XV_DRIVE_MIRROR_FAIL)
+    but does NOT block completion. The script-not-present case is also
+    non-blocking — Drive mirror is optional infrastructure per the amended
+    LAW XV (PR #1214, 2026-05-27)."""
     mirror_script = REPO_ROOT / "scripts" / "write_manual_mirror.py"
     if dry_run:
-        print(f"[DRY-RUN][STORE 4/4] Would run: {sys.executable} {mirror_script}")
+        print(f"[DRY-RUN][STORE 3/3] Would run: {sys.executable} {mirror_script}")
+        return
+    if not mirror_script.exists():
+        print("[STORE 3/3] Drive mirror: SKIPPED (write_manual_mirror.py not present)")
         return
     result = subprocess.run([sys.executable, str(mirror_script)], capture_output=True, text=True)
     if result.returncode == 0:
-        print("[STORE 4/4] Drive mirror: OK")
+        print("[STORE 3/3] Drive mirror: OK")
     else:
-        print(f"[STORE 4/4] Drive mirror: WARNING — exit {result.returncode}")
+        print(
+            f"[STORE 3/3] Drive mirror: LAW_XV_DRIVE_MIRROR_FAIL exit={result.returncode} "
+            "(non-blocking)"
+        )
         if result.stderr:
             print(f"  stderr: {result.stderr.strip()[:200]}")
 
@@ -352,43 +295,32 @@ def main():
 
     directive = args.directive
     pr_number = args.pr_number
-    section = args.manual_section
     dry_run = args.dry_run
     callsign = get_callsign()  # LAW XVII: fail loud on empty CALLSIGN
 
     if dry_run:
-        print(
-            f"[DRY-RUN] directive={directive!r} pr={pr_number} section={section} callsign={callsign!r}"
-        )
+        print(f"[DRY-RUN] directive={directive!r} pr={pr_number} callsign={callsign!r}")
         print()
 
     succeeded = []
 
-    # Store 1
-    ok1 = save_manual(directive, pr_number, summary, section, dry_run, callsign)
+    # Store 1 — ceo_memory (PRIMARY)
+    ok1 = save_ceo_memory(directive, pr_number, summary, dry_run, callsign)
     if ok1:
-        succeeded.append("Manual")
+        succeeded.append("ceo_memory")
     else:
         print(f"Succeeded before failure: {succeeded or 'none'}")
         sys.exit(1)
 
-    # Store 2
-    ok2 = save_ceo_memory(directive, pr_number, summary, dry_run, callsign)
+    # Store 2 — cis_directive_metrics
+    ok2 = save_metrics(directive, pr_number, summary, dry_run, callsign)
     if ok2:
-        succeeded.append("ceo_memory")
-    else:
-        print(f"Succeeded before failure: {succeeded}")
-        sys.exit(1)
-
-    # Store 3
-    ok3 = save_metrics(directive, pr_number, summary, dry_run, callsign)
-    if ok3:
         succeeded.append("cis_directive_metrics")
     else:
         print(f"Succeeded before failure: {succeeded}")
         sys.exit(1)
 
-    # Store 4 — best-effort
+    # Store 3 — Drive mirror (best-effort, non-blocking)
     run_drive_mirror(dry_run)
 
     print()

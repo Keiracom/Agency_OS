@@ -107,6 +107,37 @@ def test_ephemeral_cache_control_payload_shape():
     assert EPHEMERAL_CACHE_CONTROL == {"type": "ephemeral"}
 
 
+def test_ephemeral_cache_control_is_5min_default_no_ttl_key():
+    """CUTOVER GATE INFRASTRUCTURE-SIDE — "cache write TTL 5-minute" criterion
+    (RATIFIED-CEO Cat 21 lever 29, Dave directive 2026-05-27).
+
+    The Anthropic API treats `{"type": "ephemeral"}` with NO `"ttl"` key as
+    the 5-minute cache write TTL default. Adding `{"ttl": "1h"}` opts INTO
+    1-hour cache write — Atlas empirical 2026-05-27 measured 37% saving on
+    the cache-write cost line at 5-min vs 1h on observed fleet traffic
+    (~$18.75/M Opus 4.x cache_write 5m vs ~$30/M cache_write 1h published).
+
+    This test fails if anyone adds `"ttl"` to the canonical default. Per
+    LiteLLM helper docstring: if a specific caller has a justified need for
+    1h-cache-write (slow-changing prompt that survives long idle windows),
+    construct a one-off dict at the call-site + document the cost
+    justification — do NOT change EPHEMERAL_CACHE_CONTROL.
+    """
+    assert "ttl" not in EPHEMERAL_CACHE_CONTROL, (
+        "EPHEMERAL_CACHE_CONTROL must NOT carry a 'ttl' key — bare ephemeral "
+        "= 5-minute default per Anthropic API + Cutover Readiness Gate "
+        "INFRASTRUCTURE-SIDE 'cache write TTL 5-minute' criterion."
+    )
+    assert EPHEMERAL_CACHE_CONTROL.get("type") == "ephemeral"
+    # Exactly one key. Adds beyond {"type"} should be reviewed against the
+    # cutover-gate criterion + the cost-line trade-off.
+    assert set(EPHEMERAL_CACHE_CONTROL.keys()) == {"type"}, (
+        f"EPHEMERAL_CACHE_CONTROL has unexpected keys: "
+        f"{sorted(EPHEMERAL_CACHE_CONTROL.keys())}. The locked shape is "
+        f"exactly {{'type': 'ephemeral'}} per the cutover-gate discipline."
+    )
+
+
 def test_empty_messages_returns_empty():
     assert inject_cache_control_markers([]) == []
 

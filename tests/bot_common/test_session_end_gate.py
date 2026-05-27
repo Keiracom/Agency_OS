@@ -142,71 +142,8 @@ def test_check_cis_metrics_missing_returns_false() -> None:
     assert "no row" in reason
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# check_manual_section_13
-# ─────────────────────────────────────────────────────────────────────────────
-
-
-def test_check_manual_section_13_hit(monkeypatch, tmp_path) -> None:
-    manual = tmp_path / "MANUAL.md"
-    manual.write_text(
-        "# Manual\n\n"
-        "## SECTION 12 — X\nfoo\n\n"
-        "## SECTION 13 — BUILD SEQUENCE\n"
-        "| Sprint 1 | #9001 | Outcome 2 build | COMPLETE |\n\n"
-        "## SECTION 14 — Y\nbar\n"
-    )
-    monkeypatch.setattr(gate, "MANUAL_PATH", manual)
-    ok, reason = gate.check_manual_section_13(9001)
-    assert ok is True
-
-
-def test_check_manual_section_13_miss(monkeypatch, tmp_path) -> None:
-    manual = tmp_path / "MANUAL.md"
-    manual.write_text(
-        "## SECTION 13 — BUILD SEQUENCE\n"
-        "| Sprint 1 | #1234 | other | COMPLETE |\n\n"
-        "## SECTION 14 — Y\nbar\n"
-    )
-    monkeypatch.setattr(gate, "MANUAL_PATH", manual)
-    ok, reason = gate.check_manual_section_13(9001)
-    assert ok is False
-    assert "#9001" in reason
-
-
-def test_check_manual_section_13_directive_text_match(monkeypatch, tmp_path) -> None:
-    """Should also match "directive 9001" text format."""
-    manual = tmp_path / "MANUAL.md"
-    manual.write_text(
-        "## SECTION 13 — BUILD SEQUENCE\n"
-        "Per directive 9001, this was shipped.\n\n"
-        "## SECTION 14 — Y\n"
-    )
-    monkeypatch.setattr(gate, "MANUAL_PATH", manual)
-    ok, reason = gate.check_manual_section_13(9001)
-    assert ok is True
-
-
-def test_check_manual_section_13_missing_section_skipped(monkeypatch, tmp_path) -> None:
-    manual = tmp_path / "MANUAL.md"
-    manual.write_text("## SECTION 1 — X\n")  # no section 13
-    monkeypatch.setattr(gate, "MANUAL_PATH", manual)
-    ok, reason = gate.check_manual_section_13(9001)
-    assert ok is True
-    assert "skipped" in reason
-
-
-def test_check_manual_section_13_does_not_match_outside_section(monkeypatch, tmp_path) -> None:
-    """A #9001 reference in Section 12 should NOT satisfy the Section 13 check."""
-    manual = tmp_path / "MANUAL.md"
-    manual.write_text(
-        "## SECTION 12 — Notes\nSee #9001 for context.\n\n"
-        "## SECTION 13 — BUILD SEQUENCE\nUnrelated rows.\n\n"
-        "## SECTION 14 — Y\n"
-    )
-    monkeypatch.setattr(gate, "MANUAL_PATH", manual)
-    ok, _ = gate.check_manual_section_13(9001)
-    assert ok is False
+# check_manual_section_13 tests removed 2026-05-27 (PR #1214 Agency_OS-uik) —
+# docs/MANUAL.md archived; gate no longer enforces Manual Section 13.
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -235,11 +172,10 @@ def test_gate_check_trigger_but_no_directive_number_passes() -> None:
 
 
 def test_gate_check_all_stores_present_passes(monkeypatch, tmp_path) -> None:
+    """Amended 2026-05-27 (PR #1214): only ceo_memory + cis_metrics gate;
+    Manual section check removed. Both stores present → pass."""
     now = datetime(2026, 5, 12, 0, 0, 0, tzinfo=UTC)
     fresh_ts = (now - timedelta(minutes=1)).isoformat()
-    manual = tmp_path / "MANUAL.md"
-    manual.write_text("## SECTION 13 — BUILD SEQUENCE\n| Sprint X | #9001 | done | COMPLETE |\n")
-    monkeypatch.setattr(gate, "MANUAL_PATH", manual)
 
     def fake_sb_get(table: str, params: dict) -> list[dict]:
         if table == "ceo_memory":
@@ -257,9 +193,6 @@ def test_gate_check_all_stores_present_passes(monkeypatch, tmp_path) -> None:
 def test_gate_check_partial_fail_blocks(monkeypatch, tmp_path) -> None:
     """ceo_memory missing → blocked with directive number in reason."""
     now = datetime(2026, 5, 12, 0, 0, 0, tzinfo=UTC)
-    manual = tmp_path / "MANUAL.md"
-    manual.write_text("## SECTION 13 — BUILD SEQUENCE\n| #9001 | done | COMPLETE |\n")
-    monkeypatch.setattr(gate, "MANUAL_PATH", manual)
 
     def fake_sb_get(table: str, params: dict) -> list[dict]:
         if table == "ceo_memory":
@@ -277,14 +210,15 @@ def test_gate_check_partial_fail_blocks(monkeypatch, tmp_path) -> None:
     assert "three_store_save.py" in reason
 
 
-def test_gate_check_all_three_missing_lists_all_blockers(monkeypatch, tmp_path) -> None:
+def test_gate_check_all_required_stores_missing_lists_all_blockers(monkeypatch, tmp_path) -> None:
+    """Amended 2026-05-27 (PR #1214): all required stores (ceo_memory +
+    cis_metrics) missing → both listed as blockers. Manual is no longer
+    a required store and is not in the blocker list."""
     now = datetime(2026, 5, 12, 0, 0, 0, tzinfo=UTC)
-    manual = tmp_path / "MANUAL.md"
-    manual.write_text("## SECTION 13 — BUILD SEQUENCE\nnothing here\n")
-    monkeypatch.setattr(gate, "MANUAL_PATH", manual)
     with patch("src.evo.supabase_client.sb_get", _fake_sb_get_factory([])):
         ok, reason = gate.gate_check("directive 7777 complete", now=now)
     assert ok is False
     assert "ceo_memory" in reason
     assert "cis_directive_metrics" in reason
-    assert "MANUAL.md" in reason
+    # Manual is no longer gated — must NOT appear in blocker list.
+    assert "MANUAL.md" not in reason

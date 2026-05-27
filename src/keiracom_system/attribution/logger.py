@@ -1,8 +1,13 @@
 """logger.py — JSONL writer + reader for per-spawn attribution.
 
 Cutover Blocker 6 / Cat 21 lever 27 (Dave directive 2026-05-27 via Elliot).
-Every spawn traceable to its triggering source — Slack message, PR, cron,
-or inbox dispatch.
+Cutover Blocker 7 / Cat 21 lever 23 RATIFIED-CEO LAUNCH-BLOCKER adds
+per-task-type attribution on top of source-type (Viktor flagged as launch-
+blocker for empirical validation).
+
+Every spawn traceable to its triggering source AND its workload type —
+Slack message / PR / cron / inbox × PR_REVIEW / DELIBERATION / BUILD /
+CHAT / DISPATCH_MGMT.
 
 Storage choice: append-only JSONL at /home/elliotbot/clawd/logs/spawn-
 attribution.jsonl, same shape as the existing openai-cost.jsonl + anthropic-
@@ -16,6 +21,7 @@ Per-event JSONL row schema:
     "ts": "2026-05-27T01:23:45.678+00:00",
     "source_type": "slack" | "pr" | "cron" | "inbox" | "unknown",
     "source_id":   "<slack-ts>" | "PR-1202" | "agency-cost-rollup.timer" | "/tmp/telegram-relay-atlas/inbox/...json",
+    "task_type":   "pr_review" | "deliberation" | "build" | "chat" | "dispatch_mgmt" | "unknown",
     "callsign":    "atlas",
     "model":       "claude-opus-4-7",
     "input_tokens": ..., "output_tokens": ..., "cache_read_tokens": ..., "cache_write_tokens": ...,
@@ -28,6 +34,9 @@ ANCHORING:
   when available; otherwise back-computes from tokens + published rates.
 - Cutover Readiness Gate COST-TELEMETRY: "per-task-type attribution"
   criterion (restated 2026-05-27 outbox atlas-cutover-gate-verbatim-restate).
+- Cat 21 lever 23 LAUNCH-BLOCKER per Viktor — empirical validation needs
+  workload-type breakdown so customer-facing pricing reflects real cost
+  by task class, not aggregate-only.
 """
 
 from __future__ import annotations
@@ -45,12 +54,20 @@ DEFAULT_ATTRIBUTION_LOG = Path("/home/elliotbot/clawd/logs/spawn-attribution.jso
 # default to one of the existing types).
 SOURCE_TYPES: frozenset[str] = frozenset({"slack", "pr", "cron", "inbox", "unknown"})
 
+# Canonical task_type values per Cutover Blocker 7 / Cat 21 lever 23.
+# Same discipline as SOURCE_TYPES: explicit "unknown" tag is honest;
+# silent default to a real task_type is a BUG.
+TASK_TYPES: frozenset[str] = frozenset(
+    {"pr_review", "deliberation", "build", "chat", "dispatch_mgmt", "unknown"}
+)
+
 
 @dataclass(frozen=True)
 class SpawnAttributionEntry:
     ts: str  # ISO-8601 UTC
     source_type: str  # one of SOURCE_TYPES
     source_id: str
+    task_type: str  # one of TASK_TYPES
     callsign: str
     model: str
     input_tokens: int = 0
@@ -61,7 +78,7 @@ class SpawnAttributionEntry:
 
 
 class SpawnAttributionError(ValueError):
-    """Raised when an attribution entry has invalid source_type."""
+    """Raised when an attribution entry has invalid source_type or task_type."""
 
 
 def log_spawn_attribution(
@@ -70,6 +87,7 @@ def log_spawn_attribution(
     source_id: str,
     callsign: str,
     model: str,
+    task_type: str = "unknown",
     input_tokens: int = 0,
     output_tokens: int = 0,
     cache_read_tokens: int = 0,
@@ -83,10 +101,19 @@ def log_spawn_attribution(
     `source_type` MUST be in SOURCE_TYPES (caller responsibility to tag
     dispatches at the right granularity — silently routing to "unknown" is
     a bug, not a behaviour-preserving fallback).
+
+    `task_type` MUST be in TASK_TYPES. Default "unknown" lets the dispatcher
+    integration land in stages — early-stage dispatchers can omit task_type
+    until classification logic is built; explicit "unknown" tag is honest
+    rather than misclassifying a build as a chat.
     """
     if source_type not in SOURCE_TYPES:
         raise SpawnAttributionError(
             f"source_type {source_type!r} not in SOURCE_TYPES {sorted(SOURCE_TYPES)}"
+        )
+    if task_type not in TASK_TYPES:
+        raise SpawnAttributionError(
+            f"task_type {task_type!r} not in TASK_TYPES {sorted(TASK_TYPES)}"
         )
     path = log_path or DEFAULT_ATTRIBUTION_LOG
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -95,6 +122,7 @@ def log_spawn_attribution(
         ts=ts,
         source_type=source_type,
         source_id=source_id,
+        task_type=task_type,
         callsign=callsign,
         model=model,
         input_tokens=input_tokens,
@@ -160,4 +188,22 @@ def aggregate_by_callsign(entries: list[dict[str, Any]]) -> dict[str, dict[str, 
     return {
         k: {"cost_usd_sum": round(v["cost_usd_sum"], 6), "spawn_count": int(v["spawn_count"])}
         for k, v in by_callsign.items()
+    }
+
+
+def aggregate_by_task_type(entries: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Group attribution events by task_type. Returns {task_type: {cost_usd_sum, spawn_count}}.
+
+    Cutover Blocker 7 / Cat 21 lever 23 LAUNCH-BLOCKER — per-workload-class
+    cost breakdown for empirical pricing validation.
+    """
+    by_task: dict[str, dict[str, float]] = {}
+    for e in entries:
+        tt = e.get("task_type", "unknown")
+        bucket = by_task.setdefault(tt, {"cost_usd_sum": 0.0, "spawn_count": 0})
+        bucket["cost_usd_sum"] += float(e.get("cost_usd", 0.0))
+        bucket["spawn_count"] += 1
+    return {
+        k: {"cost_usd_sum": round(v["cost_usd_sum"], 6), "spawn_count": int(v["spawn_count"])}
+        for k, v in by_task.items()
     }

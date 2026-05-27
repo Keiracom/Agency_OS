@@ -1,10 +1,11 @@
-"""Per-spawn attribution logging — Cat 21 lever 27 / Cutover Blocker 6.
+"""Per-spawn attribution logging — Cat 21 levers 23 + 27 / Cutover Blockers 6 + 7.
 
-Captures (source_type, source_id) at dispatch time so every spawn is
-traceable back to its triggering event (Slack message / PR / cron / inbox).
+Captures (source_type, source_id, task_type) at dispatch time so every spawn
+is traceable back to its triggering event AND its workload class.
 
 Exports:
-- SOURCE_TYPES — frozenset of legal source_type values
+- SOURCE_TYPES — frozenset of legal source_type values (slack/pr/cron/inbox/unknown)
+- TASK_TYPES — frozenset of legal task_type values (pr_review/deliberation/build/chat/dispatch_mgmt/unknown)
 - SpawnAttributionEntry — frozen dataclass row representation
 - log_spawn_attribution — write one event to the JSONL log
 - load_attribution_last_24h — read recent events for aggregation
@@ -12,6 +13,7 @@ Exports:
 
 from .logger import (
     SOURCE_TYPES,
+    TASK_TYPES,
     SpawnAttributionEntry,
     load_attribution_last_24h,
     log_spawn_attribution,
@@ -19,6 +21,7 @@ from .logger import (
 
 __all__ = [
     "SOURCE_TYPES",
+    "TASK_TYPES",
     "SpawnAttributionEntry",
     "load_attribution_last_24h",
     "log_spawn_attribution",

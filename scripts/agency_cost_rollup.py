@@ -255,17 +255,35 @@ def load_attribution_breakdown(hours: int = 24) -> dict[str, dict[str, Any]]:
     return aggregate_by_source_type(entries)
 
 
+def load_task_type_breakdown(hours: int = 24) -> dict[str, dict[str, Any]]:
+    """Cutover Blocker 7 — per-task_type breakdown from spawn-attribution
+    JSONL. Returns {task_type: {cost_usd_sum, spawn_count}}. Cat 21 lever 23
+    LAUNCH-BLOCKER (Viktor). Same ImportError-safe pattern."""
+    try:
+        from src.keiracom_system.attribution.logger import (
+            aggregate_by_task_type,
+            load_attribution_last_24h,
+        )
+    except ImportError:
+        return {}
+    entries = load_attribution_last_24h(hours=hours)
+    return aggregate_by_task_type(entries)
+
+
 def format_ceo_post(
     summary: dict[str, Any],
     vultr_note: str,
     attribution: dict[str, dict[str, Any]] | None = None,
+    task_type_breakdown: dict[str, dict[str, Any]] | None = None,
 ) -> str:
     """Plain-English ceo-channel post per Dave's plain-English-strict rule.
 
     Optional `attribution` is the per-source_type breakdown from
     `load_attribution_breakdown()` — Cutover Blocker 6 / Viktor lever 27.
-    Omitted when empty so the rollup stays clean before dispatch
-    integration lands.
+    Optional `task_type_breakdown` is the per-task_type breakdown from
+    `load_task_type_breakdown()` — Cutover Blocker 7 / Cat 21 lever 23
+    LAUNCH-BLOCKER. Both omitted when empty so the rollup stays clean
+    before dispatch integration lands.
     """
     bp = summary["by_provider_usd"]
     bc = summary["by_callsign_usd"]
@@ -286,6 +304,16 @@ def format_ceo_post(
                 parts.append(f"{st} ${aud:.2f} ({n} spawns)")
         if parts:
             lines.append("  by source:    " + " | ".join(parts))
+    if task_type_breakdown:
+        parts = []
+        for tt in sorted(task_type_breakdown):
+            row = task_type_breakdown[tt]
+            aud = row.get("cost_usd_sum", 0) * 1.55
+            n = row.get("spawn_count", 0)
+            if aud > 0.001 or n > 0:
+                parts.append(f"{tt} ${aud:.2f} ({n} spawns)")
+        if parts:
+            lines.append("  by task:      " + " | ".join(parts))
     if "missing" in vultr_note or "error" in vultr_note:
         lines.append(f"  note: {vultr_note}")
     return "\n".join(lines)
@@ -312,6 +340,7 @@ def run(*, hours: int = 24, dry_run: bool = False) -> int:
     openai = load_openai_cost(hours)
     vultr_usd, vultr_note = load_vultr_cost(hours)
     attribution = load_attribution_breakdown(hours)
+    task_type_breakdown = load_task_type_breakdown(hours)
     summary = aggregate(anthropic, openai, vultr_usd)
     summary["vultr_note"] = vultr_note
     if attribution:
@@ -319,7 +348,17 @@ def run(*, hours: int = 24, dry_run: bool = False) -> int:
             k: {"cost_usd_sum": v["cost_usd_sum"], "spawn_count": v["spawn_count"]}
             for k, v in attribution.items()
         }
-    text = format_ceo_post(summary, vultr_note, attribution=attribution)
+    if task_type_breakdown:
+        summary["by_task_type_usd"] = {
+            k: {"cost_usd_sum": v["cost_usd_sum"], "spawn_count": v["spawn_count"]}
+            for k, v in task_type_breakdown.items()
+        }
+    text = format_ceo_post(
+        summary,
+        vultr_note,
+        attribution=attribution,
+        task_type_breakdown=task_type_breakdown,
+    )
     print(text)
     print(json.dumps(summary, indent=2))
     if dry_run:

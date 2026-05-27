@@ -332,3 +332,48 @@ def test_load_attribution_breakdown_returns_empty_when_log_absent(tmp_path: Path
     # Either {} (log absent or empty in production) OR populated dict.
     # The contract is: function returns a dict, never raises.
     assert isinstance(out, dict)
+
+
+# ---------- Cutover Blocker 7 task_type extension ----------
+
+
+def test_format_ceo_post_includes_task_type_line_when_provided():
+    summary = _mod.aggregate({"atlas": 10}, {"atlas": 1}, 2)
+    task_type_breakdown = {
+        "pr_review": {"cost_usd_sum": 4.0, "spawn_count": 5},
+        "build": {"cost_usd_sum": 8.0, "spawn_count": 2},
+        "deliberation": {"cost_usd_sum": 1.0, "spawn_count": 3},
+    }
+    post = _mod.format_ceo_post(summary, "Vultr API OK", task_type_breakdown=task_type_breakdown)
+    assert "by task:" in post
+    assert "pr_review" in post
+    assert "build" in post
+    assert "deliberation" in post
+    assert "spawns" in post
+
+
+def test_format_ceo_post_omits_task_type_line_when_empty():
+    summary = _mod.aggregate({"atlas": 10}, {"atlas": 1}, 2)
+    post = _mod.format_ceo_post(summary, "Vultr API OK", task_type_breakdown={})
+    assert "by task:" not in post
+
+
+def test_format_ceo_post_carries_both_source_and_task_breakdowns():
+    summary = _mod.aggregate({"atlas": 10}, {"atlas": 1}, 2)
+    attribution = {"slack": {"cost_usd_sum": 5.0, "spawn_count": 3}}
+    task_type_breakdown = {"pr_review": {"cost_usd_sum": 4.0, "spawn_count": 5}}
+    post = _mod.format_ceo_post(
+        summary,
+        "Vultr API OK",
+        attribution=attribution,
+        task_type_breakdown=task_type_breakdown,
+    )
+    assert "by source:" in post
+    assert "by task:" in post
+    assert "slack" in post
+    assert "pr_review" in post
+
+
+def test_load_task_type_breakdown_returns_dict_never_raises():
+    out = _mod.load_task_type_breakdown(hours=24)
+    assert isinstance(out, dict)

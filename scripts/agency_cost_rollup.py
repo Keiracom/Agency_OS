@@ -239,8 +239,34 @@ def aggregate(
     }
 
 
-def format_ceo_post(summary: dict[str, Any], vultr_note: str) -> str:
-    """Plain-English ceo-channel post per Dave's plain-English-strict rule."""
+def load_attribution_breakdown(hours: int = 24) -> dict[str, dict[str, Any]]:
+    """Cutover Blocker 6 attribution — per-source_type breakdown from
+    spawn-attribution JSONL. Returns {source_type: {cost_usd_sum, spawn_count}}.
+    Imports done locally to keep the rollup script runnable when the
+    attribution module is absent (e.g. legacy environments)."""
+    try:
+        from src.keiracom_system.attribution.logger import (
+            aggregate_by_source_type,
+            load_attribution_last_24h,
+        )
+    except ImportError:
+        return {}
+    entries = load_attribution_last_24h(hours=hours)
+    return aggregate_by_source_type(entries)
+
+
+def format_ceo_post(
+    summary: dict[str, Any],
+    vultr_note: str,
+    attribution: dict[str, dict[str, Any]] | None = None,
+) -> str:
+    """Plain-English ceo-channel post per Dave's plain-English-strict rule.
+
+    Optional `attribution` is the per-source_type breakdown from
+    `load_attribution_breakdown()` — Cutover Blocker 6 / Viktor lever 27.
+    Omitted when empty so the rollup stays clean before dispatch
+    integration lands.
+    """
     bp = summary["by_provider_usd"]
     bc = summary["by_callsign_usd"]
     aud_total = summary["total_aud"]
@@ -250,6 +276,16 @@ def format_ceo_post(summary: dict[str, Any], vultr_note: str) -> str:
         "  by callsign:  "
         + " | ".join(f"{cs} ${v * 1.55:.2f}" for cs, v in bc.items() if v > 0.001),
     ]
+    if attribution:
+        parts = []
+        for st in sorted(attribution):
+            row = attribution[st]
+            aud = row.get("cost_usd_sum", 0) * 1.55
+            n = row.get("spawn_count", 0)
+            if aud > 0.001 or n > 0:
+                parts.append(f"{st} ${aud:.2f} ({n} spawns)")
+        if parts:
+            lines.append("  by source:    " + " | ".join(parts))
     if "missing" in vultr_note or "error" in vultr_note:
         lines.append(f"  note: {vultr_note}")
     return "\n".join(lines)
@@ -275,9 +311,15 @@ def run(*, hours: int = 24, dry_run: bool = False) -> int:
     anthropic = load_anthropic_session_cost(hours)
     openai = load_openai_cost(hours)
     vultr_usd, vultr_note = load_vultr_cost(hours)
+    attribution = load_attribution_breakdown(hours)
     summary = aggregate(anthropic, openai, vultr_usd)
     summary["vultr_note"] = vultr_note
-    text = format_ceo_post(summary, vultr_note)
+    if attribution:
+        summary["by_source_type_usd"] = {
+            k: {"cost_usd_sum": v["cost_usd_sum"], "spawn_count": v["spawn_count"]}
+            for k, v in attribution.items()
+        }
+    text = format_ceo_post(summary, vultr_note, attribution=attribution)
     print(text)
     print(json.dumps(summary, indent=2))
     if dry_run:

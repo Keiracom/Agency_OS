@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily cache hit-rate ingest (Agency_OS-if0r)
+Requires=cache_hit_rate_ingest.service
+
+[Timer]
+# 23:50 AEST = 13:50 UTC — runs five minutes before the existing daily CEO
+# rollup window so cache_hit_rate_alert.py + agency_cost_rollup.py (future)
+# can read fresh data when they fire at 23:55 AEST.
+OnCalendar=*-*-* 13:50:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,15 @@
+[Unit]
+# Cutover Blocker 9 (Agency_OS-if0r) — daily cache hit-rate ingest.
+# Scans Claude session JSONL files + upserts per-callsign-per-day token
+# aggregates into public.keiracom_cache_hit_rates_daily.
+Description=Keiracom cache hit-rate ingest (Agency_OS-if0r)
+After=network.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+Environment="PYTHONPATH=/home/elliotbot/clawd/Agency_OS"
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+ExecStart=/usr/bin/python3 -B /home/elliotbot/clawd/Agency_OS/scripts/cache_hit_rate_ingest.py --days 7
+StandardOutput=append:/home/elliotbot/clawd/logs/cache-hit-rate-ingest.log
+StandardError=append:/home/elliotbot/clawd/logs/cache-hit-rate-ingest.log

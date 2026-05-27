@@ -36,6 +36,22 @@ from typing import Any
 ANTHROPIC_CACHE_MIN_TOKENS: int = 1024
 
 # Default cache_control marker payload (ephemeral type per Anthropic API).
+#
+# CUTOVER GATE INFRASTRUCTURE-SIDE — "cache write TTL 5-minute" criterion
+# (RATIFIED-CEO Cat 21 lever 29, Dave directive 2026-05-27).
+#
+# {"type": "ephemeral"} (no "ttl" key) → Anthropic 5-minute cache write TTL
+# default per https://docs.anthropic.com/en/docs/build-with-claude/prompt-caching.
+# Adding {"ttl": "1h"} opts INTO 1-hour cache write — which costs ~$30/M for
+# Opus 4.x cache_write vs ~$18.75/M for the 5-minute path (Anthropic published
+# rates). Atlas empirical 2026-05-27: 37% saving on the cache-write cost line
+# at 5-min vs 1h on observed fleet traffic.
+#
+# DO NOT add "ttl" to this dict. The contract is locked by
+# test_ephemeral_cache_control_is_5min_default_no_ttl_key. If a caller has a
+# justified need for 1h-cache-write (e.g. a slow-changing system prompt that
+# survives long idle windows), construct an explicit one-off dict at the
+# call-site + document the cost justification; do NOT change this default.
 EPHEMERAL_CACHE_CONTROL: dict[str, str] = {"type": "ephemeral"}
 
 

@@ -200,6 +200,27 @@ jobs:
         run: ./scripts/ci/check_no_raw_valkey_outside_client.sh
 
   # ============================================
+  # Guard: Cache write TTL 5-minute default (Cat 21 lever 29)
+  # ============================================
+  # Cutover Readiness Gate INFRASTRUCTURE-SIDE — "cache write TTL 5-minute"
+  # (RATIFIED-CEO Cat 21 lever 29, Dave directive 2026-05-27).
+  # Anthropic cache_write_1h ~$30/M (Opus 4.x) vs cache_write_5m ~$18.75/M →
+  # 37% delta on cache-write cost line per Atlas empirical 2026-05-27.
+  # Complements tests/keiracom_system/cache/test_litellm_helpers.py
+  # ::test_ephemeral_cache_control_is_5min_default_no_ttl_key (type-level
+  # lock on the canonical default constant) with cross-codebase enforcement
+  # on ad-hoc cache_control dicts.
+  cache-write-ttl-5min-guard:
+    name: Cache Write TTL 5-Min Default Guard (Cat 21 lever 29)
+    runs-on: ubuntu-latest
+    needs: backend-lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No 1h cache_control ttl literals in src/ or scripts/
+        run: ./scripts/ci/check_no_1h_cache_ttl.sh
+
+  # ============================================
   # Guard: Atomization pilot atom-store discipline
   # ============================================
   # Source: docs/architecture/design/atomization_pilot_schema_lock_proposal.md §6

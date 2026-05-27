@@ -131,18 +131,19 @@ and author-exclusion rule apply NOW regardless of cutover status.
 
 ## THREE-STORE COMPLETION
 (mandatory for save-trigger directives only)
+*Amended 2026-05-27, Agency_OS-uik: ceo_memory is now the sole SSOT; Drive demoted to best-effort mirror.*
 
-[ ] S1. Google Drive Manual updated (LAW XV)
-    Paste: exact heading of section updated.
-    Paste: first complete sentence of updated content.
-
-[ ] S2. Supabase ceo_memory written
+[ ] S1. Supabase ceo_memory written (LAW XV — PRIMARY)
     Follow SKILLS/SKILL_supabase_query.md Step 3.
     Paste: key name written + INSERT confirmation verbatim.
 
-[ ] S3. cis_directive_metrics written
+[ ] S2. cis_directive_metrics written (LAW XV)
     Follow SKILLS/SKILL_supabase_query.md Step 4.
     Paste: inserted row verbatim.
+
+[ ] S3. Drive-mirror best-effort (LAW XV — non-blocking)
+    Run `python3 scripts/write_manual_mirror.py` if available.
+    Paste: exit code + last log line. S3 failure is LOGGED (LAW_XV_DRIVE_MIRROR_FAIL) but does NOT block directive completion.
 
 ---
 

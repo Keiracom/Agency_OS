@@ -287,11 +287,11 @@ If a verification agent summarises instead of pasting raw output, the verificati
 
 ---
 
-## §18 — LAW XV: Manual Currency (HARD BLOCK)
+## §18 — LAW XV: State Currency (HARD BLOCK)
 
-The Agency OS Manual in Google Drive (Doc ID: `1p9FAQGowy9SgwglIxtkGsMuvLsR70MJBQrCSY6Ie9ho`) is the CEO's SSOT.
+Supabase `public.ceo_memory` is the CEO's sole SSOT. The Drive Manual (Doc ID `1p9FAQGowy9SgwglIxtkGsMuvLsR70MJBQrCSY6Ie9ho`) is ARCHIVED — historical reference only, not a write target. The repo `docs/MANUAL.md` is ARCHIVED similarly.
 
-**Save triggers (mandatory update):**
+**Save triggers (mandatory update to ceo_memory):**
 - Architecture decisions
 - Enrichment stack changes (provider added/removed/repriced)
 - Strategic decisions (pricing, verticals, feature direction)
@@ -302,34 +302,35 @@ The Agency OS Manual in Google Drive (Doc ID: `1p9FAQGowy9SgwglIxtkGsMuvLsR70MJB
 **No update needed for:** bug fixes, lint cleanup, routine PRs, debug sessions that change nothing.
 
 **Update protocol:**
-a) Update the relevant section via `skills/drive-manual/write_manual.py`
-b) Update the Last Updated date and directive number
-c) A save-trigger directive is NOT COMPLETE until the Manual is updated
-d) Violation: reporting complete without Manual update = LAW XV violation, log governance debt with type `LAW_XV_VIOLATION`
+a) Upsert the relevant `ceo:*` key into `public.ceo_memory` via MCP bridge → supabase → execute_sql.
+b) Update the directive counter (`ceo:directives.last_number`) + completion status.
+c) A save-trigger directive is NOT COMPLETE until ceo_memory is written.
+d) Violation: reporting complete without ceo_memory update = LAW XV violation, log governance debt with type `LAW_XV_VIOLATION`.
 
-*Ratified: 2026-03-11, CEO Directive #169*
+*Ratified: 2026-03-11, CEO Directive #169 (original Drive-primary).*
+*Amended: 2026-03-25, CEO Directive #256 (docs/MANUAL.md replaced Drive as primary).*
+*Amended: 2026-05-27, Agency_OS-uik (ceo_memory replaces docs/MANUAL.md as sole SSOT; Drive + repo Manual both archived).*
 
 Directive metrics (mandatory alongside LAW XV): After completing any directive, write execution metrics to cis_directive_metrics (execution_rounds, scope_creep, verification_first_pass, agents_used, save_completed). A directive is not complete until its metrics are logged. Use the MCP bridge to INSERT directly.
 
-**§18a — LAW XV AMENDMENT: Three-Store Completion Rule (HARD BLOCK)**
+**§18a — LAW XV: Three-Store Completion Rule (HARD BLOCK)**
 *Ratified: 2026-03-13, CEO Directive #188*
 *Amended: 2026-03-25, CEO Directive #256 — docs/MANUAL.md replaces Google Drive as primary store*
+*Amended: 2026-05-27, Agency_OS-uik — ceo_memory replaces docs/MANUAL.md as sole SSOT; Drive demoted to best-effort mirror*
 
 A directive is NOT complete until ALL THREE stores are confirmed written:
 
-1. **`docs/MANUAL.md` in repo** — CEO SSOT (primary). Write directly to this file. (architecture, stack, milestones, baselines, build sequence). After writing, run `scripts/write_manual_mirror.py` to mirror to Google Doc (best effort — if Drive write fails, log it but do NOT block completion).
-2. **Supabase ceo_memory** — directive counter (`ceo:directives.last_number`), completion status, key state changes. Use MCP bridge → supabase → execute_sql to upsert into `ceo_memory`.
-3. **cis_directive_metrics** — execution metrics row (execution_rounds, scope_creep, verification_first_pass, agents_used, save_completed).
+1. **Supabase `ceo_memory`** — CEO SSOT (primary). Directive counter (`ceo:directives.last_number`), completion status, key state changes. Upsert via MCP bridge → supabase → execute_sql. This is the canonical store; the other two are derivatives.
+2. **`cis_directive_metrics`** — execution metrics row (execution_rounds, scope_creep, verification_first_pass, agents_used, save_completed).
+3. **Drive-mirror best-effort** — optional backup export of ceo_memory state to Drive via `scripts/write_manual_mirror.py` (if available). Failure is LOGGED, NOT BLOCKING. A directive completes regardless of Drive write outcome.
 
-**All three are mandatory. Partial completion is a violation.**
+**Stores 1 + 2 are mandatory. Store 3 is best-effort.** Partial completion of stores 1 or 2 is a violation; store-3 failure is not.
 
-**Verification (mandatory):** After every save-trigger write to `docs/MANUAL.md`, paste the output of:
-`cat docs/MANUAL.md | grep "SECTION"`
-"All three stores written" without this verbatim output is rejected.
+**Verification (mandatory):** After every save-trigger write to `ceo_memory`, paste the verbatim `INSERT` / `UPDATE` confirmation from the SQL response. "ceo_memory written" without this verbatim output is rejected.
 
-Violation handling: Reporting complete with any store missing = LAW XV violation. Log governance debt with type `LAW_XV_VIOLATION` AND backfill the missing stores before proceeding.
+Violation handling: Reporting complete with store 1 or store 2 missing = LAW XV violation. Log governance debt with type `LAW_XV_VIOLATION` AND backfill the missing stores before proceeding. Store-3 failure logs a `LAW_XV_DRIVE_MIRROR_FAIL` notice for visibility but does not block.
 
-Backfill protocol: If a session ends before all three stores are written, the NEXT session must backfill before issuing any new directives.
+Backfill protocol: If a session ends before stores 1 + 2 are written, the NEXT session must backfill before issuing any new directives.
 
 ---
 

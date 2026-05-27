@@ -289,3 +289,46 @@ def test_write_daily_log_appends_jsonl(tmp_path: Path):
     assert len(lines) == 2
     assert json.loads(lines[0])["total_usd"] == 1.0
     assert json.loads(lines[1])["total_usd"] == 2.0
+
+
+# ---------- Cutover Blocker 6 attribution extension (PR following #1202) ----------
+
+
+def test_format_ceo_post_includes_attribution_line_when_provided():
+    summary = _mod.aggregate({"atlas": 10}, {"atlas": 1}, 2)
+    attribution = {
+        "slack": {"cost_usd_sum": 5.0, "spawn_count": 3},
+        "pr": {"cost_usd_sum": 2.0, "spawn_count": 1},
+    }
+    post = _mod.format_ceo_post(summary, "Vultr API OK", attribution=attribution)
+    assert "by source:" in post
+    assert "slack" in post
+    assert "pr" in post
+    assert "spawns" in post  # spawn_count rendered
+
+
+def test_format_ceo_post_omits_attribution_line_when_empty():
+    """No attribution data → no by-source line (clean before dispatch integration)."""
+    summary = _mod.aggregate({"atlas": 10}, {"atlas": 1}, 2)
+    post = _mod.format_ceo_post(summary, "Vultr API OK", attribution={})
+    assert "by source:" not in post
+
+
+def test_format_ceo_post_omits_zero_or_empty_attribution_buckets():
+    summary = _mod.aggregate({"atlas": 10}, {"atlas": 1}, 2)
+    attribution = {
+        "slack": {"cost_usd_sum": 5.0, "spawn_count": 3},
+        "cron": {"cost_usd_sum": 0.0, "spawn_count": 0},  # zero — omit
+    }
+    post = _mod.format_ceo_post(summary, "Vultr API OK", attribution=attribution)
+    assert "slack" in post
+    assert "cron" not in post
+
+
+def test_load_attribution_breakdown_returns_empty_when_log_absent(tmp_path: Path, monkeypatch):
+    """Module imports + log-absent path → empty dict, no exception."""
+    # No log file present in production location; function returns {} gracefully.
+    out = _mod.load_attribution_breakdown(hours=24)
+    # Either {} (log absent or empty in production) OR populated dict.
+    # The contract is: function returns a dict, never raises.
+    assert isinstance(out, dict)

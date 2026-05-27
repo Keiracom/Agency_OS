@@ -1,6 +1,13 @@
 #!/usr/bin/env bash
 # agent_keepalive.sh — ExecStart wrapper for *-agent.service units (KEI-94 + KEI-140).
 #
+# BOUNDED-SPAWN DISCIPLINE — every keepalive respawn starts from zero by
+# default; no Claude conversation-context carryover. Dave directive 2026-05-27
+# governance fix: keepalive had autonomous restart authority + agents
+# respawned with accumulated context, violating the bounded-spawn principle.
+# State carryover now requires explicit --preserve-context <justification>
+# override + logged event to /tmp/keepalive_override_log.jsonl.
+#
 # Type=simple + Restart=always keep-alive for agent claude sessions. Each unit
 # blocks on this script until the tmux session terminates; systemd then
 # restarts the unit, respawning the session.
@@ -25,7 +32,12 @@
 #   so the pane recovers.
 #
 # Usage:
-#     agent_keepalive.sh <tmux_session> <callsign> <worktree>
+#     agent_keepalive.sh <tmux_session> <callsign> <worktree> [--preserve-context "<justification>"]
+#
+# Default (per Dave 2026-05-27): claude respawns FRESH on every restart.
+# Override: --preserve-context "<reason>" → uses `claude --continue` to
+# resume prior conversation; emits one JSONL event per spawn to
+# /tmp/keepalive_override_log.jsonl with timestamp + callsign + justification.
 #
 # Example unit ExecStart:
 #     ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/agent_keepalive.sh atlas atlas /home/elliotbot/clawd/Agency_OS-atlas
@@ -33,13 +45,39 @@
 # Env (optional):
 #     KEEPALIVE_POLL_SECONDS — sleep between has-session checks (default 10)
 #     KEEPALIVE_DRY         — print the resolved tmux/send-keys plan and exit 0
+#     KEEPALIVE_OVERRIDE_LOG — override JSONL log path (default /tmp/keepalive_override_log.jsonl)
 
 set -euo pipefail
 
-session="${1:?usage: agent_keepalive.sh <tmux_session> <callsign> <worktree>}"
+session="${1:?usage: agent_keepalive.sh <tmux_session> <callsign> <worktree> [--preserve-context <justification>]}"
 callsign="${2:?missing callsign}"
 worktree="${3:?missing worktree}"
 poll_seconds="${KEEPALIVE_POLL_SECONDS:-10}"
+override_log="${KEEPALIVE_OVERRIDE_LOG:-/tmp/keepalive_override_log.jsonl}"
+
+# Dave 2026-05-27 bounded-spawn discipline — fresh context by default.
+# --preserve-context "<justification>" opts INTO state carryover (claude
+# --continue). Justification is required + non-empty + persisted to JSONL.
+preserve_context=""
+preserve_justification=""
+shift 3 || true
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        --preserve-context)
+            preserve_context="1"
+            preserve_justification="${2:-}"
+            if [[ -z "$preserve_justification" ]]; then
+                echo "[keepalive] --preserve-context requires a non-empty justification string" >&2
+                exit 2
+            fi
+            shift 2
+            ;;
+        *)
+            echo "[keepalive] unknown argument: $1" >&2
+            exit 2
+            ;;
+    esac
+done
 
 if [[ ! -d "$worktree" ]]; then
     echo "[keepalive] worktree missing: $worktree" >&2
@@ -51,6 +89,33 @@ if ! command -v tmux >/dev/null 2>&1; then
     exit 2
 fi
 
+# Dave 2026-05-27 bounded-spawn — fresh context default ─────────────────────
+# Default claude invocation: NO --continue, NO --resume. Every respawn = a
+# new bounded task with zero conversation-context carryover from the prior
+# session. Each respawn re-reads CLAUDE.md + IDENTITY.md + session-start
+# hooks fresh — the only state that survives is on-disk (git, filesystem,
+# ceo_memory). This is the canonical bounded-spawn invariant.
+#
+# --preserve-context override: caller explicitly opts INTO state carryover
+# (claude --continue resumes the last session UUID). One JSONL event written
+# to $override_log per spawn cycle, carrying the justification + ts + callsign
+# so reviewers can audit when context carried forward + why.
+if [[ -n "$preserve_context" ]]; then
+    # Log the override BEFORE spawning so a crashed spawn still leaves a
+    # trail. Append-only JSONL — one event per spawn.
+    mkdir -p "$(dirname "$override_log")" 2>/dev/null || true
+    override_event=$(printf '{"ts":"%s","callsign":"%s","session":"%s","worktree":"%s","justification":%s}' \
+        "$(date -u +%FT%TZ)" "$callsign" "$session" "$worktree" \
+        "$(printf '%s' "$preserve_justification" | python3 -c 'import json,sys; print(json.dumps(sys.stdin.read()))')")
+    # Trailing newline appended via printf '%s\n' so $() command substitution
+    # doesn't strip it — each event lands on its own JSONL line.
+    printf '%s\n' "$override_event" >> "$override_log" 2>/dev/null || true
+    echo "[keepalive] --preserve-context override active; justification logged to $override_log" >&2
+    claude_invocation="claude --continue --dangerously-skip-permissions"
+else
+    claude_invocation="claude --dangerously-skip-permissions"
+fi
+
 # KEI-94 — in-pane respawn loop. The pane process is a `while true` shell;
 # claude runs as its child. When claude exits (clean shutdown, /clear path,
 # OOM, crash) the shell loops back, sleeps a moment to avoid a busy spawn
@@ -58,7 +123,7 @@ fi
 # pane. The tmux session survives Claude exits — no full unit restart
 # needed. systemd's Restart=always remains the outer safety net for cases
 # where the wrapper itself dies.
-claude_cmd="export CALLSIGN='$callsign' && cd '$worktree' && while true; do claude --dangerously-skip-permissions; echo \"[keepalive] claude exited at \$(date -u +%FT%TZ), respawning in 2s\" >&2; sleep 2; done"
+claude_cmd="export CALLSIGN='$callsign' && cd '$worktree' && while true; do $claude_invocation; echo \"[keepalive] claude exited at \$(date -u +%FT%TZ), respawning in 2s\" >&2; sleep 2; done"
 
 if [[ -n "${KEEPALIVE_DRY:-}" ]]; then
     echo "[keepalive] would: tmux new-session -d -s '$session' -c '$worktree'"

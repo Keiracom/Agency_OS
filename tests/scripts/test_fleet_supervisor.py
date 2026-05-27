@@ -140,6 +140,12 @@ def test_scenario_2_idle_no_queue_pr_review(monkeypatch):
     monkeypatch.setattr(fs, "insert_review_task", MagicMock())
     inject_mock = MagicMock()
     monkeypatch.setattr(fs, "inject_task", inject_mock)
+    # Agency_OS-f0qn: auto-claim race-condition pre-check now runs `gh pr view`
+    # before dispatching review. Pin the happy path to OPEN so this scenario
+    # test stays focused on the dispatch logic, not the network-dependent
+    # state probe (which has its own coverage in
+    # tests/test_fleet_supervisor_auto_claim_race.py).
+    monkeypatch.setattr(fs, "fetch_pr_state", lambda n: "OPEN")
 
     status = fs.process_agent(AGENT_ELLIOT, conn, [pr], 99)
 

@@ -803,6 +803,35 @@ def fetch_pr_comments(pr_number: int) -> list[dict]:
         return []
 
 
+def fetch_pr_state(pr_number: int) -> str | None:
+    """Return current PR state ("OPEN" | "MERGED" | "CLOSED") via `gh pr view`.
+
+    Returns None on gh failure (fail-open — caller falls through to OPEN-equivalent
+    behaviour rather than silently suppressing legitimate review dispatches on
+    transient network blips).
+
+    Anchored on feedback_auto_claim_race_condition_2026_05_26: list_open_prs()
+    snapshot can be stale by the time the per-agent dispatch fires. Documented
+    5-of-5 race-claims in a single session (PRs #1161/#1162/#1171/#1175/#1177)
+    — admin-merge fires on Elliot APPROVE + minimal CI before review claim
+    lands. Pre-check at dispatch site is the bounded fix.
+    """
+    result = subprocess.run(
+        ["gh", "pr", "view", str(pr_number), "--json", "state"],
+        capture_output=True,
+        text=True,
+    )
+    if result.returncode != 0:
+        log.warning("gh pr view %d state-precheck failed: %s", pr_number, result.stderr)
+        return None
+    try:
+        data = json.loads(result.stdout) or {}
+        state = data.get("state")
+        return str(state) if state else None
+    except json.JSONDecodeError:
+        return None
+
+
 # KEI-190: trailing `?` on `-final` is the bug fix — previous regex required
 # `-final` to match, so bare `[REVIEW:HOLD:callsign]` (the form every reviewer
 # actually uses) was treated as "no review found" and the supervisor re-dispatched
@@ -1085,6 +1114,22 @@ def _handle_idle_no_queue(
     review_pr = find_pr_for_review(prs, callsign)
     if review_pr:
         pr_number = review_pr["number"]
+        # Race-condition pre-check (Agency_OS-f0qn) per
+        # feedback_auto_claim_race_condition_2026_05_26: list_open_prs()
+        # snapshot can be stale by dispatch time. If the PR has already
+        # merged/closed (admin-merge on Elliot APPROVE + minimal CI is the
+        # common race), skip the claim — don't burn the agent's cycle on
+        # a post-merge review. Fail-open on gh error (None → proceed).
+        current_state = fetch_pr_state(pr_number)
+        if current_state is not None and current_state != "OPEN":
+            log.info(
+                "[%s] race-skip: PR #%d is %s — not claiming review",
+                callsign,
+                pr_number,
+                current_state,
+            )
+            status.summary = f"race-skip PR #{pr_number} ({current_state}), idle"
+            return status
         pr_title = review_pr.get("title", f"PR #{pr_number}")
         pr_url = review_pr.get("url", f"https://github.com/keiracom/Agency_OS/pull/{pr_number}")
         insert_review_task(conn, callsign, pr_number, pr_title, pr_url)

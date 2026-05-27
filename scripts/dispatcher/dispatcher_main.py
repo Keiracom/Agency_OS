@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from scripts.dispatcher import _envelope_route, _inbox_loop, _spawn
+from scripts.dispatcher import _context_window_gate, _envelope_route, _inbox_loop, _spawn
 
 log = logging.getLogger("dispatcher_main")
 
@@ -35,7 +35,13 @@ DEFAULT_INBOX_ROOT = Path("/tmp")
 DEFAULT_REPO_ROOT = Path("/home/elliotbot/clawd/Agency_OS")
 
 
-def main(argv: list[str] | None = None, *, db_factory: Any = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    db_factory: Any = None,
+    context_window_enabled: bool = False,
+    context_window_summariser: Any = None,
+) -> int:
     args = _parse_args(argv)
     logging.basicConfig(
         level=args.log_level,
@@ -88,6 +94,20 @@ def main(argv: list[str] | None = None, *, db_factory: Any = None) -> int:
             _envelope_route.RouteAction.QUARANTINE,
             _envelope_route.RouteAction.LOG_PAUSED,
         ):
+            continue
+        ctx_action, ctx_result = _context_window_gate.evaluate(
+            envelope,
+            enabled=context_window_enabled,
+            summariser=context_window_summariser,
+        )
+        if ctx_action == _context_window_gate.ContextWindowAction.SKIP_SPAWN:
+            log.info(
+                "context-window gate rejected spawn from=%s role=%s initial_tokens=%d ceiling=%d",
+                envelope.get("from"),
+                ctx_result.role if ctx_result else None,
+                ctx_result.initial_tokens if ctx_result else 0,
+                ctx_result.ceiling_tokens if ctx_result else 0,
+            )
             continue
         _spawn.handle_envelope(
             callsign=args.callsign,

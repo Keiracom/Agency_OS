@@ -64,22 +64,26 @@ def test_preserve_context_uses_claude_continue(tmp_path: Path):
 
 
 def test_preserve_context_writes_jsonl_event(tmp_path: Path):
+    """The worktree path must exist (script exits 2 on missing dir before
+    reaching parse logic) — use tmp_path for CI portability."""
     log_path = tmp_path / "override.jsonl"
+    worktree = tmp_path / "fake_worktree"
+    worktree.mkdir()
     result = _run_keepalive(
         "atlas",
         "atlas",
-        "/home/elliotbot/clawd/Agency_OS-atlas",
+        str(worktree),
         "--preserve-context",
         "stuck review session needs context to resume",
         override_log=log_path,
     )
-    assert result.returncode == 0
+    assert result.returncode == 0, f"unexpected exit={result.returncode}\nstderr: {result.stderr}"
     assert log_path.exists()
     content = log_path.read_text(encoding="utf-8").strip()
     event = json.loads(content)
     assert event["callsign"] == "atlas"
     assert event["session"] == "atlas"
-    assert event["worktree"] == "/home/elliotbot/clawd/Agency_OS-atlas"
+    assert event["worktree"] == str(worktree)
     assert event["justification"] == "stuck review session needs context to resume"
     assert "ts" in event
     # ISO 8601 with Z suffix
@@ -153,11 +157,15 @@ def test_unknown_argument_fails():
 # ---- Backwards compatibility — existing systemd-unit invocations ----------
 
 
-def test_existing_three_arg_invocation_unchanged():
+def test_existing_three_arg_invocation_unchanged(tmp_path: Path):
     """systemd units pass exactly 3 args (session callsign worktree). No --flag
-    must still work — Default path is fresh-context invocation."""
-    result = _run_keepalive("atlas", "atlas", "/home/elliotbot/clawd/Agency_OS-atlas")
-    assert result.returncode == 0
+    must still work — Default path is fresh-context invocation.
+
+    Worktree must exist (script exits 2 on missing dir) — tmp_path for CI."""
+    worktree = tmp_path / "fake_atlas_worktree"
+    worktree.mkdir()
+    result = _run_keepalive("atlas", "atlas", str(worktree))
+    assert result.returncode == 0, f"unexpected exit={result.returncode}\nstderr: {result.stderr}"
     # Default path
     assert "--continue" not in result.stdout
     assert "claude --dangerously-skip-permissions" in result.stdout

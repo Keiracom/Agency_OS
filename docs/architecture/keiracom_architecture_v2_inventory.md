@@ -585,6 +585,23 @@ Added per Dave directive KEI-SYSTEM-DEEP-DIVE 2026-05-25 ~1779746500. Twelve lay
 
 This canonical registration sits in `cost.cache_discipline` (Cat 4) RATIFIED-CEO placement + LOOSE implementation; deep-dive Layer 11 produces the implementation spec.
 
+## Category 21 — Cutover Readiness Gate (owner: Elliot orchestrates; named gate items distributed across builders)
+
+Dave directive 2026-05-27 ratified the Cutover Readiness Gate as the load-bearing V1-launch test. Restated verbatim 2026-05-27 across all callsigns (Atlas, Aiden, Orion at outbox `orion-cutover-gate-verbatim-restate-resumed-1779851819.json`). Seven sections (PRINCIPLE + AGENT-SIDE + INFRASTRUCTURE-SIDE + STATE-SEPARATION + COST-TELEMETRY + QUALITY + GOVERNANCE) + CONCUR-GATE RULE; every deliberation MUST open with does-this-satisfy-the-gate question, deferrals require Dave override, gate-violating proposals REJECTED at deliberation tier.
+
+| element_id | description | status | source | install | phase |
+|---|---|---|---|---|---|
+| cat21.gate_canonical | Cutover Readiness Gate criteria — 7 sections + CONCUR-GATE rule | RATIFIED-CEO | Dave directive 2026-05-27 + verbatim restate outbox | nothing | V1-launch (load-bearing) |
+| cat21.concur_gate_rule | Every deliberation opens with does-this-satisfy-the-gate question; deferrals require Dave override; gate-violating proposals REJECTED at deliberation tier | RATIFIED-CEO | Dave directive 2026-05-27 | nothing | running |
+| cat21.cutover_blocker_1_bounded_spawn_baseline | 0.79 AUD bounded-spawn baseline anchored (Atlas reference) — drives COST_TELEMETRY ceiling math | RATIFIED-CEO | Cutover gate COST_TELEMETRY section | nothing | V1-launch |
+| cat21.cutover_blocker_2_budget_ceiling | Dispatcher pre-spawn budget gate (default 25 AUD/day fleet ceiling) — PR #1203 | RATIFIED-CEO | Agency_OS-6ah2 | dispatcher pre-spawn integration (separate KEI) | V1-launch |
+| cat21.cutover_blocker_5_idempotency | Dispatcher idempotency key (sha256 source+content+60s window) Valkey SET NX EX 5min — PR #1204 | RATIFIED-CEO | Agency_OS-6c2k + Viktor lever 26 | dispatcher pre-spawn integration (separate KEI) | V1-launch |
+| cat21.cutover_blocker_8_ephemeral_persistence_boundary | Engineer-facing spec naming what survives vs dies with spawn — `docs/architecture/ephemeral_persistence_boundary.md` | RATIFIED-CEO | Agency_OS-b0lx; Dave 2026-05-27 | nothing | V1-launch (load-bearing reference) |
+| cat21.keepalive_fresh_default | Bounded-spawn discipline in `scripts/agent_keepalive.sh` — fresh context default + `--preserve-context` override with logged justification — PR #1201 | RATIFIED-CEO | Dave directive 2026-05-27; INFRASTRUCTURE-SIDE.keepalive_retired_or_fresh_default | nothing | V1-launch |
+| cat21.composer_isolation_guard | CI guard enforcing Composer-output-never-reaches-agent-reasoning hard constraint — PR #1198 | RATIFIED-CEO | atomization architecture v1 hard constraint #1 | nothing | V1-launch |
+
+Additional cutover-blocker rows land here as separate engineer-tier dispatches resolve them. This section is the single source of truth for "what does the cutover gate consist of" — any future audit must scan this row set to verify gate satisfaction before V1 cutover commits.
+
 ## Category 22 — Customer-Lens Gaps (owner: Aiden arch-fit + Atlas impl-feasibility on V1 hard gates + Viktor pricing-roadmap)
 
 Added per Dave directive KEI-CUSTOMER-LENS-GAPS 2026-05-25 ~1779749200. Twenty-nine gaps across 8 themes per CEO priority tags. Items #21/#22/#23 LOCKED IN Dave V1 migration scope.

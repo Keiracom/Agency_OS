@@ -16,9 +16,11 @@ from pathlib import Path
 import pytest
 
 from src.keiracom_system.attribution import (
+    COMPLETION_STATUSES,
     SOURCE_TYPES,
     TASK_TYPES,
     SpawnAttributionEntry,
+    aggregate_by_completion_status,
     load_attribution_last_24h,
     log_spawn_attribution,
 )
@@ -284,3 +286,103 @@ def test_aggregate_by_callsign_sums_cost_and_counts_spawns():
     assert out["atlas"]["cost_usd_sum"] == 0.8
     assert out["atlas"]["spawn_count"] == 2
     assert out["elliot"]["cost_usd_sum"] == 0.1
+
+
+# ---------- completion_status (Phase 1 cutover-gate, Agency_OS-vq7k) ----------
+
+
+def test_completion_statuses_enumerated_to_five():
+    """Phase 1 cutover-gate dispatch — outcome enum locked."""
+    assert {"success", "fail", "timeout", "interrupted", "unknown"} == COMPLETION_STATUSES
+
+
+def test_log_spawn_attribution_persists_completion_status(tmp_path: Path):
+    log = tmp_path / "attr.jsonl"
+    entry = log_spawn_attribution(
+        source_type="cron",
+        source_id="some-timer",
+        callsign="scout",
+        model="claude-opus-4-7",
+        completion_status="success",
+        log_path=log,
+    )
+    assert entry.completion_status == "success"
+    raw = json.loads(log.read_text().strip())
+    assert raw["completion_status"] == "success"
+
+
+def test_log_spawn_attribution_defaults_completion_status_to_unknown(tmp_path: Path):
+    """completion_status defaults to 'unknown' when caller omits — explicit
+    unknown tag lets dispatch-time writers land before completion-classification
+    logic is wired."""
+    log = tmp_path / "attr.jsonl"
+    entry = log_spawn_attribution(
+        source_type="inbox",
+        source_id="/tmp/telegram-relay-scout/inbox/x.json",
+        callsign="scout",
+        model="claude-opus-4-7",
+        log_path=log,
+    )
+    assert entry.completion_status == "unknown"
+
+
+def test_log_spawn_attribution_rejects_unknown_completion_status(tmp_path: Path):
+    """Same discipline as source_type + task_type — silent default to a real
+    completion_status is a BUG. Unknown enum value MUST raise."""
+    log = tmp_path / "attr.jsonl"
+    with pytest.raises(SpawnAttributionError) as excinfo:
+        log_spawn_attribution(
+            source_type="cron",
+            source_id="some-timer",
+            callsign="scout",
+            model="claude-opus-4-7",
+            completion_status="partial",  # not in COMPLETION_STATUSES
+            log_path=log,
+        )
+    assert "completion_status" in str(excinfo.value)
+    # Failed call must not have written anything.
+    assert not log.exists() or log.read_text() == ""
+
+
+def test_log_spawn_attribution_accepts_all_completion_statuses(tmp_path: Path):
+    """All five enum values land cleanly."""
+    log = tmp_path / "attr.jsonl"
+    for status in sorted(COMPLETION_STATUSES):
+        log_spawn_attribution(
+            source_type="cron",
+            source_id="t",
+            callsign="scout",
+            model="claude-opus-4-7",
+            completion_status=status,
+            log_path=log,
+        )
+    lines = log.read_text().strip().splitlines()
+    statuses_written = {json.loads(line)["completion_status"] for line in lines}
+    assert statuses_written == COMPLETION_STATUSES
+
+
+def test_aggregate_by_completion_status_sums_cost_and_counts_spawns():
+    entries = [
+        {"completion_status": "success", "callsign": "atlas", "cost_usd": 0.5},
+        {"completion_status": "success", "callsign": "max", "cost_usd": 0.3},
+        {"completion_status": "fail", "callsign": "atlas", "cost_usd": 2.0},
+        {"completion_status": "timeout", "callsign": "elliot", "cost_usd": 1.0},
+        {"completion_status": "interrupted", "callsign": "scout", "cost_usd": 0.1},
+    ]
+    out = aggregate_by_completion_status(entries)
+    assert out["success"]["cost_usd_sum"] == 0.8
+    assert out["success"]["spawn_count"] == 2
+    assert out["fail"]["cost_usd_sum"] == 2.0
+    assert out["fail"]["spawn_count"] == 1
+    assert out["timeout"]["cost_usd_sum"] == 1.0
+    assert out["interrupted"]["cost_usd_sum"] == 0.1
+
+
+def test_aggregate_by_completion_status_handles_missing_fields():
+    """Missing completion_status defaults to 'unknown' in aggregation —
+    mirrors task_type / source_type behaviour."""
+    entries = [{"source_type": "slack", "callsign": "atlas", "cost_usd": 0.5}]
+    out = aggregate_by_completion_status(entries)
+    assert "unknown" in out
+    assert out["unknown"]["spawn_count"] == 1
+    assert out["unknown"]["cost_usd_sum"] == 0.5

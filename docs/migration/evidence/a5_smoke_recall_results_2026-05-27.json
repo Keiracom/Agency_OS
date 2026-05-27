@@ -1,0 +1,1150 @@
+[
+  {
+    "name": "piece_1b_ceo_memory",
+    "wrapper": "decision",
+    "query": "Dave A5 backfill decision policy memory test",
+    "passed": true,
+    "memories_returned": 47,
+    "relevant_memories": 8,
+    "per_memory": [
+      {
+        "matched_tokens": [
+          "a5",
+          "backfill",
+          "dave"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "a5",
+          "backfill",
+          "dave"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "dave",
+          "memory"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "dave",
+          "memory"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "dave",
+          "memory"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "dave",
+          "memory"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave",
+          "memory"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "dave",
+          "memory"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "backfill"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "backfill"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "memory"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "dave"
+        ],
+        "relevant": false
+      }
+    ]
+  },
+  {
+    "name": "piece_2_weaviate_snapshot",
+    "wrapper": "decision",
+    "query": "Phase A3 reader cutover orchestrator Atlas",
+    "passed": true,
+    "memories_returned": 67,
+    "relevant_memories": 23,
+    "per_memory": [
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "a3",
+          "phase",
+          "weaviate"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "a3",
+          "atlas"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "a3",
+          "atlas"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "a3",
+          "atlas"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "a3",
+          "atlas"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "cutover"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas",
+          "phase"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "cutover"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "a3"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "a3"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "cutover"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "atlas"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "phase"
+        ],
+        "relevant": false
+      }
+    ]
+  },
+  {
+    "name": "piece_3_drive_manual",
+    "wrapper": "decision",
+    "query": "boundary matrix Section 13 directive ratified",
+    "passed": true,
+    "memories_returned": 60,
+    "relevant_memories": 32,
+    "per_memory": [
+      {
+        "matched_tokens": [
+          "boundary",
+          "matrix",
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "boundary",
+          "matrix",
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "boundary",
+          "matrix",
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "boundary",
+          "matrix",
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "boundary",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "boundary",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "boundary",
+          "directive"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "boundary",
+          "directive"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "ratified"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "ratified"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "section",
+          "directive"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "section",
+          "directive"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "section",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "boundary",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "boundary",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "ratified"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "section",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "ratified"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "ratified"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive",
+          "ratified"
+        ],
+        "relevant": true
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "ratified"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "ratified"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "ratified"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "ratified"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "ratified"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "ratified"
+        ],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [
+          "directive"
+        ],
+        "relevant": false
+      }
+    ]
+  },
+  {
+    "name": "piece_4_slack_ceo",
+    "wrapper": "taskcontext",
+    "query": "Dave A5 piece backfill ceo directive",
+    "passed": false,
+    "memories_returned": 3,
+    "relevant_memories": 0,
+    "per_memory": [
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      },
+      {
+        "matched_tokens": [],
+        "relevant": false
+      }
+    ]
+  }
+]

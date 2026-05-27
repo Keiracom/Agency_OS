@@ -35,6 +35,14 @@ from src.dispatcher.valkey_pool import (
     get_valkey_client,
     tenant_rl_key,
 )
+from src.relay.context_budget import (
+    DECISION_REJECTED,
+    DECISION_SPAWN_OK,
+    DECISION_SUMMARISED,
+    ROLE_BUILDER,
+    ROLE_CEILINGS,
+    check_context_budget,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -65,6 +73,50 @@ SPEND_NAMESPACE_PREFIX: Final = "spend"
 RATE_WINDOW_SECONDS: Final = 60
 LITELLM_URL_ENV: Final = "LITELLM_URL"
 DEFAULT_LITELLM_URL: Final = "http://127.0.0.1:4000/v1/chat/completions"
+
+# Context-window budget gate (PR #1210 / Cat 21 lever 25 / cutover-blocker 3).
+# Disabled by default; tests + production startup enable via env or DI.
+CONTEXT_WINDOW_ENABLED_ENV: Final = "DISPATCHER_CONTEXT_WINDOW_ENABLED"
+
+# Public toggle — production reads via env at startup; tests flip directly.
+context_window_enabled: bool = os.environ.get(CONTEXT_WINDOW_ENABLED_ENV, "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+
+
+def _body_to_context(body: dict) -> str:
+    """Extract a context-shaped string from an OpenAI-style chat-completion body.
+
+    Concatenates each message's role + content. Returns "" when no messages.
+    """
+    messages = body.get("messages") or []
+    if not isinstance(messages, list):
+        return ""
+    parts: list[str] = []
+    for msg in messages:
+        if not isinstance(msg, dict):
+            continue
+        role = str(msg.get("role") or "")
+        content = msg.get("content")
+        if isinstance(content, str):
+            parts.append(f"{role}: {content}")
+        elif isinstance(content, list):
+            # OpenAI multimodal: list of content blocks; pull text fields.
+            for block in content:
+                if isinstance(block, dict) and isinstance(block.get("text"), str):
+                    parts.append(f"{role}: {block['text']}")
+    return "\n".join(parts)
+
+
+def _body_to_role(body: dict) -> str:
+    """Derive context-budget role from body; default ROLE_BUILDER for unknowns."""
+    explicit = str(body.get("dispatcher_role") or "").lower().strip()
+    if explicit in ROLE_CEILINGS:
+        return explicit
+    return ROLE_BUILDER
+
 
 # ---------------------------------------------------------------------------
 # Decisions
@@ -283,6 +335,59 @@ async def intercept_request(
             payload={"error": "rate_limit_exceeded", "tier": tier},
             headers={"Retry-After": str(RATE_WINDOW_SECONDS)},
         )
+
+    # Context-window budget gate (Cat 21 lever 25 / cutover-blocker 3).
+    # Fires AFTER governance + spend + rate-limit (cheaper checks first), BEFORE
+    # forward to LiteLLM (token-counting is the most expensive check).
+    if context_window_enabled:
+        context_str = _body_to_context(body)
+        if context_str:
+            role = _body_to_role(body)
+            try:
+                ctx_result = check_context_budget(role, context_str)
+            except Exception:  # noqa: BLE001 — fail-open per gate-layer design
+                logger.exception("KEI-213 context-window gate raised — failing open")
+                ctx_result = None
+            if ctx_result is not None and ctx_result.decision == DECISION_REJECTED:
+                await _log_event(
+                    tenant_id,
+                    "deny_context_window",
+                    f"role={role} tokens={ctx_result.initial_tokens} ceiling={ctx_result.ceiling_tokens}",
+                    model,
+                    None,
+                    None,
+                    None,
+                    _ms_since(start),
+                    insert_fn,
+                )
+                return InterceptorDecision(
+                    allowed=False,
+                    decision="deny_context_window",
+                    reason="context_window_exceeded",
+                    status_code=413,
+                    payload={
+                        "error": "context_window_exceeded",
+                        "role": role,
+                        "initial_tokens": ctx_result.initial_tokens,
+                        "ceiling_tokens": ctx_result.ceiling_tokens,
+                    },
+                )
+            if ctx_result is not None and ctx_result.decision == DECISION_SUMMARISED:
+                # Summariser fit context under ceiling — proceed with summarised body.
+                # Phase 1: no summariser wired so this branch unreachable; preserved
+                # for Phase 2 when production summariser lands.
+                logger.info(
+                    "KEI-213 context-window gate summarised context role=%s %d→%d",
+                    role,
+                    ctx_result.initial_tokens,
+                    ctx_result.final_tokens,
+                )
+            elif ctx_result is not None and ctx_result.decision == DECISION_SPAWN_OK:
+                logger.debug(
+                    "KEI-213 context-window gate passed role=%s tokens=%d",
+                    role,
+                    ctx_result.initial_tokens,
+                )
 
     try:
         result = await (forward_fn(body) if forward_fn else _forward_to_litellm(body))

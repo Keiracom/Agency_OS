@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from scripts.dispatcher import _envelope_route, _inbox_loop, _spawn
+from scripts.dispatcher import _envelope_route, _inbox_loop, _pre_spawn_gates, _spawn
 
 log = logging.getLogger("dispatcher_main")
 
@@ -35,7 +35,12 @@ DEFAULT_INBOX_ROOT = Path("/tmp")
 DEFAULT_REPO_ROOT = Path("/home/elliotbot/clawd/Agency_OS")
 
 
-def main(argv: list[str] | None = None, *, db_factory: Any = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    db_factory: Any = None,
+    idempotency_gate: Any = None,
+) -> int:
     args = _parse_args(argv)
     logging.basicConfig(
         level=args.log_level,
@@ -88,6 +93,17 @@ def main(argv: list[str] | None = None, *, db_factory: Any = None) -> int:
             _envelope_route.RouteAction.QUARANTINE,
             _envelope_route.RouteAction.LOG_PAUSED,
         ):
+            continue
+        pre_action, idem_result = _pre_spawn_gates.evaluate(
+            envelope, idempotency_gate=idempotency_gate
+        )
+        if pre_action == _pre_spawn_gates.PreSpawnAction.DROP_DUPLICATE:
+            log.info(
+                "pre-spawn gate dropped duplicate envelope from=%s type=%s key=%s",
+                envelope.get("from"),
+                envelope.get("type"),
+                idem_result.key if idem_result else None,
+            )
             continue
         _spawn.handle_envelope(
             callsign=args.callsign,

@@ -17,6 +17,7 @@ import pytest
 
 from src.keiracom_system.attribution import (
     SOURCE_TYPES,
+    TASK_TYPES,
     SpawnAttributionEntry,
     load_attribution_last_24h,
     log_spawn_attribution,
@@ -25,13 +26,19 @@ from src.keiracom_system.attribution.logger import (
     SpawnAttributionError,
     aggregate_by_callsign,
     aggregate_by_source_type,
+    aggregate_by_task_type,
 )
 
-# ---------- SOURCE_TYPES ----------
+# ---------- SOURCE_TYPES / TASK_TYPES ----------
 
 
 def test_source_types_enumerated_to_five():
     assert {"slack", "pr", "cron", "inbox", "unknown"} == SOURCE_TYPES
+
+
+def test_task_types_enumerated_to_six():
+    """Cutover Blocker 7 / Cat 21 lever 23 — workload-class enum locked."""
+    assert {"pr_review", "deliberation", "build", "chat", "dispatch_mgmt", "unknown"} == TASK_TYPES
 
 
 # ---------- log_spawn_attribution ----------
@@ -117,6 +124,75 @@ def test_log_spawn_attribution_creates_parent_dir(tmp_path: Path):
         log_path=log,
     )
     assert log.exists()
+
+
+# ---------- task_type (Cutover Blocker 7) ----------
+
+
+def test_log_spawn_attribution_persists_task_type(tmp_path: Path):
+    log = tmp_path / "attr.jsonl"
+    entry = log_spawn_attribution(
+        source_type="slack",
+        source_id="ts-1",
+        task_type="pr_review",
+        callsign="atlas",
+        model="claude-opus-4-7",
+        log_path=log,
+    )
+    assert entry.task_type == "pr_review"
+    raw = json.loads(log.read_text(encoding="utf-8").strip())
+    assert raw["task_type"] == "pr_review"
+
+
+def test_log_spawn_attribution_defaults_task_type_to_unknown(tmp_path: Path):
+    """task_type defaults to 'unknown' when caller omits — explicit unknown
+    is honest, lets dispatcher integration land in stages."""
+    log = tmp_path / "attr.jsonl"
+    entry = log_spawn_attribution(
+        source_type="slack",
+        source_id="ts-1",
+        callsign="atlas",
+        model="claude-opus-4-7",
+        log_path=log,
+    )
+    assert entry.task_type == "unknown"
+
+
+def test_log_spawn_attribution_rejects_unknown_task_type(tmp_path: Path):
+    """Same discipline as source_type — silent default to a real task_type
+    is a BUG; explicit 'unknown' is allowed; invalid values rejected."""
+    with pytest.raises(SpawnAttributionError) as exc:
+        log_spawn_attribution(
+            source_type="slack",
+            source_id="ts-1",
+            task_type="data_migration",  # not in TASK_TYPES
+            callsign="atlas",
+            model="claude-opus-4-7",
+            log_path=tmp_path / "attr.jsonl",
+        )
+    assert "data_migration" in str(exc.value)
+
+
+def test_aggregate_by_task_type_sums_cost_and_counts_spawns():
+    entries = [
+        {"task_type": "pr_review", "callsign": "atlas", "cost_usd": 0.5},
+        {"task_type": "pr_review", "callsign": "max", "cost_usd": 0.3},
+        {"task_type": "build", "callsign": "atlas", "cost_usd": 2.0},
+        {"task_type": "deliberation", "callsign": "elliot", "cost_usd": 1.0},
+    ]
+    out = aggregate_by_task_type(entries)
+    assert out["pr_review"]["cost_usd_sum"] == 0.8
+    assert out["pr_review"]["spawn_count"] == 2
+    assert out["build"]["cost_usd_sum"] == 2.0
+    assert out["build"]["spawn_count"] == 1
+    assert out["deliberation"]["cost_usd_sum"] == 1.0
+
+
+def test_aggregate_by_task_type_handles_missing_fields():
+    entries = [{"source_type": "slack", "callsign": "atlas"}]  # no task_type
+    out = aggregate_by_task_type(entries)
+    assert "unknown" in out
+    assert out["unknown"]["spawn_count"] == 1
 
 
 # ---------- load_attribution_last_24h ----------

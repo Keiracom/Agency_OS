@@ -38,6 +38,11 @@ CREATE TABLE IF NOT EXISTS public.keiracom_spawn_attribution (
     source_type           TEXT         NOT NULL
         CHECK (source_type IN ('slack', 'pr', 'cron', 'inbox', 'unknown')),
     source_id             TEXT         NOT NULL,
+    -- Cutover Blocker 7 / Cat 21 lever 23 LAUNCH-BLOCKER — workload-class
+    -- classification for empirical pricing validation. Default 'unknown'
+    -- lets dispatcher integration land in stages.
+    task_type             TEXT         NOT NULL DEFAULT 'unknown'
+        CHECK (task_type IN ('pr_review', 'deliberation', 'build', 'chat', 'dispatch_mgmt', 'unknown')),
     callsign              TEXT         NOT NULL,
     model                 TEXT         NOT NULL,
     input_tokens          BIGINT       NOT NULL DEFAULT 0 CHECK (input_tokens >= 0),
@@ -50,6 +55,11 @@ CREATE TABLE IF NOT EXISTS public.keiracom_spawn_attribution (
 -- Group-by-source_type queries (which Slack messages cost most? which cron jobs?)
 CREATE INDEX IF NOT EXISTS idx_keiracom_spawn_attribution_source_type_ts
     ON public.keiracom_spawn_attribution (source_type, ts DESC);
+
+-- Group-by-task_type queries (which workload class costs most? PR_REVIEW vs BUILD?)
+-- Per Cutover Blocker 7 / Cat 21 lever 23.
+CREATE INDEX IF NOT EXISTS idx_keiracom_spawn_attribution_task_type_ts
+    ON public.keiracom_spawn_attribution (task_type, ts DESC);
 
 -- Group-by-callsign queries (per-agent spend breakdown).
 CREATE INDEX IF NOT EXISTS idx_keiracom_spawn_attribution_callsign_ts

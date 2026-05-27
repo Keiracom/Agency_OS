@@ -12,17 +12,21 @@ Exports:
 """
 
 from .logger import (
+    COMPLETION_STATUSES,
     SOURCE_TYPES,
     TASK_TYPES,
     SpawnAttributionEntry,
+    aggregate_by_completion_status,
     load_attribution_last_24h,
     log_spawn_attribution,
 )
 
 __all__ = [
+    "COMPLETION_STATUSES",
     "SOURCE_TYPES",
     "TASK_TYPES",
     "SpawnAttributionEntry",
+    "aggregate_by_completion_status",
     "load_attribution_last_24h",
     "log_spawn_attribution",
 ]

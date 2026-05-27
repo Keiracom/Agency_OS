@@ -22,6 +22,7 @@ Per-event JSONL row schema:
     "source_type": "slack" | "pr" | "cron" | "inbox" | "unknown",
     "source_id":   "<slack-ts>" | "PR-1202" | "agency-cost-rollup.timer" | "/tmp/telegram-relay-atlas/inbox/...json",
     "task_type":   "pr_review" | "deliberation" | "build" | "chat" | "dispatch_mgmt" | "unknown",
+    "completion_status": "success" | "fail" | "timeout" | "interrupted" | "unknown",
     "callsign":    "atlas",
     "model":       "claude-opus-4-7",
     "input_tokens": ..., "output_tokens": ..., "cache_read_tokens": ..., "cache_write_tokens": ...,
@@ -61,6 +62,17 @@ TASK_TYPES: frozenset[str] = frozenset(
     {"pr_review", "deliberation", "build", "chat", "dispatch_mgmt", "unknown"}
 )
 
+# Canonical completion_status values per Phase 1 cutover-gate dispatch
+# 2026-05-27 (Aiden CONCUR-with-clarification on Atlas's PR #1207).
+# Closes the observability gate for Dave's first-customer cutover —
+# operator can tell whether the cost was spent on work that completed,
+# a half-finished spawn, a timeout, or a user-interrupted run.
+# Same explicit-"unknown"-vs-silent-default discipline as the two
+# enumerations above.
+COMPLETION_STATUSES: frozenset[str] = frozenset(
+    {"success", "fail", "timeout", "interrupted", "unknown"}
+)
+
 
 @dataclass(frozen=True)
 class SpawnAttributionEntry:
@@ -75,6 +87,7 @@ class SpawnAttributionEntry:
     cache_read_tokens: int = 0
     cache_write_tokens: int = 0
     cost_usd: float = 0.0
+    completion_status: str = "unknown"  # one of COMPLETION_STATUSES
 
 
 class SpawnAttributionError(ValueError):
@@ -88,6 +101,7 @@ def log_spawn_attribution(
     callsign: str,
     model: str,
     task_type: str = "unknown",
+    completion_status: str = "unknown",
     input_tokens: int = 0,
     output_tokens: int = 0,
     cache_read_tokens: int = 0,
@@ -106,6 +120,11 @@ def log_spawn_attribution(
     integration land in stages — early-stage dispatchers can omit task_type
     until classification logic is built; explicit "unknown" tag is honest
     rather than misclassifying a build as a chat.
+
+    `completion_status` MUST be in COMPLETION_STATUSES. Default "unknown"
+    lets the dispatcher land before completion-classification logic is wired
+    (e.g. when the writer fires at dispatch-time before the spawn finishes).
+    Caller should re-emit / patch with the real status once the spawn ends.
     """
     if source_type not in SOURCE_TYPES:
         raise SpawnAttributionError(
@@ -114,6 +133,11 @@ def log_spawn_attribution(
     if task_type not in TASK_TYPES:
         raise SpawnAttributionError(
             f"task_type {task_type!r} not in TASK_TYPES {sorted(TASK_TYPES)}"
+        )
+    if completion_status not in COMPLETION_STATUSES:
+        raise SpawnAttributionError(
+            f"completion_status {completion_status!r} not in "
+            f"COMPLETION_STATUSES {sorted(COMPLETION_STATUSES)}"
         )
     path = log_path or DEFAULT_ATTRIBUTION_LOG
     path.parent.mkdir(parents=True, exist_ok=True)
@@ -130,6 +154,7 @@ def log_spawn_attribution(
         cache_read_tokens=cache_read_tokens,
         cache_write_tokens=cache_write_tokens,
         cost_usd=cost_usd,
+        completion_status=completion_status,
     )
     with path.open("a", encoding="utf-8") as fh:
         fh.write(json.dumps(asdict(entry)) + "\n")
@@ -206,4 +231,25 @@ def aggregate_by_task_type(entries: list[dict[str, Any]]) -> dict[str, dict[str,
     return {
         k: {"cost_usd_sum": round(v["cost_usd_sum"], 6), "spawn_count": int(v["spawn_count"])}
         for k, v in by_task.items()
+    }
+
+
+def aggregate_by_completion_status(entries: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    """Group attribution events by completion_status. Returns
+    {completion_status: {cost_usd_sum, spawn_count}}.
+
+    Phase 1 cutover-gate dispatch (Aiden's CONCUR-with-clarification on
+    Atlas's PR #1207) — closes the observability gate for Dave's first-
+    customer cutover. Surfaces cost-of-failure: how much spend went to
+    successful spawns vs fails vs timeouts vs interrupted runs.
+    """
+    by_status: dict[str, dict[str, float]] = {}
+    for e in entries:
+        cs = e.get("completion_status", "unknown")
+        bucket = by_status.setdefault(cs, {"cost_usd_sum": 0.0, "spawn_count": 0})
+        bucket["cost_usd_sum"] += float(e.get("cost_usd", 0.0))
+        bucket["spawn_count"] += 1
+    return {
+        k: {"cost_usd_sum": round(v["cost_usd_sum"], 6), "spawn_count": int(v["spawn_count"])}
+        for k, v in by_status.items()
     }

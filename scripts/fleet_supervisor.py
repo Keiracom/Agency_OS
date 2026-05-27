@@ -703,6 +703,71 @@ def release_merged_review_claims(conn: psycopg.Connection) -> int:
     return released
 
 
+def release_already_reviewed_claims(conn: psycopg.Connection) -> int:
+    """Release REVIEW-PR-<N> claims where the reviewer already posted [REVIEW:...].
+
+    Sibling to release_merged_review_claims: that one fires on PR state=MERGED/
+    CLOSED; this one fires on the empirical "reviewer already did the work"
+    signal — a [REVIEW:...:<callsign>] marker in PR comments. Both target the
+    same failure mode (active claim row persists → supervisor re-fires the
+    same brief every cycle), but for different lifecycle endpoints.
+
+    Anchored on this session 2026-05-26: ~10 REVIEW-PR-1179 re-trigger nudges
+    fired AFTER [REVIEW:approve:nova] posted at 12:48Z because the PR
+    remained OPEN (CI infra block) so release_merged_review_claims couldn't
+    fire, but no other path existed to release the claim.
+
+    Returns the count released. Fail-open: a gh failure on one PR is logged
+    and skipped, never aborts the sweep.
+
+    Released to status='dismissed' (same reasoning as the merged-release path —
+    no task_verifications row exists for a review claim).
+    """
+    with conn.cursor() as cur:
+        cur.execute(
+            "SELECT id, claimed_by FROM public.tasks "
+            "WHERE status = 'active' AND id LIKE 'REVIEW-PR-%' AND claimed_by IS NOT NULL"
+        )
+        rows = cur.fetchall()
+    released = 0
+    for task_id, callsign in rows:
+        m = re.match(r"REVIEW-PR-(\d+)$", task_id)
+        if not m:
+            continue
+        pr_number = int(m.group(1))
+        try:
+            comments = fetch_pr_comments(pr_number)
+        except (subprocess.TimeoutExpired, FileNotFoundError, OSError) as exc:
+            log.warning("release_already_reviewed: fetch_pr_comments %d: %s", pr_number, exc)
+            continue
+        if not _callsign_review_marker_in_comments(comments, callsign):
+            continue
+        with conn.cursor() as cur:
+            cur.execute(
+                "UPDATE public.tasks SET status = 'dismissed' WHERE id = %s AND status = 'active'",
+                (task_id,),
+            )
+            released += cur.rowcount
+        log.info(
+            "released review claim %s — %s already posted [REVIEW:...] on PR #%d",
+            task_id,
+            callsign,
+            pr_number,
+        )
+    if released:
+        conn.commit()
+    return released
+
+
+def _callsign_review_marker_in_comments(comments: list[dict], callsign: str) -> bool:
+    """True if any comment body carries a [REVIEW:...:<callsign>] marker."""
+    for comment in comments:
+        body = comment.get("body") or ""
+        if comment_has_review_marker(body, callsign):
+            return True
+    return False
+
+
 def get_last_tool_call(conn: psycopg.Connection, callsign: str) -> _dt.datetime | None:
     with conn.cursor() as cur:
         cur.execute(
@@ -1329,6 +1394,16 @@ def main() -> None:
         released_reviews = release_merged_review_claims(conn)
         if released_reviews:
             log.info("Released %d merged/closed review claim(s)", released_reviews)
+
+        # Release review claims where the reviewer already posted [REVIEW:...]
+        # but the PR is still OPEN (e.g. blocked on infra, awaiting other
+        # deliberators). Without this sweep, supervisor re-fires the same
+        # REVIEW-PR-N brief every cycle until the PR finally merges.
+        # Agency_OS-tp15; sibling to Agency_OS-f0qn (PR #1199 dispatch-time
+        # race pre-check).
+        released_reviewed = release_already_reviewed_claims(conn)
+        if released_reviewed:
+            log.info("Released %d already-reviewed review claim(s)", released_reviewed)
 
         phase_max = get_phase_max(conn)
         prs = list_open_prs()

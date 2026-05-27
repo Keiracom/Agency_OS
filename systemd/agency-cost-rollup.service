@@ -1,0 +1,8 @@
+[Unit]
+Description=Agency daily 3-provider cost rollup → ceo channel (Cutover Blocker 1)
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/agency_cost_rollup.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env

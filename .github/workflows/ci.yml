@@ -238,6 +238,23 @@ jobs:
       - name: No raw atom-store SQL outside atomization module
         run: ./scripts/ci/check_no_raw_atom_store_outside_module.sh
 
+  # ============================================
+  # Guard: Composer-output isolation (atomization hard constraint)
+  # ============================================
+  # Source: ceo:atomization_architecture_v1 hard constraint #1 — "Composer
+  # output never reaches agent reasoning input." Preemptive guard; inert
+  # until PR #1189 lands Composer module. Mirrors the import-scope detection
+  # pattern from BMV1 guards + cache-discipline + atom-store-discipline.
+  composer-isolation-guards:
+    name: Composer Isolation Guards (Atomization Pilot)
+    runs-on: ubuntu-latest
+    needs: backend-lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: No Composer imports outside endpoints/
+        run: ./scripts/ci/check_composer_output_never_reaches_agent_reasoning.sh
+
   backend-typecheck:
     name: Backend Type Check (MyPy)
     runs-on: ubuntu-latest

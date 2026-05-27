@@ -1,0 +1,18 @@
+[Unit]
+# Cutover Blocker 9 (Agency_OS-if0r) — daily cache hit-rate threshold alert.
+# Reads public.keiracom_cache_hit_rates_v1 + writes alert lines to
+# /home/elliotbot/clawd/logs/cache-hit-rate-alerts.jsonl for any (date,
+# callsign) below 80% over the last 1 day.
+Description=Keiracom cache hit-rate alert (Agency_OS-if0r)
+After=network.target cache_hit_rate_ingest.service
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+Environment="PYTHONPATH=/home/elliotbot/clawd/Agency_OS"
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+# Exit code 1 = breach (expected; not a service failure).
+SuccessExitStatus=0 1
+ExecStart=/usr/bin/python3 -B /home/elliotbot/clawd/Agency_OS/scripts/cache_hit_rate_alert.py --days 1 --threshold 80
+StandardOutput=append:/home/elliotbot/clawd/logs/cache-hit-rate-alert.log
+StandardError=append:/home/elliotbot/clawd/logs/cache-hit-rate-alert.log

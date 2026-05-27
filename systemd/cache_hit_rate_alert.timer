@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily cache hit-rate threshold alert (Agency_OS-if0r)
+Requires=cache_hit_rate_alert.service
+
+[Timer]
+# 23:53 AEST = 13:53 UTC — runs three minutes after ingest (13:50) +
+# two minutes before the existing daily CEO rollup (13:55) so the alert
+# can land in the CEO post.
+OnCalendar=*-*-* 13:53:00 UTC
+Persistent=true
+
+[Install]
+WantedBy=timers.target

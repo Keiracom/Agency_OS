@@ -27,7 +27,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from scripts.dispatcher import _envelope_route, _inbox_loop, _spawn
+from scripts.dispatcher import _envelope_route, _inbox_loop, _spawn, _spawn_attribution
 
 log = logging.getLogger("dispatcher_main")
 
@@ -35,7 +35,13 @@ DEFAULT_INBOX_ROOT = Path("/tmp")
 DEFAULT_REPO_ROOT = Path("/home/elliotbot/clawd/Agency_OS")
 
 
-def main(argv: list[str] | None = None, *, db_factory: Any = None) -> int:
+def main(
+    argv: list[str] | None = None,
+    *,
+    db_factory: Any = None,
+    attribution_enabled: bool = False,
+    attribution_model: str | None = None,
+) -> int:
     args = _parse_args(argv)
     logging.basicConfig(
         level=args.log_level,
@@ -89,6 +95,12 @@ def main(argv: list[str] | None = None, *, db_factory: Any = None) -> int:
             _envelope_route.RouteAction.LOG_PAUSED,
         ):
             continue
+        _spawn_attribution.emit(
+            envelope,
+            callsign=args.callsign,
+            enabled=attribution_enabled,
+            model=attribution_model,
+        )
         _spawn.handle_envelope(
             callsign=args.callsign,
             db=db,

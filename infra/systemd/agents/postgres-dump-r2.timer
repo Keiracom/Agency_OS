@@ -1,0 +1,12 @@
+[Unit]
+Description=Hourly Postgres dump to R2 (KEI-243)
+Requires=postgres-dump-r2.service
+
+[Timer]
+OnCalendar=*-*-* *:00:00 UTC
+Persistent=true
+RandomizedDelaySec=120
+Unit=postgres-dump-r2.service
+
+[Install]
+WantedBy=timers.target

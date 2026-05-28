@@ -1,0 +1,12 @@
+[Unit]
+Description=Weekly Sunday 03:00 UTC restore verification (KEI-242 hard gate)
+Requires=weaviate-restore-verify.service
+
+[Timer]
+OnCalendar=Sun *-*-* 03:00:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+Unit=weaviate-restore-verify.service
+
+[Install]
+WantedBy=timers.target

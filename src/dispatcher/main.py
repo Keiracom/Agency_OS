@@ -59,6 +59,7 @@ from src.relay.budget_ceiling import (
     BudgetDecision,
 )
 from src.retrieval import spawn_recall
+from src.retrieval.workflow_recall import CHARS_PER_TOKEN, WorkflowRecallContext
 
 logger = logging.getLogger(__name__)
 
@@ -211,6 +212,21 @@ spawn_recall_enabled: bool = os.environ.get(_SPAWN_RECALL_ENABLED_ENV, "").lower
     "yes",
 }
 
+# Workflow-scoped recall budget (Wave 3). A multi-step workflow spawns several
+# sessions; without this, spawn_recall re-queries Hindsight on every spawn for
+# the same workflow. When enabled AND a spawn carries a ``workflow_id``, the
+# prior-context block from spawn 1 is cached and reused by spawn 2..N — no
+# re-query (the cost + latency win). Layers ON TOP of spawn_recall: only
+# engages when spawn_recall is also on; otherwise no effect. Default OFF;
+# fail-open; 10-min TTL prevents cross-workflow bleed.
+_WORKFLOW_RECALL_ENABLED_ENV = "DISPATCHER_WORKFLOW_RECALL_ENABLED"
+workflow_recall_enabled: bool = os.environ.get(_WORKFLOW_RECALL_ENABLED_ENV, "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+_workflow_recall = WorkflowRecallContext()
+
 
 def _spawn_kwargs_source_type(sk: dict) -> str:
     """Derive source_type from spawn_kwargs per PR #1207 SOURCE_TYPES taxonomy."""
@@ -253,6 +269,44 @@ def _spawn_kwargs_brief(sk: dict) -> str:
         if value:
             return value
     return ""
+
+
+def _recall_block(
+    sk: dict[str, Any], *, task_type: str, task_brief: str
+) -> tuple[str, dict[str, Any] | None]:
+    """Produce the spawn's prior-context block, caching it per workflow_id.
+
+    Returns ``(block, workflow_recall_result)``. When workflow recall is
+    enabled AND a workflow_id is present, the block is cached so spawn 2..N in
+    the same workflow reuse spawn 1's Hindsight recall without re-querying.
+    Otherwise the block is computed fresh per spawn (Scout's #1240 behaviour)
+    and the second element is None. Fail-open throughout (spawn_recall +
+    WorkflowRecallContext both swallow errors to an empty block).
+    """
+
+    def _fresh_block() -> str:
+        # Fail-open: a recall outage must never block a spawn. query_for_spawn
+        # is fail-open by contract, but guard here too so a catastrophic raise
+        # (matching spawn_recall.inject_prior_context's own outer catch) still
+        # yields an empty block rather than a 500.
+        try:
+            return spawn_recall.build_prior_context_block(
+                spawn_recall.query_for_spawn(task_type, task_brief)
+            )
+        except Exception:  # noqa: BLE001 — recall must never block a spawn
+            logger.debug("workflow_recall: fresh block failed — no prior context", exc_info=True)
+            return ""
+
+    workflow_id = str(sk.get("workflow_id") or "").strip()
+    if not (workflow_recall_enabled and workflow_id):
+        return _fresh_block(), None
+    outcome = _workflow_recall.get_or_recall(workflow_id, _fresh_block)
+    result = {
+        "workflow_id": workflow_id,
+        "cached": outcome.cached,
+        "context_tokens": len(outcome.context) // CHARS_PER_TOKEN,
+    }
+    return outcome.context, result
 
 
 def _emit_attribution(
@@ -569,15 +623,19 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
     # spawn env as a 'Prior context from memory' block. Fail-open: recall
     # errors never block the spawn (spawn_recall swallows internally), and the
     # block only lands in `env` — the one context-bearing field forwarded
-    # verbatim to the backend spawn.
+    # verbatim to the backend spawn. When workflow recall is on + the spawn
+    # carries a workflow_id, the block is cached so sibling spawns reuse it
+    # without re-querying (see _recall_block).
     spawn_kwargs_effective = req.spawn_kwargs
+    workflow_recall_result: dict[str, Any] | None = None
     if spawn_recall_enabled:
         sk = req.spawn_kwargs or {}
-        spawn_kwargs_effective = spawn_recall.inject_prior_context(
+        block, workflow_recall_result = _recall_block(
             sk,
             task_type=_spawn_kwargs_task_type(sk, req.key),
             task_brief=_spawn_kwargs_brief(sk),
         )
+        spawn_kwargs_effective = spawn_recall.inject_block(sk, block)
 
     manager = SessionManager(backend=backend)
     try:
@@ -645,6 +703,8 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
     }
     if bounded_spawn_result is not None:
         response["bounded_spawn"] = bounded_spawn_result
+    if workflow_recall_result is not None:
+        response["workflow_recall"] = workflow_recall_result
     return response
 
 

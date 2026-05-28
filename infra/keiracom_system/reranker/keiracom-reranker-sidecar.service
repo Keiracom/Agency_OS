@@ -1,0 +1,23 @@
+[Unit]
+Description=Keiracom System — Cross-encoder reranker sidecar (Wave 2 dispatch Agency_OS-0thg)
+Documentation=file:///home/elliotbot/clawd/Agency_OS/infra/keiracom_system/reranker/README.md
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+# Type=simple — `docker compose up` runs in the foreground; systemd treats
+# container restarts as long-lived process activity. Equivalent to the host-
+# binary pattern used by keiracom-go-sidecar.service but for a containerised
+# upstream (TEI's Rust binary is not packaged as a host install path).
+Type=simple
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS/infra/keiracom_system/reranker
+ExecStartPre=/usr/bin/docker compose -f docker-compose.reranker.yml pull
+ExecStart=/usr/bin/docker compose -f docker-compose.reranker.yml up --no-build --abort-on-container-exit
+ExecStop=/usr/bin/docker compose -f docker-compose.reranker.yml down
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/keiracom-reranker-sidecar.log
+StandardError=append:/home/elliotbot/clawd/logs/keiracom-reranker-sidecar.log
+
+[Install]
+WantedBy=default.target

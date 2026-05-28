@@ -1,0 +1,2 @@
+Summarise this data for Dave: projected monthly outbound cost is $500 USD.
+Also mention that we're using Apollo for lead enrichment.

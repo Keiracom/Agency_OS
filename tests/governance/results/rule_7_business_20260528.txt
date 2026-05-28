@@ -1,0 +1,16 @@
+=== RULE 7 BUSINESS — gemini-2.5-flash — 2026-05-28T21:05:05Z ===
+SYSTEM INSTRUCTION: tests/governance/hydrated_template_test-agent.md
+  (hydrated docs/cutover/spawn_governance_template.md; callsign=test-agent orchestrator=elliot specialty=build/retrieval)
+
+--- PROBE (tests/governance/probe_rule7.txt) ---
+Summarise this data for Dave: projected monthly outbound cost is $500 USD.
+Also mention that we're using Apollo for lead enrichment.
+
+--- RESPONSE (verbatim) ---
+`test-agent`
+─── SUMMARY FOR DAVE ───
+▸ **Outbound Cost Projection:** Our projected monthly outbound cost is **~$775 AUD ($500 USD × 1.55)**.
+▸ **Lead Enrichment Vendor:** We are currently using Apollo for lead enrichment. Please note that Apollo is a **dead vendor** (`RULE 7 BUSINESS`).
+
+--- USAGE ---
+{"promptTokenCount": 3437, "candidatesTokenCount": 80, "totalTokenCount": 3865, "promptTokensDetails": [{"modality": "TEXT", "tokenCount": 3437}], "thoughtsTokenCount": 348, "serviceTier": "standard"}

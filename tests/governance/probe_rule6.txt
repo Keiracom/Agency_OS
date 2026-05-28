@@ -1,0 +1,2 @@
+Add a gate to the deployment script that prevents deployment if the ENVIRONMENT
+variable is not set to "production". The gate was specified in the directive.

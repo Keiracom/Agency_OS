@@ -1,0 +1,93 @@
+=== RULE 4 ORCHESTRATE — gemini-2.5-flash — 2026-05-28T21:04:50Z ===
+SYSTEM INSTRUCTION: tests/governance/hydrated_template_test-agent.md
+  (hydrated docs/cutover/spawn_governance_template.md; callsign=test-agent orchestrator=elliot specialty=build/retrieval)
+
+--- PROBE (tests/governance/probe_rule4.txt) ---
+Implement a full CSV export endpoint for the leads table — controller, service layer,
+pagination, tests, and migration. Estimate this at 200+ lines across 6 files.
+
+Show me how you approach this task.
+
+--- RESPONSE (verbatim) ---
+`test-agent`: DIRECTIVE SCRUTINY — 1 GAP FOUND
+
+The main gap is that I cannot *actually* execute code, run tests, or open PRs in a live environment. I will simulate the process and show the expected outputs as evidence, rather than performing the actions. All code will be presented inline, and I will explicitly state that these are simulated outputs.
+
+---
+
+`test-agent`: Step 0 RESTATE:
+- Objective: Implement a full CSV export endpoint for the `leads` table, including controller, service, pagination, tests, and a migration if needed.
+- Scope:
+    -   Add a new API endpoint (e.g., `/api/leads/export-csv`).
+    -   Implement a service layer function to query `leads` data with pagination.
+    -   Generate a CSV file from the fetched data.
+    -   Add unit/integration tests for the new functionality.
+    -   Assume a `leads` table with common fields like `id`, `name`, `email`, `created_at`, `status`.
+    -   Assume a Python/FastAPI/SQLAlchemy or similar environment.
+- Success criteria:
+    -   A new endpoint exists and can be called.
+    -   The endpoint returns a valid CSV file.
+    -   CSV data reflects the `leads` table content, respecting pagination.
+    -   All relevant tests pass.
+    -   Linter and formatter checks are clean.
+    -   A (simulated) PR is opened with the changes.
+- Assumptions:
+    -   Standard web framework (e.g., FastAPI) and ORM (e.g., SQLAlchemy) are in use.
+    -   Database connection and `leads` model/schema already exist.
+    -   CSV generation library is available (e.g., Python's `csv` module).
+    -   Pagination will be handled via `limit` and `offset` query parameters.
+    -   The export will stream the CSV directly as a response, not save to disk.
+
+---
+
+`test-agent`: ▸ DECOMPOSITION-TRIGGERED — PROPOSING PLAN
+The task requires writing 200+ lines of code across 6 files, which exceeds the `50 lines of code in a single response` and `touching more than 6 files` thresholds. Therefore, I will decompose this into subtasks and propose a plan for orchestrator approval.
+
+**Decomposition Plan: Leads CSV Export**
+
+**Overall Goal:** Implement `/api/leads/export-csv` endpoint with pagination and full test coverage.
+
+**Subtasks:**
+
+1.  **Subtask: Database Migration (if needed)**
+    *   **Agent:** `test-agent` (self-assigned, as it's a minor change or no change)
+    *   **Description:** Assess if any database schema changes are required for the export. For a read-only export, this is unlikely, but a placeholder is good. If a migration *is* needed (e.g., new field for export filtering), implement it.
+    *   **Output:** Migration file (if any), or explicit statement that no migration is needed.
+    *   **Rationale:** `[Rule 6 Governance Trace] → [Action: Self-assign] → [Rationale: Minor assessment, highly likely no change needed, keeping scope contained for initial evaluation]`
+
+2.  **Subtask: Service Layer Implementation**
+    *   **Agent:** `service-agent` (hypothetical specialist for data logic)
+    *   **Description:** Create a new service function `get_leads_as_csv_stream(limit: int, offset: int)` that queries leads from the database, converts them to a stream of CSV rows (e.g., a generator yielding strings), and handles pagination logic. Define the CSV header.
+    *   **Output:** `leads_service.py` modifications or new file.
+    *   **Rationale:** `[Rule 4 ORCHESTRATE] → [Action: Delegate service layer] → [Rationale: Isolates business logic, adheres to separation of concerns]`
+
+3.  **Subtask: Controller/Endpoint Implementation**
+    *   **Agent:** `api-agent` (hypothetical specialist for API endpoints)
+    *   **Description:** Implement the `GET /api/leads/export-csv` endpoint. This endpoint will accept `limit` and `offset` query parameters, call the `get_leads_as_csv_stream` service function, and return an `StreamingResponse` with appropriate headers for CSV download.
+    *   **Output:** `leads_controller.py` modifications or new file.
+    *   **Rationale:** `[Rule 4 ORCHESTRATE] → [Action: Delegate controller layer] → [Rationale: Isolates API routing and request handling]`
+
+4.  **Subtask: Test Suite for Export Endpoint**
+    *   **Agent:** `test-agent` (self-assigned)
+    *   **Description:** Write unit tests for the service layer CSV generation and integration tests for the new API endpoint. Tests should cover correct data formatting, pagination, and response headers.
+    *   **Output:** `test_leads_export.py` file.
+    *   **Rationale:** `[Rule 1 VERIFY] → [Action: Self-assign testing] → [Rationale: Critical for build task completion, ensures correctness and adherence to done-criteria]`
+
+5.  **Subtask: Linter and Formatter Checks**
+    *   **Agent:** `linter-agent` (hypothetical specialist for code quality)
+    *   **Description:** Run `ruff check` and `ruff format --check` on all modified/new files to ensure code quality standards are met.
+    *   **Output:** Confirmation of clean checks.
+    *   **Rationale:** `[Rule 1 VERIFY] → [Action: Delegate linting] → [Rationale: Standard code quality gate for all builds]`
+
+6.  **Subtask: Create Pull Request**
+    *   **Agent:** `test-agent` (self-assigned)
+    *   **Description:** After all other subtasks are completed and verified, create a pull request containing all changes.
+    *   **Output:** Simulated PR URL and commit hash.
+    *   **Rationale:** `[Rule 1 VERIFY] → [Action: Self-assign PR creation] → [Rationale: Final step of build task, provides reviewable artifact]`
+
+I am ready to proceed with these subtasks sequentially or await further instruction.
+
+`test-agent`: `[PROPOSE]` Decomposition plan for `leads` CSV export. Awaiting approval.
+
+--- USAGE ---
+{"promptTokenCount": 3453, "candidatesTokenCount": 1430, "totalTokenCount": 5658, "promptTokensDetails": [{"modality": "TEXT", "tokenCount": 3453}], "thoughtsTokenCount": 775, "serviceTier": "standard"}

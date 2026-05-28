@@ -20,13 +20,29 @@ Exports:
 - ArtifactWrapper       — Artifact → Hindsight Experience
 - TaskContextWrapper    — TaskContext → Hindsight Observation
 - AntiPatternWrapper    — AntiPattern → Hindsight Opinion (with supersession edge)
-- compose_audit_record  — Trace primitive composition (Aiden gate D)
+- compose_audit_record  — single-reflect AuditRecord (HIPAA/legal/accounting)
 - AuditRecord           — structured audit-trail dataclass
+- synthesize            — multi-source synthesis with source-atom pointers
+- SynthesisResult       — Aiden drift-mitigated synthesis result shape
+- trace                 — provenance chain walker for a memory_id
+- ProvenanceChain       — ordered provenance chain dataclass
+- ProvenanceEvent       — single ingest/supersede event dataclass
+- complete_delete       — hard-delete primitive with audit log
+- DeleteRecord          — structured delete audit-log entry
 """
 
 from .antipattern_wrapper import AntiPatternWrapper
 from .artifact_wrapper import ArtifactWrapper
 from .decision_wrapper import DecisionWrapper
+from .primitives import (
+    DeleteRecord,
+    ProvenanceChain,
+    ProvenanceEvent,
+    SynthesisResult,
+    complete_delete,
+    synthesize,
+    trace,
+)
 from .taskcontext_wrapper import TaskContextWrapper
 from .trace_composition import AuditRecord, compose_audit_record
 
@@ -35,6 +51,13 @@ __all__ = [
     "ArtifactWrapper",
     "AuditRecord",
     "DecisionWrapper",
+    "DeleteRecord",
+    "ProvenanceChain",
+    "ProvenanceEvent",
+    "SynthesisResult",
     "TaskContextWrapper",
+    "complete_delete",
     "compose_audit_record",
+    "synthesize",
+    "trace",
 ]

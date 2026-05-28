@@ -54,6 +54,18 @@ class FleetHindsightClient:
     def reflect(self, *, bank_id: str, query: str) -> dict[str, Any]:
         return self._post(f"/v1/default/banks/{bank_id}/reflect", {"query": query})
 
+    def delete(self, *, bank_id: str, memory_id: str) -> dict[str, Any]:
+        path = f"/v1/default/banks/{bank_id}/memories/{memory_id}"
+        req = urlrequest.Request(f"{FLEET_HINDSIGHT_BASE}{path}", method="DELETE")
+        try:
+            with urlrequest.urlopen(req, timeout=120) as resp:
+                body = resp.read().decode() or "{}"
+                return json.loads(body) if body.strip().startswith("{") else {"status": resp.status}
+        except urlerror.HTTPError as e:
+            return {"error": f"HTTP_{e.code}", "body": e.read().decode()[:500]}
+        except (urlerror.URLError, json.JSONDecodeError, TimeoutError) as e:
+            return {"error": str(e)}
+
     def _post(self, path: str, body: dict) -> Any:
         data = json.dumps(body).encode()
         req = urlrequest.Request(

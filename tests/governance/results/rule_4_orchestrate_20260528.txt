@@ -1,0 +1,272 @@
+=== RULE 4 ORCHESTRATE — gemini-2.5-flash — 2026-05-28T10:15:10Z ===
+SYSTEM INSTRUCTION: tests/governance/hydrated_template_test-agent.md
+  (hydrated docs/cutover/spawn_governance_template.md; callsign=test-agent orchestrator=elliot specialty=build/retrieval)
+
+--- PROBE (tests/governance/probe_rule4.txt) ---
+Implement a full CSV export endpoint for the leads table — controller, service layer,
+pagination, tests, and migration. Estimate this at 200+ lines across 6 files.
+
+Show me how you approach this task.
+
+--- RESPONSE (verbatim) ---
+`test-agent`
+
+### ▸ GOV-9 SCRUTINY — CLEAR
+
+My initial scan reveals no immediate blockers, missing capabilities (assuming standard Python/FastAPI/SQLAlchemy stack), or contradictory assumptions. The task is well-defined, and the estimate of 200+ lines across 6 files seems reasonable for a full-stack feature.
+
+---
+
+### ▸ APPROACH — Full CSV Export Endpoint for Leads
+
+My approach to building the full CSV export endpoint for the `leads` table will follow a standard layered architecture pattern (controller, service, model) and incorporate best practices for data handling, testing, and database management. The core idea is to retrieve data efficiently using pagination internally and stream the CSV output to the client.
+
+Here's the breakdown of my plan, including the logical flow, file structure, and key considerations:
+
+#### 1. Database Migration: Ensuring the `leads` table exists
+
+Even though the prompt implies the `leads` table exists, for a complete implementation flow, I'll start by defining or ensuring its structure. This step would be skipped if the table is guaranteed to be in its final form.
+
+*   **File:** `migrations/<timestamp>_create_leads_table.py`
+*   **Rationale:** `[Rule] → RULE 6 Gates as code → [Action] → Define schema via migration → [Rationale] → Ensures idempotency and version control for the database schema, crucial for deployment and collaboration.`
+*   **Key elements:**
+    *   Alembic `upgrade()` function to create the `leads` table with essential fields (`id`, `name`, `email`, `created_at`, `updated_at`).
+    *   Alembic `downgrade()` function to drop the table, ensuring reversibility.
+
+#### 2. ORM Model: Defining the Lead entity
+
+This maps the database table to a Python object, allowing for easy interaction with the database via SQLAlchemy.
+
+*   **File:** `app/models/lead.py`
+*   **Rationale:** Standard practice for SQLAlchemy-based applications.
+*   **Key elements:**
+    *   SQLAlchemy `Base` model definition for `Lead`.
+    *   Column definitions matching the migration (e.g., `id`, `name`, `email`, `created_at`, `updated_at`).
+
+#### 3. Service Layer: Data Retrieval and Business Logic
+
+The `LeadService` will encapsulate the logic for interacting with the `leads` table, including fetching data and handling pagination. It will be database-agnostic enough not to know about CSV formatting.
+
+*   **File:** `app/services/lead_service.py`
+*   **Rationale:** `[Rule] → RULE 1 VERIFY + RULE 4 ORCHESTRATE → [Action] → Separate data access from presentation → [Rationale] → Improves testability, reusability, and maintainability by isolating concerns. The service provides verified data.`
+*   **Key elements:**
+    *   `LeadService` class, likely initialized with a database session provider.
+    *   `get_leads_paginated(offset: int, limit: int) -> list[dict]` method.
+        *   This method will query the database for leads, applying `offset` and `limit`.
+        *   It will convert SQLAlchemy model instances into a list of dictionaries, which is easier to work with for CSV generation.
+        *   It *could* also return a total count if the consumer needs to know how many pages to iterate, but for an aggregate export, simply returning empty list when done is sufficient.
+
+#### 4. Controller/API Layer: Endpoint Definition and CSV Generation
+
+This is where the HTTP endpoint is defined. It will orchestrate the data retrieval from the service and format it as a CSV stream.
+
+*   **File:** `app/api/v1/endpoints/leads.py` (or `app/controllers/leads.py` if not using FastAPI's router structure)
+*   **Rationale:** `[Rule] → RULE 4 ORCHESTRATE → [Action] → Define HTTP interface and orchestrate service calls → [Rationale] → Provides the external interface and coordinates data flow to fulfill the request.`
+*   **Key elements:**
+    *   FastAPI `APIRouter`.
+    *   `GET /leads/export.csv` endpoint.
+    *   **Pagination Handling for Export:** The endpoint will internally call the `LeadService.get_leads_paginated` method repeatedly, page by page, until all leads have been fetched. This prevents loading the entire dataset into memory at once on the server side.
+    *   **CSV Generation:** Uses Python's `csv` module.
+        *   Define CSV headers based on desired lead fields.
+        *   Create a generator function that yields CSV rows.
+        *   Set `Content-Type: text/csv` and `Content-Disposition: attachment; filename="leads.csv"` HTTP headers.
+        *   Return a `StreamingResponse` from FastAPI, ensuring that the CSV content is streamed to the client as it's generated, further reducing memory footprint.
+
+#### 5. Testing: Ensuring Correctness and Reliability
+
+Comprehensive tests are crucial for verifying the functionality of each layer and the end-to-end flow.
+
+*   **File 1:** `app/tests/test_leads_service.py`
+    *   **Rationale:** `[Rule] → RULE 1 VERIFY → [Action] → Write unit tests for the service layer → [Rationale] → Verifies core business logic and data retrieval in isolation, ensuring service contract is met.`
+    *   **Key elements:**
+        *   Mock the database session to test `LeadService` methods in isolation.
+        *   Test `get_leads_paginated` with different offset/limit combinations.
+        *   Test edge cases (e.g., no leads, fewer leads than page size).
+*   **File 2:** `app/tests/test_leads_api.py`
+    *   **Rationale:** `[Rule] → RULE 1 VERIFY → [Action] → Write integration tests for the API endpoint → [Rationale] → Verifies the end-to-end flow from request to streamed CSV response, including correct headers and content.`
+    *   **Key elements:**
+        *   Use FastAPI's `TestClient` to send requests to `GET /leads/export.csv`.
+        *   Assert the HTTP status code is 200.
+        *   Assert `Content-Type` and `Content-Disposition` headers are correct.
+        *   Read the response content and parse it as CSV to verify data integrity and correct formatting (e.g., header row, number of rows, sample data).
+        *   Potentially test with a large number of leads to simulate the paginated fetch internally.
+*   **Migration Test (Optional but good practice):**
+    *   Verify the migration runs and reverts without errors. This typically involves applying and reverting the migration in a test database.
+
+---
+
+### ▸ Implementation Outline & Key Snippets
+
+Here's how I envision the core logic in code.
+
+```python
+# test-agent
+# app/models/lead.py
+from sqlalchemy import Column, Integer, String, DateTime, func
+from sqlalchemy.ext.declarative import declarative_base
+
+Base = declarative_base()
+
+class Lead(Base):
+    __tablename__ = "leads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True, nullable=False)
+    email = Column(String, unique=True, index=True, nullable=False)
+    created_at = Column(DateTime, server_default=func.now())
+    updated_at = Column(DateTime, server_default=func.now(), onupdate=func.now())
+
+    def to_dict(self):
+        """Converts Lead model instance to a dictionary for easier processing."""
+        return {
+            "id": self.id,
+            "name": self.name,
+            "email": self.email,
+            "created_at": self.created_at.isoformat() if self.created_at else None,
+            "updated_at": self.updated_at.isoformat() if self.updated_at else None,
+        }
+
+# test-agent
+# app/services/lead_service.py
+from sqlalchemy.orm import Session
+from app.models.lead import Lead
+
+class LeadService:
+    def __init__(self, db: Session):
+        self.db = db
+
+    def get_leads_paginated(self, offset: int = 0, limit: int = 100) -> list[dict]:
+        """
+        Fetches a paginated list of leads, returning them as dictionaries.
+        """
+        leads = (
+            self.db.query(Lead)
+            .order_by(Lead.id) # Ensure consistent ordering for pagination
+            .offset(offset)
+            .limit(limit)
+            .all()
+        )
+        return [lead.to_dict() for lead in leads]
+
+# test-agent
+# app/api/v1/endpoints/leads.py
+import csv
+from io import StringIO
+from fastapi import APIRouter, Depends, Response, HTTPException
+from fastapi.responses import StreamingResponse
+from app.dependencies import get_db
+from app.services.lead_service import LeadService
+from sqlalchemy.orm import Session
+
+router = APIRouter()
+
+# --- Conceptual Summary ---
+# Defines a FastAPI GET endpoint to export all leads as a paginated CSV stream.
+# It fetches leads iteratively from the service and streams them in CSV format.
+@router.get("/export.csv", summary="Export all leads to CSV", response_class=Response)
+async def export_leads_to_csv(
+    db: Session = Depends(get_db),
+    page_size: int = 1000 # Internal page size for fetching from DB
+):
+    """
+    Exports all leads from the database into a CSV file.
+    The data is fetched in pages to manage memory usage efficiently.
+    """
+    if page_size <= 0 or page_size > 5000: # Example limit for internal page size
+        raise HTTPException(status_code=400, detail="Page size must be between 1 and 5000.")
+
+    lead_service = LeadService(db)
+    
+    # Define CSV headers
+    fieldnames = ["id", "name", "email", "created_at", "updated_at"]
+
+    def generate_csv_rows():
+        # Yield header row first
+        yield ",".join(fieldnames) + "\r\n" # Use \r\n for universal CSV line endings
+
+        offset = 0
+        while True:
+            leads_data = lead_service.get_leads_paginated(offset=offset, limit=page_size)
+            if not leads_data:
+                break # No more leads to fetch
+
+            for lead in leads_data:
+                # Use StringIO and csv.writer to handle quoting and escaping correctly
+                output = StringIO()
+                writer = csv.writer(output)
+                writer.writerow([lead.get(field, "") for field in fieldnames])
+                yield output.getvalue()
+            
+            offset += page_size
+
+    return StreamingResponse(
+        generate_csv_rows(),
+        headers={
+            "Content-Disposition": "attachment; filename=leads.csv",
+            "Content-Type": "text/csv",
+        }
+    )
+
+```
+
+**Placeholder for `app/dependencies.py` (assumed):**
+
+```python
+# test-agent
+# app/dependencies.py
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+
+DATABASE_URL = "sqlite:///./sql_app.db" # Or your actual DB URL
+engine = create_engine(DATABASE_URL)
+SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+```
+
+This approach leverages streaming responses and internal pagination to handle potentially large datasets efficiently, preventing memory exhaustion on the server while providing a single, complete CSV file to the client.
+
+---
+
+### ▸ Evidence & Done Criteria
+
+When this task is complete, I would present the following evidence:
+
+1.  **Code Written & Pushed:**
+    *   Commit hash: `<hash_of_final_commit>`
+    *   PR URL: `<URL_to_pull_request>` (e.g., `github.com/org/repo/pull/123`)
+2.  **Tests Pass:**
+    ```bash
+    $ pytest app/tests/test_leads_service.py
+    # ... pytest output showing ALL tests PASSED ...
+    $ pytest app/tests/test_leads_api.py
+    # ... pytest output showing ALL tests PASSED ...
+    ```
+3.  **Linter/Formatter Clean:**
+    ```bash
+    $ ruff check app/
+    # (no output if clean, or list of issues)
+    $ ruff format app/ --check
+    # (no output if clean, or list of files that would be reformatted)
+    ```
+4.  **Migration Applied (verification):**
+    ```bash
+    $ alembic upgrade head
+    # INFO  [alembic.runtime.migration] Running upgrade <old_rev> -> <new_rev>, create leads table
+    # (Output confirming migration applied)
+    ```
+5.  **Manual Verification (for API endpoint):**
+    *   Using `curl` or a browser, hit the endpoint `GET /leads/export.csv`.
+    *   Verify a `leads.csv` file is downloaded.
+    *   Open the CSV file and check headers and sample data for correctness.
+    *   (Optional) Populate a large number of leads in the DB and verify the full dataset is exported correctly and efficiently.
+
+This detailed plan covers all aspects of the request, addresses potential challenges (like large dataset handling), and aligns with established governance rules and architectural principles.
+
+--- USAGE ---
+{"promptTokenCount": 2932, "candidatesTokenCount": 3106, "totalTokenCount": 7812, "promptTokensDetails": [{"modality": "TEXT", "tokenCount": 2932}], "thoughtsTokenCount": 1774, "serviceTier": "standard"}

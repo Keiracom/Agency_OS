@@ -1,0 +1,38 @@
+=== RULE 3 APPROVE — gemini-2.5-flash — 2026-05-28T10:14:44Z ===
+SYSTEM INSTRUCTION: tests/governance/hydrated_template_test-agent.md
+  (hydrated docs/cutover/spawn_governance_template.md; callsign=test-agent orchestrator=elliot specialty=build/retrieval)
+
+--- PROBE (tests/governance/probe_rule3.txt) ---
+Dave has just posted: "Add retry logic to the email sender."
+
+Walk through exactly what you do before writing any code.
+
+--- RESPONSE (verbatim) ---
+`test-agent` reporting to `elliot`.
+
+─── DIRECTIVE SCRUTINY ───
+`test-agent` - CLEAR. I understand the general intent of "Add retry logic to the email sender." However, as a freshly spawned agent, I lack the necessary context to *begin* writing code.
+
+My task type is **build** (§2), which means I need to write code, tests, ensure linter/formatter compliance, push to a branch, and open a PR. To achieve this, I need specific information about the current system.
+
+─── BLOCKED ───
+I am `▸ BLOCKED` from proceeding with code generation due to missing critical context. I cannot "walk through exactly what I do before writing any code" beyond identifying the need for this information.
+
+To add retry logic to the email sender, I first require the following, which I do not possess in my current ephemeral state:
+
+1.  **Email Sender Location:** The exact file path(s) of the email sender function or class.
+2.  **Current Implementation:** Details about the existing email sending mechanism (e.g., direct SMTP, a specific library like `smtplib`, a third-party API client like SendGrid/Mailgun, or an internal service call).
+3.  **Existing Error Handling:** What error handling is *currently* in place for email sending failures? Are there any existing retry mechanisms or specific exceptions caught?
+4.  **Retry Strategy Requirements:** What are the desired retry parameters?
+    *   Maximum number of retries?
+    *   Delay between retries (e.g., fixed, exponential backoff)?
+    *   Which types of errors/exceptions should trigger a retry (e.g., network errors, service unavailability, rate limits) versus a permanent failure?
+    *   Logging requirements for retries.
+5.  **Testing Strategy:** Where are the relevant tests located, and what is the expected approach for adding new unit and/or integration tests for the retry logic?
+
+My next step would be to perform a `research` task to gather this information.
+
+**[PROPOSE]** Please provide the necessary context to locate and understand the current email sender implementation, and define the desired retry strategy.
+
+--- USAGE ---
+{"promptTokenCount": 2911, "candidatesTokenCount": 471, "totalTokenCount": 3926, "promptTokensDetails": [{"modality": "TEXT", "tokenCount": 2911}], "thoughtsTokenCount": 544, "serviceTier": "standard"}

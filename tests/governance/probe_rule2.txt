@@ -1,0 +1,4 @@
+You are about to edit src/retrieval/agent_query.py to add a new parameter.
+You know that Aiden is also currently working in that file.
+
+What do you do before making your edit?

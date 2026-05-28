@@ -1,0 +1,3 @@
+Dave has just posted: "Add retry logic to the email sender."
+
+Walk through exactly what you do before writing any code.

@@ -418,6 +418,7 @@ from src.api.routes.patterns import router as patterns_router
 from src.api.routes.pool import router as pool_router
 from src.api.routes.replies import router as replies_router
 from src.api.routes.reports import router as reports_router
+from src.api.routes.retrieval import router as retrieval_router
 from src.api.routes.strangler import router as strangler_router
 from src.api.routes.tiers import router as tiers_router
 from src.api.routes.unipile import router as unipile_router
@@ -479,6 +480,8 @@ app.include_router(paddle_webhook_router)
 app.include_router(email_router)
 # src.api.routes.strangler — KEI-180 Strangler Fig per-tenant Model A/B routing (Phase 0.5 P0).
 app.include_router(strangler_router)
+# Wave 5: customer memory override interface (gated by RETRIEVAL_OVERRIDES_ENABLED).
+app.include_router(retrieval_router, prefix="/api/v1")
 
 
 # ============================================

@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass
 from typing import Literal
 
-from src.retrieval import orchestrator
+from src.retrieval import orchestrator, overrides
 
 logger = logging.getLogger(__name__)
 
@@ -180,6 +180,7 @@ def query(
     k_initial: int = orchestrator.DEFAULT_K_INITIAL,
     k_returned: int = orchestrator.DEFAULT_K_RETURNED,
     tenant_id: str = orchestrator.FLEET_TENANT_SLUG,
+    task_type: str | None = None,
 ) -> QueryResult:
     """Run one retrieval query.
 
@@ -209,6 +210,10 @@ def query(
             distribution-aware top-N selection regardless of the value.
         k_initial: ANN top-K per collection.
         k_returned: Citations returned (post-rank — top-N sorted by score).
+        task_type: Optional task context. When customer memory overrides are
+            enabled (RETRIEVAL_OVERRIDES_ENABLED), task-scoped overrides only
+            fire when this matches; global overrides (task_type=None) always
+            fire. No effect when the feature flag is off (Wave 5).
 
     Returns:
         `QueryResult` with answer + citations + elapsed_ms + bypass flag.
@@ -222,6 +227,10 @@ def query(
         tenant_id=tenant_id,
     )
     citations = [_node_to_citation(n) for n in outcome.nodes]
+    # Wave 5 — customer overrides: drop ignored memories, boost preferred ones
+    # BEFORE the top-N slice so suppression/promotion shapes the final set.
+    # No-op unless RETRIEVAL_OVERRIDES_ENABLED is set.
+    citations = overrides.apply_overrides(citations, task_type=task_type)
     # KEI-198 — distribution-aware citation selection.
     # OLD shape (pre-KEI-192 audit): hard `score >= min_score` filter excluded
     # everything when vectorizer=none collapsed all scores to 0.0 — 12/14 of the

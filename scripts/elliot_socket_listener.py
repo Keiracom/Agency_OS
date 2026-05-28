@@ -67,6 +67,11 @@ def should_keep(text: str, has_bot_id: bool) -> bool:
     return not has_bot_id
 
 
+_USER_ID_MAP = {
+    "U091TGTPB9U": "dave",
+}
+
+
 def sender_from(msg: dict) -> str:
     text = msg.get("text", "")
     for tag in KEEP_TAGS:
@@ -74,7 +79,8 @@ def sender_from(msg: dict) -> str:
             return tag.strip("[]").lower() + "bot"
     if msg.get("bot_id"):
         return "slackbot"
-    return msg.get("user", "human") or "human"
+    uid = msg.get("user", "") or ""
+    return _USER_ID_MAP.get(uid, uid or "human")
 
 
 def write_inbox(text: str, sender: str) -> None:

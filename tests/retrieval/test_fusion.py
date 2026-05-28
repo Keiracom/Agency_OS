@@ -208,3 +208,71 @@ def test_agent_query_uses_orchestrator_when_flag_off(monkeypatch):
     )
     agent_query.query("anything", agent="orion")
     assert used == [1]
+
+
+# ---------------------------------------------------------------------------
+# Async/sync split — running-loop safety (Aiden re-review of PR #1249)
+# ---------------------------------------------------------------------------
+
+
+def _fusion_stub(monkeypatch):
+    """Enable fusion + return one canned node; silence the event recorder."""
+    monkeypatch.setenv("RETRIEVAL_FUSION_ENABLED", "1")
+    monkeypatch.setattr(agent_query, "_record_event", lambda **kw: None)
+
+    async def _fake(text, tenant, top_k=orchestrator.DEFAULT_K_INITIAL):
+        return [
+            orchestrator.RetrievedNode(
+                text="hit", score=0.9, metadata={"source_id": "X1"}, collection="Keis"
+            )
+        ]
+
+    monkeypatch.setattr(fusion, "fused_recall", _fake)
+
+
+def test_sync_query_safe_when_called_inside_running_loop(monkeypatch):
+    """The landmine: sync query() invoked from within a running event loop
+    (FastAPI handler, awaited chain) must NOT raise RuntimeError from
+    asyncio.run() — _run_coro_sync falls back to a worker thread."""
+    _fusion_stub(monkeypatch)
+
+    async def _driver():
+        # Calling the SYNC entry point from inside a running loop.
+        return agent_query.query("anything", agent="orion")
+
+    result = asyncio.run(_driver())
+    assert result.citations[0].source_id == "X1"
+
+
+def test_sync_query_works_with_no_running_loop(monkeypatch):
+    _fusion_stub(monkeypatch)
+    result = agent_query.query("anything", agent="orion")
+    assert result.citations[0].source_id == "X1"
+
+
+def test_query_async_routes_through_fusion(monkeypatch):
+    _fusion_stub(monkeypatch)
+    monkeypatch.setattr(
+        orchestrator,
+        "retrieve_with_outcome",
+        lambda **kw: pytest.fail("orchestrator path used while fusion flag on"),
+    )
+    result = asyncio.run(agent_query.query_async("anything", agent="orion"))
+    assert result.citations[0].source_id == "X1"
+
+
+def test_query_async_uses_orchestrator_when_flag_off(monkeypatch):
+    monkeypatch.delenv("RETRIEVAL_FUSION_ENABLED", raising=False)
+    monkeypatch.setattr(agent_query, "_record_event", lambda **kw: None)
+    used = []
+
+    def _spy(**kw):
+        used.append(1)
+        return orchestrator.RetrievalOutcome((), False, "empty_pool", 0)
+
+    monkeypatch.setattr(orchestrator, "retrieve_with_outcome", _spy)
+    monkeypatch.setattr(
+        fusion, "fused_recall", lambda *a, **kw: pytest.fail("fusion used while flag off")
+    )
+    asyncio.run(agent_query.query_async("anything", agent="orion"))
+    assert used == [1]

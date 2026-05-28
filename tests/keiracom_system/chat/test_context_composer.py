@@ -161,3 +161,142 @@ def test_history_passed_to_classifier():
     )
     prompt = llm.calls[0]["messages"][0]["content"]
     assert "earlier msg B" in prompt  # recent turns fed in for disambiguation
+
+
+# ======================================================================
+# compose_context — spawn-startup hydration (async, fail-open)
+# ======================================================================
+
+
+class _AsyncRetrieve:
+    """Async Hindsight stub — records (query_text, collections); raises if boom."""
+
+    def __init__(self, result: QueryResult | None = None, *, boom: bool = False):
+        self.result = result
+        self.boom = boom
+        self.calls: list[tuple[str, tuple[str, ...]]] = []
+
+    async def __call__(self, query_text: str, collections: tuple[str, ...]):
+        self.calls.append((query_text, collections))
+        if self.boom:
+            raise RuntimeError("hindsight down")
+        return self.result
+
+
+def _async_return(value: Any):
+    async def _f(*_a, **_k):
+        return value
+
+    return _f
+
+
+def _async_raise():
+    async def _f(*_a, **_k):
+        raise RuntimeError("source down")
+
+    return _f
+
+
+def _cites(*ids: str) -> QueryResult:
+    return _result(*[_cite(i) for i in ids])
+
+
+async def test_compose_context_happy_path_assembles_three_sources():
+    res = await cc.compose_context(
+        7,
+        "how is billing tiered?",
+        tenant_fetch=_async_return({"tier": "pro", "status": "active"}),
+        memory_fetch=_async_return(["ceo:pricing — tiers locked"]),
+        retrieve_fn=_AsyncRetrieve(_cites("DEC-1")),
+    )
+    assert isinstance(res, cc.ChatContext)
+    assert res.tenant_config == {"tier": "pro", "status": "active"}
+    assert "[DEC-1] how scoring works" in res.relevant_decisions
+    assert "ceo:pricing — tiers locked" in res.relevant_decisions
+    assert res.prior_patterns  # Hindsight Discoveries pass populated it
+
+
+async def test_decisions_merge_hindsight_then_memory():
+    res = await cc.compose_context(
+        1,
+        "scoring",
+        tenant_fetch=_async_return({}),
+        memory_fetch=_async_return(["ceo:k — v"]),
+        retrieve_fn=_AsyncRetrieve(_cites("DEC-1")),
+    )
+    assert res.relevant_decisions == ["[DEC-1] how scoring works", "ceo:k — v"]
+
+
+async def test_caps_5_decisions_and_5_patterns():
+    eight = _cites(*[f"D{i}" for i in range(8)])
+    res = await cc.compose_context(
+        1,
+        "topic",
+        tenant_fetch=_async_return({}),
+        memory_fetch=_async_return([f"ceo:m{i}" for i in range(4)]),
+        retrieve_fn=_AsyncRetrieve(eight),
+    )
+    assert len(res.relevant_decisions) == cc.MAX_DECISIONS  # 8 hindsight + 4 mem → capped 5
+    assert len(res.prior_patterns) == cc.MAX_PATTERNS
+
+
+async def test_routing_and_customer_biased_patterns():
+    retrieve = _AsyncRetrieve(_cites("X"))
+    await cc.compose_context(
+        77,
+        "billing question",
+        tenant_fetch=_async_return({}),
+        memory_fetch=_async_return([]),
+        retrieve_fn=retrieve,
+    )
+    by_collection = {coll: qt for qt, coll in retrieve.calls}
+    assert ("Decisions",) in by_collection
+    assert ("Discoveries",) in by_collection
+    assert by_collection[("Discoveries",)].startswith("customer 77:")  # customer-biased
+
+
+async def test_tenant_fetch_failure_falls_open_to_empty_dict():
+    res = await cc.compose_context(
+        1,
+        "x",
+        tenant_fetch=_async_raise(),
+        memory_fetch=_async_return([]),
+        retrieve_fn=_AsyncRetrieve(_cites("DEC-1")),
+    )
+    assert res.tenant_config == {}  # fail-open, not an exception
+    assert res.relevant_decisions  # other sources unaffected
+
+
+async def test_retrieval_failure_falls_open_to_empty_lists():
+    res = await cc.compose_context(
+        1,
+        "x",
+        tenant_fetch=_async_return({"tier": "solo"}),
+        memory_fetch=_async_return(["ceo:k — v"]),
+        retrieve_fn=_AsyncRetrieve(boom=True),
+    )
+    assert res.tenant_config == {"tier": "solo"}
+    assert res.relevant_decisions == ["ceo:k — v"]  # memory still contributes
+    assert res.prior_patterns == []  # hindsight patterns failed → empty
+
+
+async def test_memory_failure_falls_open():
+    res = await cc.compose_context(
+        1,
+        "x",
+        tenant_fetch=_async_return({}),
+        memory_fetch=_async_raise(),
+        retrieve_fn=_AsyncRetrieve(_cites("DEC-1")),
+    )
+    assert res.relevant_decisions == ["[DEC-1] how scoring works"]  # hindsight only
+
+
+async def test_default_tenant_fetch_is_noop_without_db():
+    # No tenant_fetch injected → default no-op returns {} (no int→tenant mapping).
+    res = await cc.compose_context(
+        1,
+        "x",
+        memory_fetch=_async_return([]),
+        retrieve_fn=_AsyncRetrieve(_cites("DEC-1")),
+    )
+    assert res.tenant_config == {}

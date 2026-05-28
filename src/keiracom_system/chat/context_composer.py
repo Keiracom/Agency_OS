@@ -23,12 +23,21 @@ failure yields an empty block, never an exception. The classifier carries NO
 business routing rules — it labels the message into one of four abstract types;
 the actual routing rules / tier logic / escalation protocols live in Hindsight
 and are surfaced by the retrieval pass, not hardcoded here.
+
+Two entry points for two lifecycle moments (additive, non-overlapping):
+  * `compose_chat_context` — per *message*: classify the incoming message and
+    retrieve the context block to answer it.
+  * `compose_context` — per *spawn startup*: hydrate a fresh John spawn with
+    tenant config + prior decisions/patterns before it sees any message. Async
+    + fail-open; every source degrades to empty/{} independently.
 """
 
 from __future__ import annotations
 
+import asyncio
 import logging
-from collections.abc import Callable, Sequence
+import os
+from collections.abc import Awaitable, Callable, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -197,4 +206,171 @@ def compose_chat_context(
         classification=classification,
         citations=citations,
         token_estimate=len(block) // CHARS_PER_TOKEN,
+    )
+
+
+# ─────────────────────── Spawn-startup hydration ───────────────────────
+# compose_context: a SECOND, additive entry point. Where compose_chat_context
+# reacts to one message, this hydrates a fresh John spawn at startup from three
+# sources — keiracom tenant config, Hindsight prior decisions/patterns, and
+# relevant ceo_memory keys — and returns a ChatContext. Async + fail-open; the
+# three fetchers are injection seams (tests mock them).
+
+DECISIONS_COLLECTION: tuple[str, ...] = ("Decisions",)
+PATTERNS_COLLECTION: tuple[str, ...] = ("Discoveries",)  # recurring patterns / discovery log
+MAX_DECISIONS = 5
+MAX_PATTERNS = 5
+_MEMORY_TERM_MINLEN = 4
+_MEMORY_MAX_TERMS = 4
+
+TenantFetch = Callable[[int], Awaitable[dict[str, Any]]]
+MemoryFetch = Callable[[str], Awaitable[list[str]]]
+AsyncRetrieveFn = Callable[[str, tuple[str, ...]], Awaitable[Any]]
+
+
+@dataclass(frozen=True)
+class ChatContext:
+    tenant_config: dict[str, Any]
+    relevant_decisions: list[str]
+    prior_patterns: list[str]
+
+
+def _hydration_dsn() -> str | None:
+    """Resolve a plain `postgresql://` DSN for asyncpg (strip SQLAlchemy tags)."""
+    dsn = os.environ.get("SUPABASE_DB_DSN") or os.environ.get("DATABASE_URL")
+    if not dsn:
+        return None
+    return dsn.replace("postgresql+asyncpg://", "postgresql://", 1).replace(
+        "postgresql+psycopg://", "postgresql://", 1
+    )
+
+
+async def _default_async_retrieve(query_text: str, collections: tuple[str, ...]) -> Any:
+    """Production Hindsight pass (async). citation_required=False → best-available."""
+    return await agent_query.query_async(
+        query_text,
+        agent="john",
+        collections=collections,
+        k_returned=max(MAX_DECISIONS, MAX_PATTERNS),
+        citation_required=False,
+    )
+
+
+async def _default_tenant_fetch(customer_id: int) -> dict[str, Any]:
+    """Fail-open tenant-config lookup.
+
+    SCHEMA GAP (flagged to orchestrator): the keiracom tenant tables
+    (keiracom_tenants / keiracom_tenant_budgets / dispatcher_customers) are all
+    UUID-keyed — there is no int `customer_id` column, and no
+    `max_concurrent_tasks` column anywhere. Until an int→tenant mapping exists,
+    the default cannot resolve config, so it returns {}. Callers that hold the
+    customer→tenant mapping inject `tenant_fetch`.
+    """
+    logger.info(
+        "compose_context: default tenant_fetch is a no-op for customer_id=%s — "
+        "no int customer_id→tenant mapping in schema yet; inject tenant_fetch",
+        customer_id,
+    )
+    return {}
+
+
+async def _default_memory_fetch(conversation_seed: str) -> list[str]:
+    """Recent ceo_memory keys whose key/value matches conversation terms."""
+    dsn = _hydration_dsn()
+    terms = [t for t in conversation_seed.lower().split() if len(t) >= _MEMORY_TERM_MINLEN]
+    terms = terms[:_MEMORY_MAX_TERMS]
+    if not dsn or not terms:
+        return []
+    from src.utils.asyncpg_connection import get_asyncpg_connection
+
+    patterns = [f"%{t}%" for t in terms]
+    conn = await get_asyncpg_connection(dsn)
+    try:
+        rows = await conn.fetch(
+            "SELECT key, LEFT(value::text, 160) AS preview FROM public.ceo_memory "
+            "WHERE key ILIKE ANY($1) OR value::text ILIKE ANY($1) "
+            "ORDER BY updated_at DESC LIMIT $2",
+            patterns,
+            MAX_DECISIONS,
+        )
+    finally:
+        await conn.close()
+    return [f"{r['key']} — {r['preview']}" for r in rows]
+
+
+def _citations_to_strings(result: Any) -> list[str]:
+    return [f"[{c.source_id}] {c.excerpt}" for c in (getattr(result, "citations", None) or [])]
+
+
+async def _resolve_tenant(customer_id: int, tenant_fetch: TenantFetch | None) -> dict[str, Any]:
+    try:
+        return await (tenant_fetch or _default_tenant_fetch)(customer_id) or {}
+    except Exception:  # noqa: BLE001 — fail-open: never block the spawn
+        logger.warning("compose_context: tenant_fetch failed", exc_info=True)
+        return {}
+
+
+async def _resolve_decisions(
+    seed: str, retrieve_fn: AsyncRetrieveFn | None, memory_fetch: MemoryFetch | None
+) -> list[str]:
+    """Hindsight Decisions + relevant ceo_memory keys, merged + capped. Fail-open."""
+    retrieve = retrieve_fn or _default_async_retrieve
+    mem = memory_fetch or _default_memory_fetch
+
+    async def _hindsight() -> list[str]:
+        try:
+            return _citations_to_strings(await retrieve(seed, DECISIONS_COLLECTION))
+        except Exception:  # noqa: BLE001
+            logger.warning("compose_context: decisions retrieval failed", exc_info=True)
+            return []
+
+    async def _memory() -> list[str]:
+        try:
+            return await mem(seed)
+        except Exception:  # noqa: BLE001
+            logger.warning("compose_context: ceo_memory fetch failed", exc_info=True)
+            return []
+
+    hits, mem_hits = await asyncio.gather(_hindsight(), _memory())
+    return (hits + mem_hits)[:MAX_DECISIONS]
+
+
+async def _resolve_patterns(
+    customer_id: int, seed: str, retrieve_fn: AsyncRetrieveFn | None
+) -> list[str]:
+    """Hindsight recurring patterns, biased toward this customer. Fail-open."""
+    try:
+        result = await (retrieve_fn or _default_async_retrieve)(
+            f"customer {customer_id}: {seed}", PATTERNS_COLLECTION
+        )
+    except Exception:  # noqa: BLE001
+        logger.warning("compose_context: patterns retrieval failed", exc_info=True)
+        return []
+    return _citations_to_strings(result)[:MAX_PATTERNS]
+
+
+async def compose_context(
+    customer_id: int,
+    conversation_seed: str,
+    *,
+    tenant_fetch: TenantFetch | None = None,
+    memory_fetch: MemoryFetch | None = None,
+    retrieve_fn: AsyncRetrieveFn | None = None,
+) -> ChatContext:
+    """Assemble the spawn-startup context payload for a John spawn.
+
+    Fail-open: each of the three sources degrades to empty/{} independently —
+    a failure in one never blocks the spawn. The three fetchers are injection
+    seams for tests (mock tenant config + ceo_memory + Hindsight). Retrieval is
+    capped at MAX_DECISIONS + MAX_PATTERNS for the token budget.
+    """
+    tenant_config, relevant_decisions, prior_patterns = await asyncio.gather(
+        _resolve_tenant(customer_id, tenant_fetch),
+        _resolve_decisions(conversation_seed, retrieve_fn, memory_fetch),
+        _resolve_patterns(customer_id, conversation_seed, retrieve_fn),
+    )
+    return ChatContext(
+        tenant_config=tenant_config,
+        relevant_decisions=relevant_decisions,
+        prior_patterns=prior_patterns,
     )

@@ -58,6 +58,7 @@ from src.relay.budget_ceiling import (
     BudgetCeilingGate,
     BudgetDecision,
 )
+from src.retrieval import spawn_recall
 
 logger = logging.getLogger(__name__)
 
@@ -199,6 +200,17 @@ attribution_enabled: bool = os.environ.get(_ATTRIBUTION_ENABLED_ENV, "").lower()
 }
 attribution_default_model: str = os.environ.get("DISPATCHER_ATTRIBUTION_MODEL", "claude-sonnet-4-6")
 
+# When True, /dispatcher/spawn fires a structured Hindsight recall before
+# spawning and injects the top-3 results into the spawn env as a
+# 'Prior context from memory' block (Wave 3 spawn-recall lifecycle hook).
+# Disabled by default in rollout phase 1; recall is fail-open regardless.
+_SPAWN_RECALL_ENABLED_ENV = "DISPATCHER_SPAWN_RECALL_ENABLED"
+spawn_recall_enabled: bool = os.environ.get(_SPAWN_RECALL_ENABLED_ENV, "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+
 
 def _spawn_kwargs_source_type(sk: dict) -> str:
     """Derive source_type from spawn_kwargs per PR #1207 SOURCE_TYPES taxonomy."""
@@ -228,6 +240,19 @@ def _spawn_kwargs_task_type(sk: dict, registry_key: str) -> str:
     if str(sk.get("from") or "").lower().strip() == "dave":
         return "chat"
     return "build"
+
+
+def _spawn_kwargs_brief(sk: dict) -> str:
+    """Pull the task brief from spawn_kwargs for spawn-time recall.
+
+    Reads the canonical `brief` field first (per dispatch JSON contract),
+    then common aliases. Empty string when none present.
+    """
+    for field in ("brief", "task_brief", "summary", "text"):
+        value = str(sk.get(field) or "").strip()
+        if value:
+            return value
+    return ""
 
 
 def _emit_attribution(
@@ -538,9 +563,25 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
                 "reason": budget_result.reason,
             }
 
+    # Spawn-time recall lifecycle hook (Wave 3).
+    # Fire a structured Hindsight recall ("what failed before + canonical
+    # approach + superseded decisions") and inject the top-3 results into the
+    # spawn env as a 'Prior context from memory' block. Fail-open: recall
+    # errors never block the spawn (spawn_recall swallows internally), and the
+    # block only lands in `env` — the one context-bearing field forwarded
+    # verbatim to the backend spawn.
+    spawn_kwargs_effective = req.spawn_kwargs
+    if spawn_recall_enabled:
+        sk = req.spawn_kwargs or {}
+        spawn_kwargs_effective = spawn_recall.inject_prior_context(
+            sk,
+            task_type=_spawn_kwargs_task_type(sk, req.key),
+            task_brief=_spawn_kwargs_brief(sk),
+        )
+
     manager = SessionManager(backend=backend)
     try:
-        handle = manager.spawn(**req.spawn_kwargs)
+        handle = manager.spawn(**spawn_kwargs_effective)
     except (TmuxUnavailableError, DockerUnavailableError) as exc:
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except (SessionStartupError, ContainerStartupError, TypeError) as exc:

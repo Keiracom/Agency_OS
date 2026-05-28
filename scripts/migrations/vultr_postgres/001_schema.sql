@@ -94,10 +94,6 @@ CREATE UNIQUE INDEX IF NOT EXISTS tasks_active_claim
     ON public.tasks (claimed_by)
     WHERE status = 'active';
 
-CREATE INDEX IF NOT EXISTS idx_tasks_bd_id
-    ON public.tasks (bd_id)
-    WHERE bd_id IS NOT NULL;
-
 CREATE INDEX IF NOT EXISTS idx_tasks_persona
     ON public.tasks (persona)
     WHERE status = 'available';

@@ -578,9 +578,15 @@ def cmd_claim(args: argparse.Namespace) -> int:
     # Fail-open: agent_query.query() has its own try/except; we re-catch
     # ImportError + anything else so a broken retrieval layer never blocks a claim.
     try:
+        from src.retrieval import orchestrator as _retrieval_orchestrator
         from src.retrieval.agent_query import query as _retrieval_query
 
-        _retrieval_query(claimed["title"], agent=claimed["claimed_by"])
+        # Fleet-internal bd-claim recall — audit fix YELLOW-4, Agency_OS-7sj6.
+        _retrieval_query(
+            claimed["title"],
+            agent=claimed["claimed_by"],
+            tenant_id=_retrieval_orchestrator.FLEET_TENANT_SLUG,
+        )
     except Exception:
         logger.debug("retrieval query for claim failed (non-fatal)", exc_info=True)
     # KEI-106 — propagate claim status to Linear via completion_sync_queue

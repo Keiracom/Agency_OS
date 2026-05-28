@@ -100,6 +100,7 @@ def main(argv: list[str] | None = None) -> int:
         collections=(PROBE_COLLECTION,),
         citation_required=True,
         min_score=0.0,
+        tenant_id=orchestrator.FLEET_TENANT_SLUG,
     )
     print(f"  elapsed_ms={result.elapsed_ms}")
     print(f"  citations={len(result.citations)}")

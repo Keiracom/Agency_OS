@@ -92,13 +92,22 @@ def weaviate_recall_source(kei: str, title: str, callsign: str) -> Callable[[], 
 
     def _recall() -> list[dict]:
         try:
-            from src.retrieval import agent_query  # noqa: PLC0415 — lazy import
+            from src.retrieval import (
+                agent_query,  # noqa: PLC0415 — lazy import
+                orchestrator,  # noqa: PLC0415 — lazy import
+            )
         except ImportError as exc:
             logger.debug("KEI-103 weaviate recall import failed: %s", exc)
             return []
         query_text = f"{kei}: {title}".strip() if title else kei
         try:
-            result = agent_query.query(query_text, agent=callsign or "atlas")
+            # Fleet-internal claim-context recall reads shared fleet_* banks
+            # under FLEET_TENANT_SLUG (audit fix YELLOW-4, Agency_OS-7sj6).
+            result = agent_query.query(
+                query_text,
+                agent=callsign or "atlas",
+                tenant_id=orchestrator.FLEET_TENANT_SLUG,
+            )
         except Exception as exc:  # noqa: BLE001 — fail-open
             logger.debug("KEI-103 weaviate recall query failed: %s", exc)
             return []

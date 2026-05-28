@@ -179,6 +179,7 @@ def query(
     min_score: float = DEFAULT_MIN_SCORE,  # noqa: ARG001 KEI-198 back-compat  # NOSONAR S1172
     k_initial: int = orchestrator.DEFAULT_K_INITIAL,
     k_returned: int = orchestrator.DEFAULT_K_RETURNED,
+    tenant_id: str = orchestrator.FLEET_TENANT_SLUG,
 ) -> QueryResult:
     """Run one retrieval query.
 
@@ -187,6 +188,15 @@ def query(
         agent: Callsign of the asking agent — recorded for observability.
         collections: Which Weaviate collections to search (default 3-tuple
             covers the most common precision-retrieval surfaces).
+        tenant_id: Hindsight tenant slug for the recall URL. Defaults to
+            `orchestrator.FLEET_TENANT_SLUG` because this entry is the
+            fleet-internal recall API; customer-facing recall goes through
+            the Decision/Artifact/TaskContext/AntiPattern wrappers in
+            src/keiracom_system/memory/wrappers/, which derive the slug
+            from the tenant_id arg per-call. The orchestrator wire boundary
+            (`_hindsight_recall`) still validates and rejects empty/invalid
+            values via `MissingTenantContextError` — audit fix YELLOW-4
+            (Agency_OS-7sj6, 2026-05-28).
         max_tokens: Response synthesis ceiling (KEI-55, 500-token default).
         citation_required: When True (default) AND all returned scores are
             exactly 0.0 (vectorizer-regression sentinel per KEI-198), return
@@ -209,6 +219,7 @@ def query(
         collections=collections,
         k_initial=k_initial,
         k_returned=k_returned,
+        tenant_id=tenant_id,
     )
     citations = [_node_to_citation(n) for n in outcome.nodes]
     # KEI-198 — distribution-aware citation selection.

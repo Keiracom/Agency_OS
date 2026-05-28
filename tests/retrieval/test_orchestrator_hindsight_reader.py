@@ -72,7 +72,9 @@ def test_hindsight_recall_posts_to_correct_endpoint(monkeypatch):
         return _FakeResp()
 
     monkeypatch.setattr(orchestrator.urlrequest, "urlopen", _fake_urlopen)
-    out = orchestrator._hindsight_recall("anchor query", "fleet_decisions", top_k=5)
+    out = orchestrator._hindsight_recall(
+        "anchor query", "fleet_decisions", top_k=5, tenant_id=orchestrator.FLEET_TENANT_SLUG
+    )
     assert len(captured) == 1
     assert captured[0]["url"].endswith("/v1/default/banks/fleet_decisions/memories/recall")
     assert captured[0]["method"] == "POST"
@@ -94,7 +96,9 @@ def test_hindsight_recall_accepts_alt_results_key(monkeypatch):
             return b'{"results": [{"content": "y"}]}'
 
     monkeypatch.setattr(orchestrator.urlrequest, "urlopen", lambda req, timeout=None: _FakeResp())
-    out = orchestrator._hindsight_recall("q", "fleet_keis", top_k=3)
+    out = orchestrator._hindsight_recall(
+        "q", "fleet_keis", top_k=3, tenant_id=orchestrator.FLEET_TENANT_SLUG
+    )
     assert out == [{"content": "y"}]
 
 
@@ -110,7 +114,12 @@ def test_hindsight_recall_empty_response_returns_empty_list(monkeypatch):
             return b"{}"
 
     monkeypatch.setattr(orchestrator.urlrequest, "urlopen", lambda req, timeout=None: _FakeResp())
-    assert orchestrator._hindsight_recall("q", "fleet_decisions", top_k=5) == []
+    assert (
+        orchestrator._hindsight_recall(
+            "q", "fleet_decisions", top_k=5, tenant_id=orchestrator.FLEET_TENANT_SLUG
+        )
+        == []
+    )
 
 
 def test_gather_ann_pool_skips_unmapped_collection(monkeypatch):
@@ -127,8 +136,8 @@ def test_gather_ann_pool_skips_unmapped_collection(monkeypatch):
     """
     called = []
 
-    def _spy_recall(text, bank_id, *, top_k):
-        called.append(bank_id)
+    def _spy_recall(text, bank_id, *, top_k, tenant_id):
+        called.append((bank_id, tenant_id))
         return []
 
     monkeypatch.setattr(orchestrator, "_hindsight_recall", _spy_recall)
@@ -137,8 +146,9 @@ def test_gather_ann_pool_skips_unmapped_collection(monkeypatch):
         collections=("_UnmappedSentinel_NeverMapMe", "Decisions"),
         k_initial=5,
         weaviate_client=None,
+        tenant_id=orchestrator.FLEET_TENANT_SLUG,
     )
-    assert called == ["fleet_decisions"]  # Sentinel skipped, Decisions called
+    assert called == [("fleet_decisions", orchestrator.FLEET_TENANT_SLUG)]
     assert pool == []  # spy returned [] for Decisions
 
 
@@ -148,7 +158,7 @@ def test_gather_ann_pool_swallows_per_collection_failure(monkeypatch):
     didn't stop the others)."""
     calls = []
 
-    def _flaky_recall(text, bank_id, *, top_k):
+    def _flaky_recall(text, bank_id, *, top_k, tenant_id):
         calls.append(bank_id)
         if bank_id == "fleet_decisions":
             raise RuntimeError("simulated failure")
@@ -160,6 +170,7 @@ def test_gather_ann_pool_swallows_per_collection_failure(monkeypatch):
         collections=("Decisions", "Keis"),
         k_initial=5,
         weaviate_client=None,
+        tenant_id=orchestrator.FLEET_TENANT_SLUG,
     )
     assert calls == ["fleet_decisions", "fleet_keis"]
     assert len(pool) == 1
@@ -172,7 +183,7 @@ def test_gather_ann_pool_builds_retrieved_nodes_with_correct_collection_tag(monk
     as its `.collection` field so the downstream citation chain stays
     consistent with the pre-cutover identity."""
 
-    def _stub_recall(text, bank_id, *, top_k):
+    def _stub_recall(text, bank_id, *, top_k, tenant_id):
         return [
             {"content": f"from-{bank_id}-1", "score": 0.8, "metadata": {"src": bank_id}},
             {"content": f"from-{bank_id}-2", "score": 0.6, "metadata": {"src": bank_id}},
@@ -184,6 +195,7 @@ def test_gather_ann_pool_builds_retrieved_nodes_with_correct_collection_tag(monk
         collections=("Decisions", "Discoveries"),
         k_initial=5,
         weaviate_client=None,
+        tenant_id=orchestrator.FLEET_TENANT_SLUG,
     )
     assert len(pool) == 4
     collections_seen = {n.collection for n in pool}
@@ -197,7 +209,7 @@ def test_gather_ann_pool_accepts_alt_text_and_relevance_keys(monkeypatch):
     """Memories may carry `text` instead of `content` and `relevance` instead
     of `score` depending on Hindsight response shape. Both keys supported."""
 
-    def _stub_recall(text, bank_id, *, top_k):
+    def _stub_recall(text, bank_id, *, top_k, tenant_id):
         return [{"text": "alt-shape", "relevance": 0.42, "metadata": None}]
 
     monkeypatch.setattr(orchestrator, "_hindsight_recall", _stub_recall)
@@ -206,6 +218,7 @@ def test_gather_ann_pool_accepts_alt_text_and_relevance_keys(monkeypatch):
         collections=("Decisions",),
         k_initial=5,
         weaviate_client=None,
+        tenant_id=orchestrator.FLEET_TENANT_SLUG,
     )
     assert len(pool) == 1
     assert pool[0].text == "alt-shape"
@@ -219,7 +232,10 @@ def test_retrieve_with_outcome_returns_empty_pool_outcome_on_no_memories(monkeyp
     agent_query.query()'s anti-hallucination guard fires identically."""
     monkeypatch.setattr(orchestrator, "_hindsight_recall", lambda *a, **kw: [])
     outcome = orchestrator.retrieve_with_outcome(
-        "anchor", ("Decisions", "Discoveries", "Keis"), rerank=True
+        "anchor",
+        ("Decisions", "Discoveries", "Keis"),
+        rerank=True,
+        tenant_id=orchestrator.FLEET_TENANT_SLUG,
     )
     assert outcome.nodes == ()
     assert outcome.bypass_rerank is False
@@ -237,5 +253,76 @@ def test_retrieve_with_outcome_no_longer_opens_weaviate_connection(monkeypatch):
         lambda *a, **kw: connect_calls.append(1),
     )
     monkeypatch.setattr(orchestrator, "_hindsight_recall", lambda *a, **kw: [])
-    orchestrator.retrieve_with_outcome("q", ("Decisions",))
+    orchestrator.retrieve_with_outcome(
+        "q", ("Decisions",), tenant_id=orchestrator.FLEET_TENANT_SLUG
+    )
     assert connect_calls == []
+
+
+# ---------------------------------------------------------------------------
+# Audit fix YELLOW-4 (Agency_OS-7sj6, 2026-05-28) — tenant scoping guard.
+# Locks the wire-boundary contract: every Hindsight recall must declare a
+# tenant slug; the URL embeds it; empty/invalid values raise
+# MissingTenantContextError BEFORE any HTTP request is opened.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("bad", [None, "", "   ", "tenant/../escape", "tenant with spaces", 123])
+def test_hindsight_recall_rejects_missing_or_invalid_tenant_id(monkeypatch, bad):
+    """The guard fires BEFORE urlopen — assert urlopen is never called."""
+    opened = []
+    monkeypatch.setattr(orchestrator.urlrequest, "urlopen", lambda *a, **kw: opened.append(1))
+    with pytest.raises(orchestrator.MissingTenantContextError):
+        orchestrator._hindsight_recall("q", "fleet_decisions", top_k=5, tenant_id=bad)
+    assert opened == []
+
+
+def test_hindsight_recall_url_embeds_tenant_slug(monkeypatch):
+    """Customer recall path: the slug appears as the URL's tenant path segment."""
+    captured: list[str] = []
+
+    class _FakeResp:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return None
+
+        def read(self):
+            return b'{"memories": []}'
+
+    def _fake_urlopen(req, timeout=None):  # noqa: ARG001
+        captured.append(req.full_url)
+        return _FakeResp()
+
+    monkeypatch.setattr(orchestrator.urlrequest, "urlopen", _fake_urlopen)
+    orchestrator._hindsight_recall("q", "customer-bank-abc", top_k=5, tenant_id="tenant-uuid-123")
+    assert captured == [
+        f"{orchestrator.HINDSIGHT_BASE}/v1/tenant-uuid-123/banks/customer-bank-abc/memories/recall"
+    ]
+
+
+def test_gather_ann_pool_rejects_missing_tenant_id_upfront(monkeypatch):
+    """Wire-contract violations are raised, not swallowed by the per-collection
+    try/except — otherwise a malformed call would silently return empty pool."""
+    recall_called = []
+    monkeypatch.setattr(
+        orchestrator,
+        "_hindsight_recall",
+        lambda *a, **kw: recall_called.append(1) or [],
+    )
+    with pytest.raises(orchestrator.MissingTenantContextError):
+        orchestrator._gather_ann_pool(
+            text="q",
+            collections=("Decisions",),
+            k_initial=5,
+            weaviate_client=None,
+            tenant_id="",
+        )
+    assert recall_called == []
+
+
+def test_retrieve_with_outcome_requires_tenant_id_keyword():
+    """Calling without tenant_id is a TypeError at call time (keyword-only required)."""
+    with pytest.raises(TypeError):
+        orchestrator.retrieve_with_outcome("q", ("Decisions",))  # type: ignore[call-arg]

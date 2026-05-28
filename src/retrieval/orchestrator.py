@@ -4,9 +4,11 @@ still uses LlamaIndex (transitional).
 Sits between `agent_query.query()` and the underlying vector store. Owns:
     * Multi-collection routing (one bank per collection).
     * Two-stage retrieval: Hindsight `/memories/recall` k_initial vector
-      hits → FlashRank cross-encoder rerank → k_returned final.
-      Bypass-falls-back to raw ANN when FlashRank is unavailable or
-      exceeds its latency budget.
+      hits → cross-encoder reranker sidecar (Wave 3, RerankerClient →
+      TEI /rerank) → k_returned final. Gated behind DISPATCHER_RERANKER_ENABLED
+      (default off). Falls back to raw ANN when the flag is off or the
+      sidecar is unreachable (fail-open). Replaces the in-process FlashRank
+      path, which bypassed on every query at the 200ms budget.
     * Citation extraction — every retrieved node carries a source_id,
       collection, score, and 80-char excerpt back to the caller.
 
@@ -30,11 +32,13 @@ from __future__ import annotations
 import json
 import logging
 import os
-from dataclasses import dataclass
+import time
+from dataclasses import dataclass, replace
 from typing import Any
 from urllib import request as urlrequest
 
-from src.retrieval import rerankers, weaviate_store
+from src.keiracom_system.reranker import RerankerClient
+from src.retrieval import weaviate_store
 
 logger = logging.getLogger(__name__)
 
@@ -111,8 +115,37 @@ DEFAULT_K_INITIAL = 20
 DEFAULT_K_RETURNED = 5
 # Legacy export retained so existing callers (and tests) that import the
 # bypass-default constant don't break — the actual bypass flag now comes
-# from `rerankers.rerank_top_k` per query (RerankOutcome.bypassed).
+# per query from the rerank path (RetrievalOutcome.bypass_rerank).
 RAW_ANN_RERANK_BYPASS = True
+
+# Wave 3 (Agency_OS-0thg): the rerank stage is the cross-encoder sidecar
+# (RerankerClient → TEI /rerank), replacing the in-process FlashRank path
+# that bypassed on every query at the 200ms budget. Gated behind
+# DISPATCHER_RERANKER_ENABLED (default False) for safe rollout — matches the
+# spawn-recall flag pattern. Flag off OR sidecar unreachable → raw-ANN order
+# (fail-open), the same floor the FlashRank bypass already produced.
+_RERANKER_ENABLED_ENV = "DISPATCHER_RERANKER_ENABLED"
+reranker_enabled: bool = os.environ.get(_RERANKER_ENABLED_ENV, "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+
+_reranker_client: RerankerClient | None = None
+
+
+def _set_reranker_client(client: RerankerClient | None) -> None:
+    """Test-only setter for the reranker sidecar client (DI through module attr)."""
+    global _reranker_client  # noqa: PLW0603
+    _reranker_client = client
+
+
+def _get_reranker_client() -> RerankerClient:
+    """Return the injected client, lazily constructing a default one once."""
+    global _reranker_client  # noqa: PLW0603
+    if _reranker_client is None:
+        _reranker_client = RerankerClient()
+    return _reranker_client
 
 
 @dataclass(frozen=True)
@@ -258,6 +291,42 @@ def _gather_ann_pool(
     return pool
 
 
+def _sidecar_rerank(
+    text: str, pool: tuple[RetrievedNode, ...], k_returned: int
+) -> RetrievalOutcome:
+    """Rerank `pool` via the cross-encoder sidecar; fail-open to raw ANN.
+
+    On any sidecar/transport error the raw-ANN top-k is returned with
+    bypass_rerank=True — a recall outage never blocks the query, matching the
+    pre-Wave-3 FlashRank bypass contract. Sidecar relevance scores replace the
+    (always-0.0) Hindsight ANN scores on the surviving nodes.
+    """
+    texts = [n.text for n in pool]
+    started = time.monotonic()
+    try:
+        hits = _get_reranker_client().rerank(text, texts, top_k=k_returned)
+    except Exception:  # noqa: BLE001 — fail-open on any sidecar/transport error
+        elapsed = int((time.monotonic() - started) * 1000)
+        logger.warning("reranker sidecar unreachable; bypassing to raw ANN", exc_info=True)
+        return RetrievalOutcome(tuple(pool[:k_returned]), True, "sidecar_unavailable", elapsed)
+    elapsed = int((time.monotonic() - started) * 1000)
+    reordered: list[RetrievedNode] = []
+    seen: set[int] = set()
+    for hit in hits:
+        if 0 <= hit.index < len(pool):
+            reordered.append(replace(pool[hit.index], score=hit.score))
+            seen.add(hit.index)
+        if len(reordered) >= k_returned:
+            break
+    # Backfill in raw-ANN order if the sidecar returned fewer than k_returned.
+    for idx, node in enumerate(pool):
+        if len(reordered) >= k_returned:
+            break
+        if idx not in seen:
+            reordered.append(node)
+    return RetrievalOutcome(tuple(reordered), False, "sidecar_reranked", elapsed)
+
+
 def retrieve_with_outcome(
     text: str,
     collections: tuple[str, ...],
@@ -285,13 +354,9 @@ def retrieve_with_outcome(
         return RetrievalOutcome((), False, "empty_pool", 0)
     if not rerank:
         return RetrievalOutcome(tuple(pool[:k_returned]), True, "rerank_disabled", 0)
-    outcome = rerankers.rerank_top_k(text, tuple(pool), top_k=k_returned)
-    return RetrievalOutcome(
-        nodes=outcome.nodes,
-        bypass_rerank=outcome.bypassed,
-        rerank_reason=outcome.reason,
-        rerank_elapsed_ms=outcome.elapsed_ms,
-    )
+    if not reranker_enabled:
+        return RetrievalOutcome(tuple(pool[:k_returned]), True, "reranker_flag_off", 0)
+    return _sidecar_rerank(text, tuple(pool), k_returned)
 
 
 def retrieve_nodes(

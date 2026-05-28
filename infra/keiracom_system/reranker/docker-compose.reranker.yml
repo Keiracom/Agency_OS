@@ -30,9 +30,9 @@ services:
       - --max-concurrent-requests=64
       - --port=80
     ports:
-      # localhost:8090 → container:80. Distinct from the embeddings sidecar
-      # on :8080 so both can run on the same tenant host.
-      - "8090:80"
+      # localhost:8091 → container:80. 8090 is taken by Weaviate on the fleet
+      # host; 8080 is the embeddings sidecar. 8091 keeps all three co-resident.
+      - "8091:80"
     volumes:
       # Persistent model cache — avoids re-downloading the ~278MB cross-encoder
       # on container restart.

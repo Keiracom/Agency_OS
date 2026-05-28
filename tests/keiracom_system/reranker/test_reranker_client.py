@@ -63,7 +63,7 @@ def test_healthy_unreachable_is_not_silent(caplog):
     def raises(url: str, t: float) -> _HTTPResponse:
         raise RuntimeError("connection refused")
 
-    c = RerankerClient(base_url="http://localhost:8090", http_get=raises)
+    c = RerankerClient(base_url="http://localhost:8091", http_get=raises)
     with caplog.at_level("WARNING"):
         assert c.healthy() is False
     assert any(
@@ -196,7 +196,7 @@ def test_rerank_raises_on_transport_error():
 
 
 def test_default_base_url_constant():
-    assert DEFAULT_BASE_URL == "http://localhost:8090"
+    assert DEFAULT_BASE_URL == "http://localhost:8091"
 
 
 def test_default_expected_model_id_constant():
@@ -211,7 +211,7 @@ def test_default_expected_model_id_constant():
     reason="set KEIRACOM_RERANKER_INTEGRATION=1 to run against a live sidecar",
 )
 def test_integration_rerank_round_trip():
-    url = os.environ.get("KEIRACOM_RERANKER_URL", "http://localhost:8090")
+    url = os.environ.get("KEIRACOM_RERANKER_URL", "http://localhost:8091")
     c = RerankerClient(base_url=url)
     assert c.healthy(), "reranker sidecar not healthy at " + url
     c.verify_model_lineage()

@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass
 from typing import Literal
 
-from src.retrieval import orchestrator
+from src.retrieval import multi_query, orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -214,13 +214,25 @@ def query(
         `QueryResult` with answer + citations + elapsed_ms + bypass flag.
     """
     started = time.monotonic()
-    outcome = orchestrator.retrieve_with_outcome(
-        text=text,
-        collections=collections,
-        k_initial=k_initial,
-        k_returned=k_returned,
-        tenant_id=tenant_id,
-    )
+    # Multi-query expansion (Wave 4, RETRIEVAL_MULTI_QUERY_ENABLED, default off).
+    # Generates N query variants and merges+deduplicates results by memory_id.
+    # Fail-open: falls back to single-query when flag is off or generation fails.
+    if multi_query.multi_query_enabled():
+        outcome = multi_query.retrieve_multi(
+            text=text,
+            collections=collections,
+            k_initial=k_initial,
+            k_returned=k_returned,
+            tenant_id=tenant_id,
+        )
+    else:
+        outcome = orchestrator.retrieve_with_outcome(
+            text=text,
+            collections=collections,
+            k_initial=k_initial,
+            k_returned=k_returned,
+            tenant_id=tenant_id,
+        )
     citations = [_node_to_citation(n) for n in outcome.nodes]
     # KEI-198 — distribution-aware citation selection.
     # OLD shape (pre-KEI-192 audit): hard `score >= min_score` filter excluded

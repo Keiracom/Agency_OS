@@ -7,7 +7,12 @@ use it to answer a real task.
 
 - **Dispatch:** Elliot, 2026-05-28 (cutover gate item 2)
 - **Author:** Nova
-- **Status:** spec — ready to execute once PR #1246 (reranker sidecar) merges
+- **Status:** spec — **partially runnable now.** Stage A (retrieval quality)
+  and Stage B.1 (context injection) are runnable once PR #1246 merges. **Stage
+  B.2 + criterion P5 (agent consumes the injected memory) are BLOCKED** pending
+  the session-launch wrapper (see §6) — that wrapper does not yet exist
+  (`spawn_recall.py` marks it out-of-scope). This spec documents the gate
+  accurately at current state; full gate sign-off requires §6 first.
 - **Related:** PR #1246 (reranker on :8091), Wave 3 retrieval orchestrator
 
 ---
@@ -122,34 +127,49 @@ for i, n in enumerate(outcome.nodes):
     print(i + 1, round(n.score, 4), n.text[:160])
 ```
 
-### Stage B — Ephemeral-spawn proof (the actual cutover behaviour)
+### Stage B.1 — Context injection proof (RUNNABLE NOW)
 
-Confirms the spawn-time recall hook injects the retrieved decision into a fresh
-agent's context and that the agent uses it.
+Confirms the spawn-time recall hook produces the injectable block from the
+retrieved decision. This does **not** spawn an agent — it exercises
+`inject_prior_context` directly, which is the full extent of what is runnable
+until the §6 wrapper exists.
 
-1. **Construct the spawn with recall injection** (no session history):
-   ```python
-   from src.retrieval import spawn_recall
-   kwargs = spawn_recall.inject_prior_context(
-       {"env": {}},
-       task_type="research",
-       task_brief="Answer: ratified decision on multi-tenancy / tenant-id assignment.",
-   )
-   block = kwargs["env"][spawn_recall.PRIOR_CONTEXT_ENV_KEY]
-   print(block)   # the "Prior context from memory" block injected into the spawn
-   ```
-2. **Spawn the ephemeral agent** through the standard dispatcher spawn path with
-   `kwargs["env"]` (so `AGENCY_OS_PRIOR_CONTEXT` reaches the agent via
-   `--append-system-prompt`). The agent starts with **no other memory**.
-3. **Give the agent the §1.1 task verbatim.**
-4. **Observe** the agent's answer and the audit row:
+```python
+from src.retrieval import spawn_recall
+kwargs = spawn_recall.inject_prior_context(
+    {"env": {}},
+    task_type="research",
+    task_brief="Answer: ratified decision on multi-tenancy / tenant-id assignment.",
+)
+block = kwargs["env"][spawn_recall.PRIOR_CONTEXT_ENV_KEY]
+print(block)   # the "Prior context from memory" block that WOULD be injected
+```
+Satisfies **P4** (block non-empty, contains the expected decision) and
+indirectly re-confirms P1–P3/P6 (the block is built from the reranked recall).
+
+### Stage B.2 — Agent-consumes-memory proof (⛔ BLOCKED — not yet runnable)
+
+> **Blocked pending §6.** The session-launch wrapper that reads
+> `env[AGENCY_OS_PRIOR_CONTEXT]` and forwards it to the agent CLI via
+> `--append-system-prompt` **does not exist yet** — `spawn_recall.py`'s own
+> docstring marks it "out of scope (separate PR)". Without it there is no path
+> for the injected block to reach a spawned agent's context, so **P5 cannot be
+> observed**. Do not mark gate item 2 fully passed until §6 lands and this stage
+> runs green.
+
+Intended steps once unblocked:
+1. Spawn the ephemeral agent through the §6 wrapper with `kwargs["env"]` (so
+   `AGENCY_OS_PRIOR_CONTEXT` reaches the agent via `--append-system-prompt`).
+   The agent starts with **no other memory**.
+2. Give the agent the §1.1 task verbatim.
+3. Observe the agent's answer (P5) and the audit row:
    ```sql
    SELECT agent, top_citation_id, top_score, bypass_rerank, elapsed_ms, created_at
    FROM public.retrieval_events
    ORDER BY created_at DESC LIMIT 5;
    ```
 
-### Stage C — Repeat Stage A+B for the §1.2 control task.
+### Stage C — Repeat Stage A + Stage B.1 for the §1.2 control task (B.2 when unblocked).
 
 ---
 
@@ -157,13 +177,18 @@ agent's context and that the agent uses it.
 
 | # | Criterion | Measured by |
 |---|---|---|
-| P1 | Reranker engaged, not bypassed | Stage A `rerank_reason == "sidecar_reranked"` **and** `bypass_rerank == False`; Stage B `retrieval_events.bypass_rerank == false` |
+| P1 | Reranker engaged, not bypassed | Stage A `rerank_reason == "sidecar_reranked"` **and** `bypass_rerank == False`; Stage B.1 `retrieval_events.bypass_rerank == false` (the recall fires `agent_query.query`, which writes the row) |
 | P2 | Correct memory in top-3 | The §1.1 expected memory (tenant isolation, Dave=1/customers=2+) appears among the 3 returned nodes/citations |
 | P3 | Reranker discriminates | Top node score **≥ 0.5** for the primary task (observed 0.97); top score strictly greater than the 3rd |
-| P4 | Context actually injected | Stage B `env[AGENCY_OS_PRIOR_CONTEXT]` is **non-empty** and contains the expected decision text |
-| P5 | Agent uses retrieved memory | The ephemeral agent's answer states the ratified decision (single shared system, tenant isolation, Dave=1/customers=2+) and attributes it to the injected prior-context block — **not** a hedge ("I don't have that information") and **not** a fabricated answer |
+| P4 | Context actually injected | Stage B.1 `env[AGENCY_OS_PRIOR_CONTEXT]` is **non-empty** and contains the expected decision text — **RUNNABLE NOW** |
+| P5 | Agent uses retrieved memory | The ephemeral agent's answer states the ratified decision (single shared system, tenant isolation, Dave=1/customers=2+) and attributes it to the injected prior-context block — **not** a hedge ("I don't have that information") and **not** a fabricated answer — **⛔ BLOCKED: not runnable until the §6 wrapper exists** |
 | P6 | Audit trail written | A `public.retrieval_events` row exists for the run with non-null `top_citation_id` and `top_score > 0` |
-| P7 | Control task also passes | §1.2 satisfies P1–P6 (expected GOV-6 three-store memory in top-3, score ≥ 0.5) |
+| P7 | Control task also passes | §1.2 satisfies P1–P4 + P6 now; P5 when unblocked (expected GOV-6 three-store memory in top-3, score ≥ 0.5) |
+
+**Runnable now (Stage A + B.1):** P1, P2, P3, P4, P6, and their P7 equivalents.
+**Blocked on §6 wrapper:** P5 (and P7's P5 component). The gate is **not fully
+signed off** until P5 passes — Stages A + B.1 green is a *partial* pass that
+proves retrieval quality + injection, but not end-to-end agent consumption.
 
 ---
 
@@ -192,11 +217,39 @@ ephemeral agents does not proceed until all BLOCKs clear.
   (anti-ghost-green), and check each row of §3 against the observed values.
   Report pass/fail per criterion with the raw `rerank_reason`, the top-3
   scores+excerpts, the injected block, and the `retrieval_events` row.
-- **Sign-off:** result posted to #execution / Elliot; cutover gate item 2 is
-  marked clear only on a full P1–P7 pass across both tasks.
+- **Sign-off:** result posted to #execution / Elliot. A **partial pass**
+  (Stages A + B.1: P1–P4, P6) clears the *retrieval-quality + injection* portion
+  of the gate. **Full** gate item 2 sign-off requires P5 — i.e. §6 built and
+  Stage B.2 green across both tasks.
 - **Automation (follow-up, not blocking):** Stage A is directly portable to a
   `pytest` e2e (`tests/cutover/test_empirical_retrieval.py`) once the reranker
-  runs in CI; Stage B requires a live spawn harness and stays manual for V1.
+  runs in CI; Stage B.2 requires a live spawn harness and stays manual for V1.
+
+---
+
+## 6. Stage B.2 unblock — build the session-launch wrapper
+
+Stage B.2 / P5 cannot run until a wrapper bridges the injected env var to the
+agent CLI. Current gap: `spawn_recall.inject_prior_context` writes the recall
+block to `env[AGENCY_OS_PRIOR_CONTEXT]`, but nothing reads it back and forwards
+it to the spawned agent.
+
+**Required wrapper** (e.g. `scripts/run_agent_with_recall.sh`):
+1. Read `AGENCY_OS_PRIOR_CONTEXT` from the environment.
+2. If non-empty, pass it to the agent CLI via `--append-system-prompt` (so the
+   block lands in the agent's system prompt); if empty, launch normally
+   (fail-open — recall outage never blocks a spawn).
+3. Be the launch path the dispatcher spawn uses for ephemeral agents, so the
+   injection from `inject_prior_context` actually reaches the agent.
+
+**Acceptance for the wrapper:** spawning through it with a populated
+`AGENCY_OS_PRIOR_CONTEXT` results in an agent whose system prompt contains the
+"Prior context from memory" block (verifiable by having the agent echo or act
+on it). Once it exists, run Stage B.2 → confirm P5 → full gate sign-off.
+
+**Sequencing:** filed as the next dispatch after this spec merges (Elliot,
+2026-05-28). This spec is accurate documentation of the gate at current state;
+the wrapper is the one remaining build to make the gate fully runnable.
 
 ---
 

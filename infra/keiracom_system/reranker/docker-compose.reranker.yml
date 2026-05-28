@@ -1,0 +1,52 @@
+# Keiracom System — Cross-encoder reranker sidecar (BAAI/bge-reranker-base).
+#
+# Wave 2 dispatch Agency_OS-0thg. Hindsight's recall stage returns the top-50
+# candidates from ANN + BM25 + graph + temporal fusion; this sidecar reranks
+# them with a cross-encoder so the final top-5..10 returned to the LLM are
+# semantically relevant to the query — not just nearest in the embedding
+# space.
+#
+# Mirrors the TEI embeddings sidecar pattern at infra/keiracom_system/
+# embeddings/docker-compose.tei.yml. TEI supports reranker models natively
+# via /rerank (https://huggingface.co/docs/text-embeddings-inference/en/quick_tour#sequence-classification-and-re-ranking),
+# so we reuse the same image with a reranker model id.
+#
+# Same per-tenant docker-compose project pattern. CPU image suffices for
+# V1 throughput (~50 (query, candidate) pairs per request, p95 <200ms on
+# 4 vCPU). GPU image is a Pro/Scale tier upgrade.
+
+services:
+  reranker:
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    command:
+      # BAAI/bge-reranker-base — 278MB cross-encoder, English + multilingual,
+      # MIT licence. Picked over FlashRank's ms-marco-MiniLM-L-12-v2 for
+      # cross-encoder quality on retrieval reranking (per the Wave 2 dispatch).
+      - --model-id=BAAI/bge-reranker-base
+      # Reranker requests are typically (query, top_k=50 candidates). Batch
+      # tokens default of 16384 is comfortable headroom (~300 tokens per
+      # candidate × 50 = 15k).
+      - --max-batch-tokens=16384
+      - --max-concurrent-requests=64
+      - --port=80
+    ports:
+      # localhost:8090 → container:80. Distinct from the embeddings sidecar
+      # on :8080 so both can run on the same tenant host.
+      - "8090:80"
+    volumes:
+      # Persistent model cache — avoids re-downloading the ~278MB cross-encoder
+      # on container restart.
+      - reranker_model_cache:/data
+    environment:
+      HF_HUB_OFFLINE: "0"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 18  # ~3 min grace period for first-boot model download (278MB vs BGE's 33MB).
+      start_period: 60s
+    restart: unless-stopped
+
+volumes:
+  reranker_model_cache:
+    driver: local

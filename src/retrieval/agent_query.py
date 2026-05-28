@@ -22,6 +22,7 @@ from dataclasses import dataclass
 from typing import Any, Literal, TypeVar
 
 from src.retrieval import fusion, hyde, multi_query, orchestrator
+from src.utils.log_safe import scrub
 
 logger = logging.getLogger(__name__)
 
@@ -78,8 +79,11 @@ def _record_event(
     audit trail.
     """
     payload = {
-        "agent": agent,
-        "query_text": query_text[:QUERY_TEXT_LOG_CAP],
+        # scrub() neutralises CR/LF in the agent + query before they reach the
+        # log sink (CodeQL py/log-injection); the audit row stores the same
+        # single-line form. Other fields are ints/bools/fixed names — not tainted.
+        "agent": scrub(agent),
+        "query_text": scrub(query_text, QUERY_TEXT_LOG_CAP),
         "collections": list(collections),
         "k_initial": k_initial,
         "k_returned": k_returned,
@@ -243,8 +247,8 @@ def _finalize(
         logger.warning(
             "retrieval scores all 0.0 — vectorizer-regression sentinel (KEI-198) "
             "agent=%s text=%s collections=%s",
-            agent,
-            text[:QUERY_TEXT_LOG_CAP],
+            scrub(agent),
+            scrub(text, QUERY_TEXT_LOG_CAP),
             collections,
         )
     if citation_required and all_zero:

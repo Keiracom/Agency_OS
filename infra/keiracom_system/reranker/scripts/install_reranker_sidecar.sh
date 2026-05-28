@@ -12,7 +12,7 @@
 #
 # Verifies after start:
 #   1. docker compose up -d (idempotent)
-#   2. health poll on http://localhost:8090/health
+#   2. health poll on http://localhost:8091/health
 #   3. /info returns model_id BAAI/bge-reranker-base
 #   4. /rerank round-trip with a probe (query, [candidate]) returns a score
 set -euo pipefail

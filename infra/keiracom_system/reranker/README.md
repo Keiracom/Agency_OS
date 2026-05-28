@@ -21,7 +21,7 @@ bash infra/keiracom_system/reranker/scripts/install_reranker_sidecar.sh \
   --project-name keiracom-reranker-<tenant_id>
 
 # Live smoke test
-curl -fsS -X POST http://localhost:8090/rerank \
+curl -fsS -X POST http://localhost:8091/rerank \
   -H 'content-type: application/json' \
   -d '{"query":"what is rust","texts":["rust is a programming language","cats meow"]}'
 
@@ -52,7 +52,7 @@ top_indices = [h.index for h in hits]
 
 ## Wave 2 dispatch deliverables (Agency_OS-0thg)
 
-1. **Cross-encoder reranker sidecar** — TEI server bound to `BAAI/bge-reranker-base`, on port `8090` (distinct from the embeddings sidecar's `8080` so both can coexist on a tenant host).
+1. **Cross-encoder reranker sidecar** — TEI server bound to `BAAI/bge-reranker-base`, on port `8091` (8090 is Weaviate on the fleet host; `8080` is the embeddings sidecar — all three coexist).
 2. **Same deployment pattern as Wave 1** — `keiracom-reranker-sidecar.service` user-scope systemd unit + `scripts/install-systemd.sh`. Restart policy `on-failure`, append-only log to `~/clawd/logs/keiracom-reranker-sidecar.log`.
 3. **`/rerank` endpoint** — TEI exposes it natively (`POST /rerank` with `{query, texts}`); the Python client wraps it with input validation, score-sort, top-k truncation, and lineage verification.
 4. **Recall top-50 → reranker → top 5..10** — the client's `top_k` parameter defaults to 10; orchestrator caller is responsible for passing in the top-50 ANN-fused candidates.

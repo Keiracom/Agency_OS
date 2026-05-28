@@ -18,5 +18,5 @@ systemctl --user restart "${UNIT}"
 
 echo "install-systemd.sh: enabled + restarted ${UNIT}"
 echo "Logs: tail -f /home/elliotbot/clawd/logs/keiracom-reranker-sidecar.log"
-echo "Health: curl -fsS http://127.0.0.1:8090/health"
+echo "Health: curl -fsS http://127.0.0.1:8091/health"
 echo "Smoke:  bash ${ROOT}/scripts/install_reranker_sidecar.sh"

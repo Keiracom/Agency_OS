@@ -13,6 +13,12 @@ USER_UNIT_DIR="${HOME}/.config/systemd/user"
 mkdir -p "${USER_UNIT_DIR}"
 install -m 0644 "${ROOT}/${UNIT}" "${USER_UNIT_DIR}/${UNIT}"
 
+# bin/ is gitignored, so it's absent on a fresh checkout. The unit whitelists
+# it via ReadWritePaths under ProtectHome=read-only; systemd fails to start a
+# unit whose ReadWritePaths target does not exist. Create it before enabling so
+# the ExecStartPre build.sh can write bin/sidecar.
+mkdir -p "${ROOT}/bin"
+
 systemctl --user daemon-reload
 systemctl --user enable "${UNIT}"
 systemctl --user restart "${UNIT}"

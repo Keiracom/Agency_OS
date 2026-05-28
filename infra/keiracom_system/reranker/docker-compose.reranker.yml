@@ -17,7 +17,7 @@
 
 services:
   reranker:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
     command:
       # BAAI/bge-reranker-base — 278MB cross-encoder, English + multilingual,
       # MIT licence. Picked over FlashRank's ms-marco-MiniLM-L-12-v2 for
@@ -30,15 +30,18 @@ services:
       - --max-concurrent-requests=64
       - --port=80
     ports:
-      # localhost:8090 → container:80. Distinct from the embeddings sidecar
-      # on :8080 so both can run on the same tenant host.
-      - "8090:80"
+      # localhost:8091 → container:80. 8090 is taken by Weaviate on the fleet
+      # host; 8080 is the embeddings sidecar. 8091 keeps all three co-resident.
+      - "8091:80"
     volumes:
       # Persistent model cache — avoids re-downloading the ~278MB cross-encoder
       # on container restart.
       - reranker_model_cache:/data
     environment:
       HF_HUB_OFFLINE: "0"
+      # hf-hub 0.3.2 (bundled in TEI cpu-1.5) errors "relative URL without a
+      # base" when the endpoint isn't explicitly set. Pin it.
+      HF_ENDPOINT: "https://huggingface.co"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost/health"]
       interval: 10s

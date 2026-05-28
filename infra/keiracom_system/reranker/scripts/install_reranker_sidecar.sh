@@ -12,7 +12,7 @@
 #
 # Verifies after start:
 #   1. docker compose up -d (idempotent)
-#   2. health poll on http://localhost:8090/health
+#   2. health poll on http://localhost:8091/health
 #   3. /info returns model_id BAAI/bge-reranker-base
 #   4. /rerank round-trip with a probe (query, [candidate]) returns a score
 set -euo pipefail
@@ -20,9 +20,9 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 COMPOSE_FILE="${SCRIPT_DIR}/../docker-compose.reranker.yml"
 PROJECT_NAME="${KEIRACOM_RERANKER_PROJECT:-keiracom-reranker}"
-HEALTH_URL="${KEIRACOM_RERANKER_HEALTH_URL:-http://localhost:8090/health}"
-INFO_URL="${KEIRACOM_RERANKER_INFO_URL:-http://localhost:8090/info}"
-RERANK_URL="${KEIRACOM_RERANKER_RERANK_URL:-http://localhost:8090/rerank}"
+HEALTH_URL="${KEIRACOM_RERANKER_HEALTH_URL:-http://localhost:8091/health}"
+INFO_URL="${KEIRACOM_RERANKER_INFO_URL:-http://localhost:8091/info}"
+RERANK_URL="${KEIRACOM_RERANKER_RERANK_URL:-http://localhost:8091/rerank}"
 HEALTH_TIMEOUT_SECONDS="${KEIRACOM_RERANKER_HEALTH_TIMEOUT:-240}"
 EXPECTED_MODEL="${KEIRACOM_RERANKER_EXPECTED_MODEL:-BAAI/bge-reranker-base}"
 

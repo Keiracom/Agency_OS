@@ -27,7 +27,9 @@ from typing import Any
 
 # TEI host port. "http://reranker:80" only resolves inside the Docker network;
 # host-process callers (Hindsight) must reach the published port on localhost.
-DEFAULT_BASE_URL = "http://localhost:8090"
+# 8091 (not 8090): Weaviate owns 8090 on the fleet host — see
+# docker-compose.reranker.yml port mapping.
+DEFAULT_BASE_URL = "http://localhost:8091"
 DEFAULT_TIMEOUT_SECONDS = 30
 EXPECTED_MODEL_ID = "BAAI/bge-reranker-base"
 DEFAULT_TOP_K_RETURNED = 10

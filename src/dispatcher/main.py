@@ -180,6 +180,7 @@ def _bounded_spawn_task_id(spawn_kwargs: dict[str, Any], registry_key: str) -> s
     explicit = str((spawn_kwargs or {}).get("task_id") or "").strip()
     return explicit or registry_key
 
+
 # Sessions spawned via /dispatcher/spawn, keyed by supervisor registry key.
 # Lets /dispatcher/terminate find the handle + backend for clean teardown.
 _spawned: dict[str, dict[str, Any]] = {}

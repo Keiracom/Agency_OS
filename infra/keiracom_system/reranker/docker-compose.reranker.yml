@@ -17,7 +17,7 @@
 
 services:
   reranker:
-    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.5
+    image: ghcr.io/huggingface/text-embeddings-inference:cpu-1.7
     command:
       # BAAI/bge-reranker-base — 278MB cross-encoder, English + multilingual,
       # MIT licence. Picked over FlashRank's ms-marco-MiniLM-L-12-v2 for
@@ -39,6 +39,9 @@ services:
       - reranker_model_cache:/data
     environment:
       HF_HUB_OFFLINE: "0"
+      # hf-hub 0.3.2 (bundled in TEI cpu-1.5) errors "relative URL without a
+      # base" when the endpoint isn't explicitly set. Pin it.
+      HF_ENDPOINT: "https://huggingface.co"
     healthcheck:
       test: ["CMD", "curl", "-fsS", "http://localhost/health"]
       interval: 10s

@@ -58,7 +58,7 @@ from src.relay.budget_ceiling import (
     BudgetCeilingGate,
     BudgetDecision,
 )
-from src.retrieval import spawn_recall
+from src.retrieval import retrieval_orchestrator, spawn_recall
 from src.retrieval.workflow_recall import CHARS_PER_TOKEN, WorkflowRecallContext
 from src.utils.log_safe import scrub
 
@@ -291,6 +291,12 @@ def _recall_block(
         # (matching spawn_recall.inject_prior_context's own outer catch) still
         # yields an empty block rather than a 500.
         try:
+            # 4-layer retrieval orchestrator (RETRIEVAL_ORCHESTRATOR_4LAYER_ENABLED,
+            # default off): L1 recall → L2 rerank → L3 contradiction filter →
+            # L4 compression. Additive — when off, the existing single-layer path
+            # below runs unchanged. Both are fail-open by contract.
+            if retrieval_orchestrator.four_layer_enabled():
+                return retrieval_orchestrator.assemble_hydration_block(task_type, task_brief)
             # build_spawn_context_block = positive recall + (flag-gated) failure
             # recall. Byte-identical to the positive-only block when
             # RETRIEVAL_FAILURE_RECALL_ENABLED is off (Wave 6).

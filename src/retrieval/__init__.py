@@ -16,6 +16,6 @@ sources. `citation_required=True` is the default — empty results return
 guard per KEI-55).
 """
 
-from src.retrieval.agent_query import Citation, QueryResult, query
+from src.retrieval.agent_query import Citation, QueryResult, query, query_async
 
-__all__ = ["Citation", "QueryResult", "query"]
+__all__ = ["Citation", "QueryResult", "query", "query_async"]

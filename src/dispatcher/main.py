@@ -45,6 +45,13 @@ from src.dispatcher.tmux_lifecycle import (
     TmuxUnavailableError,
 )
 from src.dispatcher.watchdog import Watchdog
+from src.relay.budget_ceiling import (
+    PRIORITY_NORMAL,
+    SOURCE_DAVE_DM,
+    SOURCE_FLEET,
+    BudgetCeilingGate,
+    BudgetDecision,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -96,6 +103,29 @@ def _set_idempotency_gate(gate: IdempotencyGate | None) -> None:
     """Test-only setter for the idempotency gate (DI through module attr)."""
     global _idempotency_gate  # noqa: PLW0603
     _idempotency_gate = gate
+
+
+# Pre-spawn budget ceiling gate (PR #1203 / Cat 21 lever 28 / cutover-blocker 2).
+# Set by tests or by a future env-driven config layer; None = no-op (rollout
+# phase 1 default — gate is wired but disabled until DB-cursor config lands).
+_budget_gate: BudgetCeilingGate | None = None
+
+
+def _set_budget_gate(gate: BudgetCeilingGate | None) -> None:
+    """Test-only setter for the budget ceiling gate (DI through module attr)."""
+    global _budget_gate  # noqa: PLW0603
+    _budget_gate = gate
+
+
+# BudgetDecisions that allow the spawn to proceed (overage logged + Dave bypass).
+_BUDGET_PROCEED: frozenset[BudgetDecision] = frozenset(
+    {
+        BudgetDecision.SPAWN_OK,
+        BudgetDecision.OVERAGE_LOG_AND_SPAWN,
+        BudgetDecision.DAVE_BYPASS,
+        BudgetDecision.FORCE_OVERRIDE,
+    }
+)
 
 
 # Bounded-spawn enforcer (Agency_OS-gcpm / Audit fix RED-7). Enforces the
@@ -395,6 +425,39 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
                 "decision": "drop_duplicate",
                 "reason": idem_result.reason,
                 "idempotency_key": idem_result.key,
+            }
+
+    # Pre-spawn budget ceiling gate (Cat 21 lever 28 / cutover-blocker 2).
+    # Per-spawn check before manager.spawn(); BudgetCeilingGate fail-opens
+    # internally on DB / alerts errors per PR #1203 contract.
+    if _budget_gate is not None:
+        # Priority + source derived from spawn_kwargs ("priority" / "source" hints).
+        sk = req.spawn_kwargs or {}
+        priority_hint = str(sk.get("priority") or PRIORITY_NORMAL).lower().strip()
+        priority = priority_hint if priority_hint in {"high", "normal", "low"} else PRIORITY_NORMAL
+        source_hint = str(sk.get("source") or "").strip()
+        if source_hint in {SOURCE_DAVE_DM, SOURCE_FLEET}:
+            source = source_hint
+        else:
+            sender = str(sk.get("from") or "").lower().strip()
+            source = SOURCE_DAVE_DM if sender == "dave" else SOURCE_FLEET
+        budget_result = _budget_gate.check_budget(task_priority=priority, source=source)
+        if budget_result.decision not in _BUDGET_PROCEED:
+            logger.info(
+                "KEI-213 budget gate skipped spawn key=%s decision=%s spend_aud=%.2f budget_aud=%.2f",
+                req.key,
+                budget_result.decision.value,
+                budget_result.current_day_spend_aud,
+                budget_result.daily_budget_aud,
+            )
+            return {
+                "spawned": False,
+                "key": req.key,
+                "backend": backend.value,
+                "decision": budget_result.decision.value,
+                "current_day_spend_aud": budget_result.current_day_spend_aud,
+                "daily_budget_aud": budget_result.daily_budget_aud,
+                "reason": budget_result.reason,
             }
 
     manager = SessionManager(backend=backend)

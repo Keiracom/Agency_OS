@@ -176,13 +176,10 @@ def test_script_syntax_valid() -> None:
 # ---------------------------------------------------------------------------
 
 
-def test_hook_registered_first_in_session_start_chain() -> None:
+def test_hooks_absent_per_hook_kill_directive() -> None:
+    # Compliance gate: Dave directive 2026-05-27 killed all Claude Code hooks.
     settings = json.loads((REPO_ROOT / ".claude" / "settings.json").read_text())
-    session_start = settings["hooks"]["SessionStart"]
-    # Find the "*" matcher block — the primary chain.
-    primary = next(b for b in session_start if b.get("matcher") == "*")
-    first_cmd = primary["hooks"][0]["command"]
-    assert "env_schema_validate.sh" in first_cmd, (
-        f"env_schema_validate.sh must be FIRST in the SessionStart * chain so "
-        f"misconfigured env fails fast; got {first_cmd!r}"
+    assert "hooks" not in settings, (
+        "hooks key must be absent from .claude/settings.json per Dave directive 2026-05-27; "
+        f"found hooks: {list(settings.get('hooks', {}).keys())}"
     )

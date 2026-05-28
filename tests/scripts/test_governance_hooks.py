@@ -226,17 +226,15 @@ def test_module_entrypoint_swallows_exceptions():
 # ─── settings.json wiring smoke ────────────────────────────────────────────
 
 
-def test_settings_json_contains_pretooluse_hook():
+def test_hooks_absent_per_hook_kill_directive():
+    # Compliance gate: Dave directive 2026-05-27 killed all Claude Code hooks.
     settings = json.loads(
         (Path(__file__).resolve().parent.parent.parent / ".claude" / "settings.json").read_text()
     )
-    assert "PreToolUse" in settings.get("hooks", {})
-    pre = settings["hooks"]["PreToolUse"]
-    assert any(
-        "governance_hooks.py" in h.get("command", "")
-        for entry in pre
-        for h in entry.get("hooks", [])
-    ), "governance_hooks.py not registered in PreToolUse"
+    assert "hooks" not in settings, (
+        "hooks key must be absent from .claude/settings.json per Dave directive 2026-05-27; "
+        f"found hooks: {list(settings.get('hooks', {}).keys())}"
+    )
 
 
 # ─── security guard surface (defence-in-depth) ─────────────────────────────

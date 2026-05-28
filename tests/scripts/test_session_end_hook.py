@@ -216,17 +216,12 @@ def test_module_entrypoint_swallows_exceptions(monkeypatch):
 # ─── settings.json wiring smoke ────────────────────────────────────────────
 
 
-def test_settings_json_contains_session_end_hook():
+def test_hooks_absent_per_hook_kill_directive():
+    # Compliance gate: Dave directive 2026-05-27 killed all Claude Code hooks.
     settings = json.loads(
         (Path(__file__).resolve().parent.parent.parent / ".claude" / "settings.json").read_text()
     )
-    assert "hooks" in settings
-    assert "SessionEnd" in settings["hooks"]
-    se = settings["hooks"]["SessionEnd"]
-    assert isinstance(se, list) and len(se) >= 1
-    # The first SessionEnd entry references our hook script
-    cmd_block = se[0]
-    assert "hooks" in cmd_block
-    assert any("session_end_hook.py" in h.get("command", "") for h in cmd_block["hooks"]), (
-        "session_end_hook.py not registered in .claude/settings.json"
+    assert "hooks" not in settings, (
+        "hooks key must be absent from .claude/settings.json per Dave directive 2026-05-27; "
+        f"found hooks: {list(settings.get('hooks', {}).keys())}"
     )

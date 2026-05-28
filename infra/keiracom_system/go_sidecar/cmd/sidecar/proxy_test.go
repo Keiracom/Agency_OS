@@ -176,4 +176,45 @@ func TestProxy_UnknownTenant(t *testing.T) {
 	}
 }
 
+// 8. /proxy: malformed JSON body → 400.
+func TestProxy_MalformedJSON400(t *testing.T) {
+	cfg := fixtureCfg("http://unused")
+	v, rl, bm, hc := setupSidecar(cfg)
+	h := proxyHandler(cfg, v, rl, bm, hc)
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest("POST", "/proxy", strings.NewReader("{not valid json")))
+	if rr.Code != http.StatusBadRequest {
+		t.Fatalf("expected 400 on malformed JSON; got %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
+// 9. /proxy: per-tenant rate limiter returns 429 once bucket empty (mirrors the
+// /validate rate-limit test but exercises the limiter on the proxy hot path).
+func TestProxy_RateLimit429(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.WriteHeader(200)
+		_, _ = w.Write([]byte(`{"result":"ok"}`))
+	}))
+	defer upstream.Close()
+	cfg := fixtureCfg(upstream.URL)
+	tA := cfg.Tenants["tenant_a"]
+	tA.RateLimit = ratelimit.Spec{RPS: 0.0001, Burst: 1}
+	cfg.Tenants["tenant_a"] = tA
+	v, rl, bm, hc := setupSidecar(cfg)
+	h := proxyHandler(cfg, v, rl, bm, hc)
+	body, _ := json.Marshal(proxyRequest{TenantID: "tenant_a", Tool: "read_file", Server: "search", Body: json.RawMessage(`{"q":"hi"}`)})
+	// first call consumes the single token and forwards to upstream
+	rr := httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest("POST", "/proxy", bytes.NewReader(body)))
+	if rr.Code != 200 {
+		t.Fatalf("first call expected 200; got %d body=%s", rr.Code, rr.Body.String())
+	}
+	// second call — bucket empty
+	rr = httptest.NewRecorder()
+	h.ServeHTTP(rr, httptest.NewRequest("POST", "/proxy", bytes.NewReader(body)))
+	if rr.Code != http.StatusTooManyRequests {
+		t.Fatalf("second call expected 429; got %d body=%s", rr.Code, rr.Body.String())
+	}
+}
+
 var _ = io.EOF // keep io imported for future helpers

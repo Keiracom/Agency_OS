@@ -53,6 +53,24 @@ def test_healthy_false_on_transport_error():
     assert c.healthy() is False
 
 
+def test_healthy_unreachable_is_not_silent(caplog):
+    """An unreachable URL must surface a clear error, not fail silently.
+
+    Host-process callers (Hindsight) only see healthy()==False; the warning
+    log is the signal that tells an operator *why* the sidecar looks down.
+    """
+
+    def raises(url: str, t: float) -> _HTTPResponse:
+        raise RuntimeError("connection refused")
+
+    c = RerankerClient(base_url="http://localhost:8090", http_get=raises)
+    with caplog.at_level("WARNING"):
+        assert c.healthy() is False
+    assert any(
+        "connection refused" in r.getMessage() and r.levelname == "WARNING" for r in caplog.records
+    ), "healthy() must log a WARNING explaining the unreachable error, not fail silently"
+
+
 # ---------- info + verify_model_lineage ----------
 
 
@@ -178,7 +196,7 @@ def test_rerank_raises_on_transport_error():
 
 
 def test_default_base_url_constant():
-    assert DEFAULT_BASE_URL == "http://reranker:80"
+    assert DEFAULT_BASE_URL == "http://localhost:8090"
 
 
 def test_default_expected_model_id_constant():

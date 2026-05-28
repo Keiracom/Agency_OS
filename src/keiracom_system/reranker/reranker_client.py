@@ -25,7 +25,9 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
-DEFAULT_BASE_URL = "http://reranker:80"
+# TEI host port. "http://reranker:80" only resolves inside the Docker network;
+# host-process callers (Hindsight) must reach the published port on localhost.
+DEFAULT_BASE_URL = "http://localhost:8090"
 DEFAULT_TIMEOUT_SECONDS = 30
 EXPECTED_MODEL_ID = "BAAI/bge-reranker-base"
 DEFAULT_TOP_K_RETURNED = 10

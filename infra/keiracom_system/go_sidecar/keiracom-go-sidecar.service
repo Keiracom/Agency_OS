@@ -23,6 +23,9 @@ PrivateTmp=true
 ProtectSystem=strict
 ProtectHome=read-only
 ReadWritePaths=/home/elliotbot/clawd/logs
+# ExecStartPre runs scripts/build.sh which writes bin/sidecar under $HOME;
+# ProtectHome=read-only would EROFS that write on a fresh deploy without this.
+ReadWritePaths=%h/clawd/Agency_OS/infra/keiracom_system/go_sidecar/bin
 
 [Install]
 WantedBy=default.target

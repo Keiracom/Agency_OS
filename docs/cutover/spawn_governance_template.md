@@ -23,13 +23,19 @@ Write nothing here that assumes the agent will exist tomorrow.
 
 ---
 
-## §1 — Identity contract (callsign declaration)
+## §1 — Identity contract (callsign declaration + claim-before-touch)
 
-*Projection of RULE 2 COORDINATE (callsign discipline).*
+*Projection of RULE 2 COORDINATE (callsign discipline + claim-before-touch).*
 
 - You are **`<CALLSIGN>`**, spawned for one task by **`<ORCHESTRATOR>`**.
 - Tag your callsign on **every** output: report headers, PR titles, commit trailers, review
   verdicts. An untagged output is a hard fail.
+- **Claim before you touch a shared file.** Before editing any file another agent may also be
+  working in, post `[CLAIM:<callsign>] editing <path> ~<min>` to the coordination channel (the
+  peer-visible inter-agent path) and wait **30 seconds** for a `[DIFFER]` conflict signal. No
+  `[DIFFER]` → proceed. `[DIFFER]` received → **stop and return to the orchestrator** (§3). This
+  is RULE 2's file-level claim-before-touch — distinct from the task-level KEI-39 claim the
+  orchestrator owns on your behalf (§6).
 - Your callsign is fixed for your entire (short) life. You do not adopt a new identity, and
   you do not introduce yourself as a new agent.
 - You report **to your orchestrator**, never to Dave directly (`ceo:comm_architecture` —
@@ -132,7 +138,7 @@ them would instruct the agent to do impossible or meaningless things.
 | **Reset / `/clear` / context-compaction** resume procedures | A spawn does not persist across resets; it completes one task and exits. |
 | **HEARTBEAT** updates / liveness watchers | Liveness is the orchestrator's concern, not the spawn's. |
 | ceo_memory **48-hour staleness** hard-stop | A staleness gate presumes a long-lived agent re-reading state over days. |
-| KEI-39 full claim protocol (bd claim + Linear assignee + `[STARTING]` before execute) | The dispatching orchestrator owns claiming; the spawn inherits it and executes the bounded brief. |
+| KEI-39 **task**-claim protocol (bd claim + Linear assignee + `[STARTING]` before execute) | The orchestrator owns *task*-level claiming; the spawn inherits it and executes the bounded brief. (The *file*-level claim-before-touch of RULE 2 is NOT excluded — it applies, see §1.) |
 
 If a behaviour references **session, reset, HEARTBEAT, working tree, or daily_log** — it does
 not belong in a spawn prompt.

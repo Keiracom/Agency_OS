@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass
 from typing import Literal
 
-from src.retrieval import orchestrator
+from src.retrieval import hyde, orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -214,8 +214,13 @@ def query(
         `QueryResult` with answer + citations + elapsed_ms + bypass flag.
     """
     started = time.monotonic()
+    # HyDE query expansion (Wave 4, RETRIEVAL_HYDE_ENABLED, default off).
+    # `expand_query` fuses the raw query with a hypothetical answer document
+    # so retrieval searches the answer space; fail-open to the raw query.
+    # Observability + answer synthesis below stay on the ORIGINAL query text.
+    search_text = hyde.expand_query(text)
     outcome = orchestrator.retrieve_with_outcome(
-        text=text,
+        text=search_text,
         collections=collections,
         k_initial=k_initial,
         k_returned=k_returned,

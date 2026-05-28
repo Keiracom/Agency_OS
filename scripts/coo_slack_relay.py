@@ -70,6 +70,15 @@ def post(channel: str, text: str) -> dict:
     if not BOT_TOKEN:
         print("ERROR: SLACK_BOT_TOKEN not set", file=sys.stderr)
         sys.exit(2)
+    # Dave directive 2026-05-27: kill all #execution posts. Block at relay layer.
+    if channel == CHANNELS["execution"]:
+        print(
+            f"[coo_slack_relay] DROPPED post to #execution — "
+            f"per Dave directive 2026-05-27 kill all #execution notifications. "
+            f"msg_prefix={text[:60]!r}",
+            file=sys.stderr,
+        )
+        return {"ok": True, "dropped": True, "reason": "execution_channel_killed"}
     if channel not in ALLOWED_CHANNELS:
         print(f"ERROR: Max-relay refuses post to {channel} — Max only posts to #execution per Dave 2026-05-11", file=sys.stderr)
         sys.exit(2)

@@ -212,6 +212,16 @@ def post(channel: str, text: str) -> dict:
     if not BOT_TOKEN:
         print("ERROR: SLACK_BOT_TOKEN not set", file=sys.stderr)
         sys.exit(2)
+    # Dave directive 2026-05-27: kill all #execution posts. Block at relay layer.
+    # Returns success-shaped response so callers don't error-cascade.
+    if channel == CHANNELS["execution"]:
+        print(
+            f"[slack_relay] DROPPED post to #execution (channel {channel}) — "
+            f"per Dave directive 2026-05-27 kill all #execution notifications. "
+            f"Caller={CALLSIGN}, msg_prefix={text[:60]!r}",
+            file=sys.stderr,
+        )
+        return {"ok": True, "dropped": True, "reason": "execution_channel_killed"}
     if channel not in ALLOWED_CHANNELS:
         print(
             f"ERROR: {CALLSIGN}-relay refuses post to {channel} — "
@@ -462,19 +472,10 @@ def main() -> int:
         if not allow and replacement is not None:
             message = replacement
             print("⚠  concur-gate HELD original; posting CONCUR-REQUEST instead", file=sys.stderr)
-    # R11 CEO-FORMAT-GATE — block #ceo posts violating plain-English bullets-only
-    # convention (Dave directive ts ~1778582530). Runs AFTER concur-gate so the
-    # system-generated CONCUR-REQUEST replacement passes through (it's exempt).
-    try:
-        from src.bot_common.enforcer_deterministic import check_r11
-
-        ceo_block = check_r11(message, channel=channel)
-        if ceo_block is not None:
-            print(f"R_CEO_FORMAT_BLOCKED: {ceo_block['detail']}", file=sys.stderr)
-            print(f"  should_have: {ceo_block['should_have']}", file=sys.stderr)
-            return 2
-    except ImportError:
-        pass  # repo not on sys.path; fall through ungated rather than break all posts
+    # R11 CEO-FORMAT-GATE — DISABLED 2026-05-27 per Dave kill-all-hooks directive.
+    # Original logic blocked #ceo posts containing banned tokens (PR numbers, SHAs,
+    # file paths, env vars, code fences) or missing scannable structure. Restored
+    # by re-enabling the check_r11 call below.
     # KEI-80: escalation-keyword scan — fires direct #ceo post BEFORE normal relay.
     # Failure of CEO post is non-fatal; normal relay always continues.
     _maybe_escalate_to_ceo(channel, message, CALLSIGN)

@@ -63,8 +63,20 @@ def build_envelope(now: float | None = None) -> dict:
         "from": WAKE_FROM,
         "kind": WAKE_KIND,
         "summary": (
-            "[SUPERVISE-WAKE] periodic fleet supervision check — check bd ready / "
-            "inbox status / PR review queue / take action."
+            "[SUPERVISE-WAKE] WAKE — FLEET CHECK + DISPATCH. Run sequence; do not skip; do not "
+            "assume state — verify via tmux capture. STEP 1: capture all 6 agents (elliot/aiden/"
+            "maxbot/atlas/orion/scout/nova) via tmux capture-pane; trust tmux not Supabase. STEP "
+            "2: classify each — ACTIVE (visible work last 5 min) / IDLE (claude prompt, no work) / "
+            "BLOCKED (error or waiting) / DEAD (pane absent). STEP 3: check work — bd ready queue "
+            "(filter test stubs), each agent inbox dir, pending CONCURs, active pilot work "
+            "(atomization, Cognee retirement, Manual mirror follow-up). STEP 4: dispatch match — "
+            "every IDLE with work available, dispatch immediately, no permission required; every "
+            "DEAD, respawn session from worktree; every BLOCKED, surface to Dave concisely; if no "
+            "work matches, escalate one-line reason. STEP 5: post #ceo single concise Viktor-style "
+            "(per-agent state one line each, dispatches fired this cycle, blockers needing Dave). "
+            "HARD RULES: no 'fleet healthy' without verbatim tmux evidence; no 'standing by' if "
+            "work + idle both exist; no completion-claim without independent verification; if "
+            "uncertain say so. JOB: match work to idle capacity — not ask permission, not wait."
         ),
         "ts": ts,
     }

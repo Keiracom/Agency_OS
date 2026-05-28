@@ -1,49 +1,68 @@
-# HEARTBEAT.md
+# Elliot HEARTBEAT — Session continuation anchor
 
-Agent-maintained continuation anchor. Updated before context fills up so the
-post-compaction session can resume without re-deriving state. Read at session
-start, snapshotted by the PreCompact hook (scripts/pre_compact_alert.py).
+**Last update:** 2026-05-27T23:25Z (pre-restart by Dave directive)
+**Restart authority:** Dave verbatim 2026-05-27 "I want you to restart"
 
-## Active Task
+## Current Ratified State
 
-- Directive: KEI-185 follow-up — S5603 unused-fn cleanup (test_spawn_nova.py:33 `_raise_on_import` removed) + HEARTBEAT refresh
-- Goal: clear Max's one-line lint suggestion from PR #1006 review + keep HEARTBEAT current post-PR-1006-merge
-- Phase: building → PR pending
-- Files touched: tests/scripts/test_spawn_nova.py (S5603 fix), HEARTBEAT.md (state refresh)
+- **Cutover plan v1** ratified in `ceo:cutover_plan_v1` — all 15 retrieval items (Tier 1+2+3) are CUTOVER GATING per Dave dual-concur with Aiden + Viktor.
+- **Cadence:** Wave 1+2 parallel; Waves 3-6 sequential; re-audit gate at each wave boundary; integration test gate at Wave 1+2 → Wave 3 boundary (Wave 2 retrieval must demonstrably beat pure vector).
+- **Dispatcher canonical:** KEI-213 service running on port 4001. PR #1188 binary not canonical — kept for traceability only.
+- **Model state:** Elliot=Opus 4.7 (about to flip to Sonnet 4.6 on this restart per settings.local.json), Aiden+Max=Sonnet 4.6, Workers=mix.
 
-## Last Good Commit
+## In-Flight Dispatches (Wave 1+2 parallel)
 
-- SHA: 815cdbefe
-- Branch: origin/main
-- Subject: [AIDEN] feat(kei185): Nova engineer-clone scaffold + supervisor v2 enable flag (#1006)
-- Note: KEI-185 MERGED. KEI-199+204 also MERGED via PR #1000 (85e4a9a48). KEI-205 NATS install MERGED via PR #1005 (879b06b27). Supervisor v2 flip-on path: gated on KEI-183 (Elliot PR #990, NATS-redirect shipped at f33252a89, awaiting Max second concur) + KEI-184 (Orion PR #1004, on HOLD for 7× CRITICAL S5443 + 3× MINOR S100).
+- **Scout** chain: bd Agency_OS-ijf0 (Hindsight synthesize+trace+delete primitives, source-atom pointers mandatory) → Agency_OS-q6ed (real-time invalidation) → Agency_OS-3rpe (recency decay) → Agency_OS-3g9t (atom granularity spec + CI gate).
+- **Atlas** chain: finish memory-layer (Agency_OS-0zv1 LlamaIndex retirement, Agency_OS-x0p7 governance_patterns, Agency_OS-inhl pre-Hindsight snapshot) → Agency_OS-7sj6 (tenant scoping per-callsite) → Agency_OS-stz8 (hybrid search vector+BM25+metadata).
+- **Orion** chain: rebase PR #1223 (budget ceiling KEI-213) + PR #1225 (spawn attribution KEI-213) → bd Agency_OS-gcpm (bounded-spawn dispatcher-kill enforcement).
+- **Nova** chain: bd Agency_OS-2c7m (Go sidecar deploy + circuit breakers + per-tenant rate limits) → Agency_OS-0thg (cross-encoder reranker sidecar).
 
-## Model
+## Open PRs at restart time
 
-- Configured: claude-opus-4-7
-- Running: unknown — check tmux session launch command
+- #1223 [ORION] budget ceiling gate KEI-213 — pending rebase
+- #1225 [ORION] spawn attribution + per-task-type KEI-213 — pending rebase
 
-## Blockers
+## Recent Aiden Signal
 
-- none
+Aiden NATS message at ~23:24Z: "All three reviews posted. Notifying Elliot." Verify on restart — likely the first PRs from the fresh-session dispatches have already opened + Aiden has reviewed.
 
-## Next Action
+## Open Decisions Dave Has NOT Yet Made
 
-- Wait for peer review on PR #1000 (KEI-199 + KEI-204). After dual-concur, merge per Dave PR-duty directive.
-- T1-overflow standing: bd ready shows KEI-183 (Elliot lane, PR #990) + KEI-185 (dep-blocked on KEI-183+184). No claim unless explicitly redirected.
-- Drift-sync count this session: 12 (recorded in #execution thread). PR #1000 closes 2 of 3 supervisor blind spots once merged.
+- TEI sidecar doc-vs-deploy — deferred until post-empirical-test per dual-concur.
+- Tier capacity allocation + UX boundaries — Phase 2 launch scope, not cutover-gating.
+- Three-repo separation timing — post-Phase-1-cutover-validation per dual-concur.
 
-## Heartbeat Cadence (CLAUDE.md context thresholds)
+## Open Decisions Dave HAS Made (DON'T RE-ASK)
 
-- 40% — self-alert; consider HEARTBEAT update
-- 50% — alert Dave via Slack
-- 60% — execute session-end protocol
-- 70% — pre-compaction warning fires (this template snapshotted)
+- Dispatcher canonical = KEI-213 service.
+- Tmux kill for model flip = now (executed for Aiden+Max; pending for Elliot via this restart).
+- TEI sidecar = defer.
+- Fleet supervisor reactivation = Phase 1 step 5 after empirical GREEN.
+- Three-repo separation = post-Phase-1 cutover.
+- Tier caps + UX = Phase 2 launch.
+- ALL retrieval tiers gating cutover.
+- Cadence: Wave 1+2 parallel, Waves 3-6 sequential, re-audit per wave, integration test at Wave 2→3 boundary.
 
-On heartbeat check:
-1. Context health — if >60%, alert Dave and prepare for restart.
-2. Anything urgent? — blockers, failures, opportunities.
-3. Active work? — something in progress that needs follow-up?
+## Operational State
 
-If nothing needs attention: `HEARTBEAT_OK`
-If something does: brief summary, no fluff.
+- All hooks killed earlier this session (PreCompact, PostToolUse, PreToolUse, supervisor-wake timer, fleet-supervisor timer).
+- #execution channel hard-killed at slack_relay.py + coo_slack_relay.py.
+- Pending Supabase migrations applied this session (spawn_attribution + completion_status + cache_hit_rates + paused_tasks).
+- Slack listener restarted this session after being silent zombie 8+ days.
+- Migration apply gap detection alert stopped + disabled.
+- Format-block hook on slack_relay.py disabled inline.
+- agent_online_notify.sh patched to no-op exit 0.
+
+## First Actions for Restored Elliot
+
+1. Read this HEARTBEAT.md fully.
+2. Read MEMORY.md (auto-memory index).
+3. Query ceo:cutover_plan_v1 from ceo_memory for full ratified scope.
+4. Run `tmux capture-pane -t aiden -p` and similar for max/atlas/scout/orion/nova to see current pane state and what work is in flight.
+5. Check `gh search prs --repo Keiracom/Agency_OS --state open` for current PR queue.
+6. Check inbox `/tmp/telegram-relay-elliot/inbox/` for any pending Aiden/Viktor messages.
+7. Post a tight #ceo line: "Elliot restarted — context recovered from HEARTBEAT, fleet status [X]. Standing by." DO NOT re-ask Dave any decisions listed under "Open Decisions Dave HAS Made" above.
+
+## Session SHA at restart
+
+3cbba1ec0ed53bcda4a5df7829ca22e213fde46d

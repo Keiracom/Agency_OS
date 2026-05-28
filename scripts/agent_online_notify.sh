@@ -18,6 +18,12 @@
 
 set -euo pipefail
 
+# DISABLED 2026-05-27 per Dave directive: stop all automated posting to #execution.
+# Session-online alerts (Orion restarts etc) named explicitly in the kill-list.
+# Script kept as no-op so ExecStartPost lines in unit files remain valid; restore
+# by removing this early-exit block if the directive is reversed.
+exit 0
+
 CALLSIGN="${1:?usage: agent_online_notify.sh <CALLSIGN> [delay_seconds] [channel_id]}"
 DELAY="${2:-15}"
 CHANNEL="${3:-C0B3QB0K1GQ}"

@@ -1,0 +1,31 @@
+[Unit]
+# Work-loop consumer service (Agency_OS-nkc0). Subscribes to Valkey
+# keiracom:tasks:available and drives the tier-gated spawn loop → /dispatcher/spawn.
+#
+# Singleton (not a per-callsign template): one consumer per node coordinates all
+# tenants via Valkey keys. Enable with:
+#   systemctl --user enable --now keiracom-work-loop-consumer.service
+#
+# NOT ENABLED AT MERGE TIME: the live smoke is held pending Dave's budget-gate
+# (uncapped per-spawn spend) decision. Land the unit; enable only after that.
+Description=Keiracom work-loop consumer (tier-gated task→spawn driver)
+Documentation=https://github.com/Keiracom/Agency_OS
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+ExecStart=/usr/bin/python3 -B -m src.keiracom_system.work_loop
+
+Restart=on-failure
+RestartSec=10
+
+StandardOutput=append:/home/elliotbot/clawd/logs/keiracom-work-loop-consumer.log
+StandardError=append:/home/elliotbot/clawd/logs/keiracom-work-loop-consumer.log
+
+[Install]
+WantedBy=default.target

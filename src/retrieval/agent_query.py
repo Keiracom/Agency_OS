@@ -21,7 +21,8 @@ from collections.abc import Coroutine
 from dataclasses import dataclass
 from typing import Any, Literal, TypeVar
 
-from src.retrieval import fusion, hyde, multi_query, orchestrator
+from src.retrieval import fusion, hyde, multi_query, orchestrator, overrides
+from src.retrieval._types import Citation
 from src.utils.log_safe import scrub
 
 logger = logging.getLogger(__name__)
@@ -41,15 +42,6 @@ QUERY_TEXT_LOG_CAP = 200
 
 
 CollectionName = Literal["Discoveries", "Decisions", "Codebase", "Keis", "Sessions"]
-
-
-@dataclass(frozen=True)
-class Citation:
-    source_id: str
-    collection: str
-    score: float
-    excerpt: str
-    parent_path: str = ""
 
 
 @dataclass(frozen=True)
@@ -229,9 +221,14 @@ def _finalize(
     max_tokens: int,
     citation_required: bool,
     started: float,
+    task_type: str | None = None,
 ) -> QueryResult:
-    """Shared post-recall path: citation extraction → KEI-198 top-N → event."""
+    """Shared post-recall path: citation extraction → overrides → KEI-198 top-N → event."""
     citations = [_node_to_citation(n) for n in outcome.nodes]
+    # Wave 5 — customer overrides: drop ignored memories, boost preferred ones
+    # BEFORE the top-N slice so suppression/promotion shapes the final set.
+    # No-op unless RETRIEVAL_OVERRIDES_ENABLED is set.
+    citations = overrides.apply_overrides(citations, task_type=task_type)
     # KEI-198 — distribution-aware citation selection.
     # OLD shape (pre-KEI-192 audit): hard `score >= min_score` filter excluded
     # everything when vectorizer=none collapsed all scores to 0.0 — 12/14 of the
@@ -288,6 +285,7 @@ def query(
     k_initial: int = orchestrator.DEFAULT_K_INITIAL,
     k_returned: int = orchestrator.DEFAULT_K_RETURNED,
     tenant_id: str = orchestrator.FLEET_TENANT_SLUG,
+    task_type: str | None = None,
 ) -> QueryResult:
     """Run one retrieval query.
 
@@ -317,6 +315,10 @@ def query(
             distribution-aware top-N selection regardless of the value.
         k_initial: ANN top-K per collection.
         k_returned: Citations returned (post-rank — top-N sorted by score).
+        task_type: Optional task context. When customer memory overrides are
+            enabled (RETRIEVAL_OVERRIDES_ENABLED), task-scoped overrides only
+            fire when this matches; global overrides (task_type=None) always
+            fire. No effect when the feature flag is off (Wave 5).
 
     Returns:
         `QueryResult` with answer + citations + elapsed_ms + bypass flag.
@@ -329,17 +331,13 @@ def query(
     # synthesis (in _finalize) stay on the ORIGINAL query text.
     search_text = hyde.expand_query(text)
     # Recall-strategy selection (all flags default off → base single-query path).
-    # Precedence: fusion (all-bank union) > multi-query (N variants) > base. These
-    # are independent experimental strategies; composing fusion×multi-query is a
-    # future KEI, so the higher-precedence flag wins when both are enabled.
+    # Precedence: fusion (all-bank union) > multi-query (N variants) > base.
     if fusion.fusion_enabled():
         fused_nodes = _run_coro_sync(
             fusion.fused_recall(search_text, tenant=tenant_id, top_k=k_initial)
         )
         outcome = _fusion_outcome(fused_nodes, collections)
     elif multi_query.multi_query_enabled():
-        # Generates N query variants from the (HyDE-expanded) search text and
-        # merges+dedups results by memory_id; fail-open to single-query.
         outcome = multi_query.retrieve_multi(
             text=search_text,
             collections=collections,
@@ -365,6 +363,7 @@ def query(
         max_tokens=max_tokens,
         citation_required=citation_required,
         started=started,
+        task_type=task_type,
     )
 
 
@@ -428,6 +427,7 @@ async def query_async(
         max_tokens=max_tokens,
         citation_required=citation_required,
         started=started,
+        task_type=task_type,
     )
 
 

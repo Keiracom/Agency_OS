@@ -14,10 +14,11 @@ The whole feature sits behind ``RETRIEVAL_OVERRIDES_ENABLED`` (default off):
 ``apply_overrides`` is a no-op when the flag is unset, so the retrieval contract
 is unchanged for callers who never opt in.
 
-Import note: ``apply_overrides`` returns boosted citations via
-``dataclasses.replace``, which clones the instance without needing the
-``Citation`` symbol at runtime — that keeps this module free of a circular
-import back into ``agent_query``.
+Import note: the ``Citation`` type comes from ``src.retrieval._types`` (a
+leaf module), not from ``agent_query`` — that avoids the ``agent_query`` ↔
+``overrides`` import cycle (CodeQL py/cyclic-import). ``apply_overrides``
+boosts via ``dataclasses.replace``, which clones the instance without needing
+the ``Citation`` symbol at runtime, so the import stays TYPE_CHECKING-only.
 """
 
 from __future__ import annotations
@@ -28,10 +29,10 @@ from dataclasses import dataclass, replace
 from datetime import datetime
 from typing import TYPE_CHECKING, Literal
 
-if TYPE_CHECKING:  # pragma: no cover — typing only, avoids agent_query cycle
+if TYPE_CHECKING:  # pragma: no cover — typing only
     from collections.abc import Sequence
 
-    from src.retrieval.agent_query import Citation
+    from src.retrieval._types import Citation
 
 logger = logging.getLogger(__name__)
 

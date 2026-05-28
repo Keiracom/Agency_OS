@@ -19,6 +19,7 @@ from dataclasses import dataclass
 from typing import Literal
 
 from src.retrieval import hyde, orchestrator, overrides
+from src.retrieval._types import Citation
 
 logger = logging.getLogger(__name__)
 
@@ -35,15 +36,6 @@ QUERY_TEXT_LOG_CAP = 200
 
 
 CollectionName = Literal["Discoveries", "Decisions", "Codebase", "Keis", "Sessions"]
-
-
-@dataclass(frozen=True)
-class Citation:
-    source_id: str
-    collection: str
-    score: float
-    excerpt: str
-    parent_path: str = ""
 
 
 @dataclass(frozen=True)

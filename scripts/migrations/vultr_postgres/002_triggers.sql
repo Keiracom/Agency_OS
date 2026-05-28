@@ -128,8 +128,15 @@ COMMENT ON FUNCTION public.fn_block_parent_claim() IS
 -- ===========================================================================
 -- Trigger 3: KEI-87 ceo_memory write-guard (re-applied exactly)
 -- ---------------------------------------------------------------------------
--- Only elliot and dave may write rows whose key starts with 'ceo:'.
+-- Only elliot, dave, and john may write rows whose key starts with 'ceo:'.
+-- john added 2026-05-28 (Elliot-ratified): John's exit_cycle is an intended
+-- ceo_memory writer (src.keiracom_system.chat.exit_cycle, PR #1268).
 -- Requires agency_os.callsign session var to be SET LOCAL before the write.
+-- SEQUENCING NOTE: apply this trigger AFTER all ceo:* writer call-sites have
+-- been migrated to the wrapper (src.governance.ceo_memory_writer). Applying
+-- before migration completes will reject non-migrated writers. KEI-87 is not
+-- yet enforced on Supabase prod (flagged Nova 2026-05-28) — verify migration
+-- status before enabling on Vultr.
 -- ===========================================================================
 
 CREATE OR REPLACE FUNCTION public.ceo_memory_write_guard()
@@ -150,10 +157,10 @@ BEGIN
             NEW.key
         USING ERRCODE = 'check_violation';
     END IF;
-    IF caller NOT IN ('elliot', 'dave') THEN
+    IF caller NOT IN ('elliot', 'dave', 'john') THEN
         RAISE EXCEPTION
             'KEI-87 ceo_memory write-guard: agency_os.callsign=% is not in '
-            '(elliot, dave) — refused write on key %',
+            '(elliot, dave, john) — refused write on key %',
             caller, NEW.key
         USING ERRCODE = 'check_violation';
     END IF;
@@ -168,7 +175,8 @@ CREATE TRIGGER ceo_memory_write_guard
     EXECUTE FUNCTION public.ceo_memory_write_guard();
 
 COMMENT ON FUNCTION public.ceo_memory_write_guard() IS
-    'KEI-87/KEI-241 — Restricts ceo:* key writes to callsigns elliot and dave. '
+    'KEI-87/KEI-241 — Restricts ceo:* key writes to callsigns elliot, dave, john. '
+    'john added 2026-05-28 (exit_cycle PR #1268). '
     'Session var agency_os.callsign must be SET LOCAL before any ceo:* write.';
 
 -- ===========================================================================

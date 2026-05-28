@@ -43,11 +43,17 @@ Per-callsign systemd service that maintains a named tmux session across reboots 
 
 The keepalive script (`scripts/agent_keepalive.sh`) creates the tmux session, spawns `claude` inside it, and uses systemd `Restart=on-failure` to resurrect it when the process dies. Bounded-spawn discipline (Dave 2026-05-27) already mandates fresh-context restarts — this was a step toward ephemeral but is still a persistent session model.
 
-Also retired: per-callsign NATS bridge units (3 per callsign = 21 total):
+Also retired: per-callsign NATS bridge units (7 total, one per callsign — suffix varies by tier):
 ```
-{callsign}-nats-inbox-bridge.service
-{callsign}-nats-{dispatch,review}-bridge.service
+elliot-nats-inbox-bridge.service
+aiden-nats-review-bridge.service
+max-nats-review-bridge.service
+atlas-nats-dispatch-bridge.service
+orion-nats-dispatch-bridge.service
+scout-nats-dispatch-bridge.service
+nova-nats-dispatch-bridge.service
 ```
+Verify current units: `systemctl --user list-units | grep nats`
 
 And the Elliot-only liveness checker:
 ```
@@ -97,7 +103,7 @@ Fleet supervisor **is not deleted** — it is updated to operate without tmux de
 
 | Old behaviour | New behaviour |
 |---|---|
-| `tmux capture-pane` to detect agent state | Query `dispatcher.sessions` DB table (or REST `GET /dispatcher/sessions`) |
+| `tmux capture-pane` to detect agent state | Query `dispatcher.service` health + JSONL spawn attribution log (`$DISPATCHER_ATTRIBUTION_LOG`) |
 | `tmux send-keys` to inject task prompts | `POST /dispatcher/spawn` to request a new ephemeral spawn |
 | 5-min polling for dead sessions | Subscribe to spawn-lifecycle events (task_complete / spawn_failed) OR keep 5-min poll against dispatcher state |
 | Release stale claims (>2h, no activity) | Call `POST /dispatcher/spawn` with `force_evict: true` on stale sessions |
@@ -109,7 +115,7 @@ Scripts that need targeted updates (not archive):
 | Script | Update required |
 |--------|----------------|
 | `scripts/fleet_supervisor.py` | Replace `tmux capture-pane` + `tmux send-keys` calls with dispatcher REST calls under `v2` flag |
-| `scripts/bd_fleet_check.py` | Read dispatcher `sessions` endpoint instead of `tmux capture-pane` |
+| `scripts/bd_fleet_check.py` | Read dispatcher JSONL attribution log instead of `tmux capture-pane` |
 | `scripts/orchestrator/elliot_polling_loop.py` | Poll dispatcher state instead of injecting into 6 tmux panes |
 | `scripts/orchestrator/deliberator_concur_router.py` | Read from inbox queue files directly; remove capture-pane dependency |
 | `scripts/orchestrator/bd_complete_hook.sh` | Strip `tmux capture-pane` calls |
@@ -129,10 +135,9 @@ The NATS bridge units (`{callsign}-nats-*-bridge.service`) fan NATS events into 
 ### Pre-flight (run once, before any per-callsign steps)
 
 ```bash
-# PF-1: Verify dispatcher service is running on all callsigns
-for c in max nova scout aiden atlas orion elliot; do
-    systemctl --user is-active keiracom-dispatcher@${c}.service && echo "OK $c" || echo "FAIL $c"
-done
+# PF-1: Verify the dispatcher service is running (single unit — not per-callsign)
+systemctl --user is-active dispatcher.service && echo "OK dispatcher" || echo "FAIL dispatcher"
+# Expect: active
 
 # PF-2: Smoke-test one spawn through the canonical dispatcher
 curl -s -X POST http://localhost:4001/dispatcher/spawn \
@@ -195,13 +200,18 @@ curl -s -X POST http://localhost:4001/dispatcher/spawn \
   -d "{\"callsign\":\"${CALLSIGN}\",\"task_brief\":\"echo cutover-smoke-ok\",\"task_type\":\"smoke\",\"idempotency_key\":\"retirement-step4-${CALLSIGN}-$(date +%s)\"}" \
   | jq '.spawned, .handle'
 
-# Confirm the spawned session exited after task completion
+# Confirm the spawned ephemeral session was created and exited cleanly
 sleep 10
-curl -s "http://localhost:4001/dispatcher/sessions" | jq ".[] | select(.callsign == \"${CALLSIGN}\")"
-# Expected: no active session for callsign (it completed and exited)
+# Ephemeral session uses TMUX_NAME_PREFIX (default "disp-") — should be gone after task
+tmux list-sessions 2>&1 | grep "disp-${CALLSIGN}" \
+  && echo "WARN: session still alive (task may still be running)" \
+  || echo "OK: ephemeral session exited as expected"
+# Also verify dispatcher health is still nominal
+curl -s http://localhost:4001/dispatcher/health | jq '.status'
+# Expected: "ok"
 ```
 
-**Pass criteria:** `spawned: true`, session appears in dispatcher, then exits within task-completion window (~30s for a smoke task). If this fails, immediately re-enable the stopped services (rollback, see §4).
+**Pass criteria:** `spawned: true` in the spawn response, dispatcher health returns `"ok"`, and the ephemeral tmux session exits within ~30s. If this fails, immediately re-enable the stopped services (rollback, see §4).
 
 ### Step 5 — Repeat Steps 1–4 for next callsign
 
@@ -216,11 +226,11 @@ Work through: `max` → `nova` → `scout` → `aiden` → `atlas` → `orion` �
 export FLEET_SUPERVISOR_V2_ENABLED=1
 # Add to ~/.config/agency-os/.env for persistence
 
-# Run fleet supervisor in dry-run mode against dispatcher
-python3 scripts/fleet_supervisor.py --dry-run 2>&1 | head -40
-# Verify: output shows dispatcher REST calls, NOT tmux capture-pane calls
+# Verify the v2 flag code path exists in fleet_supervisor.py before enabling it
+grep -n "FLEET_SUPERVISOR_V2_ENABLED\|tmux capture-pane\|tmux send-keys" scripts/fleet_supervisor.py
+# Expected: V2_ENABLED guard present; all tmux calls must be inside the v1 branch
 
-# If v2 dry-run looks clean, restart the supervisor timer
+# If v2 code path is confirmed, restart the supervisor timer
 systemctl --user restart fleet-supervisor.timer
 ```
 
@@ -341,7 +351,7 @@ The following must be complete before executing this plan:
 | # | Prerequisite | Status | Owner |
 |---|---|---|---|
 | P1 | All 5 dispatcher-wired cutover-blocker gates passing in CI | Merged (PRs #1222–#1225 + Agency_OS-gcpm) | Orion/Atlas |
-| P2 | `keiracom-dispatcher@<callsign>.service` running for all 7 callsigns | Verify: `systemctl --user is-active keiracom-dispatcher@elliot.service` | Elliot ops |
+| P2 | `dispatcher.service` running and healthy | Verify: `systemctl --user is-active dispatcher.service` | Elliot ops |
 | P3 | Fleet supervisor v2 flag implemented and tested | Flag exists; v2 code path needs tmux-removal pass | Max / Atlas |
 | P4 | Empirical probe (adversarial probe suite PR #1251) baseline run against live dispatcher | Needed to confirm recall quality is unchanged post-cutover | Scout |
 | P5 | Aiden gate D approval on Step 6 archive execution | Required per governance | Aiden |

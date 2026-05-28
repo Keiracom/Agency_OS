@@ -1,0 +1,25 @@
+[Unit]
+# Post-cutover #ceo capture listener (Slack Socket Mode) — Agency_OS-yku8.
+# Replaces elliot_slack_listener for the ephemeral model: no pane, no send-keys,
+# no terminal-multiplexer dependency of any kind.
+Description=#ceo capture listener (post-cutover, Slack Socket Mode)
+After=network-online.target
+Wants=network-online.target
+# Restart-storm cap (these are [Unit] directives — ignored if placed in [Service]).
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+# Paths point at the main worktree — all fleet services run from there on latest
+# main (NOT a callsign worktree).
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/ceo_capture_listener.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/ceo-capture-listener.log
+StandardError=append:/home/elliotbot/clawd/logs/ceo-capture-listener.log
+
+[Install]
+WantedBy=default.target

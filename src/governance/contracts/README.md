@@ -8,7 +8,7 @@ Typed schemas for governance artefacts. Pydantic v2 BaseModel + Anthropic-compat
 |---|---|---|
 | `DirectiveContract` | `directive_contract.py` | Dave-issued directive shape (intent + context + latitude + frozen_artifacts + success_criteria + scope IN/OUT + spend cap + step0 exemption + source + task_ref) |
 | `PeerReviewContract` | `peer_review_contract.py` | Bot-on-bot review verdict (concur / differ / yellow_flag) with audit evidence |
-| `CompletionClaimContract` | `completion_claim_contract.py` | `[COMPLETE:<callsign>]` claim (branch + commit + verification stdout + four-store check) |
+| `CompletionClaimContract` | `completion_claim_contract.py` | `[COMPLETE:<callsign>]` claim (branch + commit + verification stdout + three-store check) |
 
 ## How directives map to schemas
 
@@ -26,7 +26,7 @@ Clone executes
   ↓ on concur: clone writes CompletionClaimContract → outbox
 
 Parent bot reads outbox
-  ↓ verifies four_store_complete()
+  ↓ verifies three_store_complete()
   ↓ if all stores written: surface CompletionClaimContract.pr_url to Dave
   ↓ if not: dispatch follow-up to fill missing stores
 ```
@@ -58,7 +58,7 @@ parsed = DirectiveContract.model_validate(response.content[0].input)
 Run `pytest tests/governance/test_contracts.py` to verify each schema:
 - Accepts a sample Dave directive (DirectiveContract).
 - Rejects unknown fields (`extra="forbid"`).
-- Computes `four_store_complete()` correctly (CompletionClaimContract).
+- Computes `three_store_complete()` correctly (CompletionClaimContract).
 - Status enum constraints fire (PeerReviewContract).
 
 ## Phase 1 dispatch

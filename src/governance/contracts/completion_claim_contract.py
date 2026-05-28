@@ -1,8 +1,14 @@
 """CompletionClaimContract — typed shape for a bot's completion claim.
 
-Encodes R9 Verify-Before-Claim + LAW XV Four-Store Completion + LAW XIV
+Encodes R9 Verify-Before-Claim + LAW XV Three-Store Completion + LAW XIV
 Raw Output Mandate. Every '[COMPLETE:<callsign>]' message should be
 expressible as one of these.
+
+Amended 2026-05-27 (PR #1214 Agency_OS-uik): docs/MANUAL.md ARCHIVED.
+Required stores collapsed from four to two (ceo_memory + cis_metrics);
+Drive mirror is best-effort, not gated. `stored_in_manual` field retained
+on the model for backwards-compat with serialized claims but is no longer
+checked by `three_store_complete()`.
 """
 
 from __future__ import annotations
@@ -59,7 +65,10 @@ class CompletionClaimContract(BaseModel):
         ),
     )
 
-    # LAW XV Four-Store Completion check.
+    # LAW XV Three-Store Completion check (amended 2026-05-27 PR #1214).
+    # stored_in_manual + stored_in_drive_mirror retained for serialization
+    # backwards-compat but NOT checked by three_store_complete() — Manual is
+    # archived; Drive mirror is best-effort.
     stored_in_manual: bool = Field(default=False)
     stored_in_ceo_memory: bool = Field(default=False)
     stored_in_cis_metrics: bool = Field(default=False)
@@ -83,13 +92,20 @@ class CompletionClaimContract(BaseModel):
         description="Free-form notes (deferred items, follow-ups, caveats).",
     )
 
+    def three_store_complete(self) -> bool:
+        """LAW XV check — both required stores written?
+
+        Amended 2026-05-27 (PR #1214 Agency_OS-uik): only ceo_memory +
+        cis_metrics are required. Drive mirror is best-effort (non-blocking);
+        Manual is archived. The legacy `stored_in_manual` and
+        `stored_in_drive_mirror` flags are kept on the model for serialized-
+        claim backwards-compat but NOT checked here.
+        """
+        return self.stored_in_ceo_memory and self.stored_in_cis_metrics
+
+    # Deprecated alias kept for backwards-compat with callers that still
+    # reference the four-store method name. Removes when no callers remain.
     def four_store_complete(self) -> bool:
-        """LAW XV check — all four stores written?"""
-        return all(
-            (
-                self.stored_in_manual,
-                self.stored_in_ceo_memory,
-                self.stored_in_cis_metrics,
-                self.stored_in_drive_mirror,
-            )
-        )
+        """DEPRECATED — renamed to three_store_complete in PR #1214. Forwards
+        to the new method for callers that haven't updated yet."""
+        return self.three_store_complete()

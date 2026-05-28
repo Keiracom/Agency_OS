@@ -33,18 +33,8 @@ def test_callsign_empty_string_fails_loud(monkeypatch):
         tss.get_callsign()
 
 
-def test_manual_entry_tagged_with_callsign():
-    """Manual entry includes [CALLSIGN] prefix."""
-    entry = tss.manual_entry("D1.8", 329, "test summary", "elliot")
-    assert "[ELLIOT]" in entry
-    assert "D1.8" in entry
-    assert "PR #329" in entry
-
-
-def test_manual_entry_tagged_aiden():
-    """Aiden entries tagged [AIDEN]."""
-    entry = tss.manual_entry("D2.2", 999, "aiden run", "aiden")
-    assert "[AIDEN]" in entry
+# manual_entry tests removed 2026-05-27 (PR #1214 Agency_OS-uik) — docs/MANUAL.md
+# archived; three_store_save.py no longer touches the Manual.
 
 
 # ─── asyncpg migration (REST → pgbouncer-friendly direct DB) ──────────────

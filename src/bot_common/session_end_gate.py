@@ -1,19 +1,22 @@
 """session_end_gate.py — LAW XV mechanical enforcement (Outcome 2).
 
 Per Dave System Health Monitoring directive 2026-05-12 Outcome 2 + Max's spec
-ts 1778553034:
+ts 1778553034. Amended 2026-05-27 (PR #1214 Agency_OS-uik): docs/MANUAL.md
+ARCHIVED; Manual Section 13 check REMOVED from the gate. ceo_memory is the
+sole SSOT; Drive mirror is best-effort (non-blocking, not gated).
 
-  "Prevent completion claims that skip the 4-store save. Mechanical check,
-   not an instruction agents can ignore."
+  "Prevent completion claims that skip the save. Mechanical check, not an
+   instruction agents can ignore."
 
-Trigger: outbound message contains 4-store completion language. Gate then
-verifies all three queryable stores were written for the claimed directive
-within the last 5 minutes; refuses the post if any store is missing.
+Trigger: outbound message contains store-save completion language. Gate
+verifies both required stores were written for the claimed directive
+within the last 5 minutes; refuses the post if either is missing.
 
-Stores checked (matches scripts/three_store_save.py):
+Stores checked (matches scripts/three_store_save.py, post-2026-05-27 amend):
   1. ceo_memory.key == "ceo:directive_{N}_complete" with updated_at < 5min
   2. cis_directive_metrics.directive_id == N (or directive_ref contains N)
-  3. docs/MANUAL.md Section 13 entry referencing #N
+  Drive mirror is best-effort and NOT gated — failure logs
+  LAW_XV_DRIVE_MIRROR_FAIL but does not block.
 
 Mirrors verify_gate.py structure (gate_check returns (ok, blocker_reason))
 so slack_relay.py can call it identically.
@@ -29,7 +32,6 @@ import os
 import re
 import sys
 from datetime import UTC, datetime, timedelta
-from pathlib import Path
 from typing import Final
 
 logger = logging.getLogger("session_end_gate")
@@ -59,10 +61,6 @@ _DIRECTIVE_NUM_RE: Final = re.compile(r"\bdirective[_#\s]+(\d+)", re.IGNORECASE)
 
 # How recently the ceo_memory row must have been updated to count as a fresh save.
 FRESH_SAVE_WINDOW = timedelta(minutes=5)
-
-MANUAL_PATH = Path("docs/MANUAL.md")
-SECTION_13_HEADER_RE: Final = re.compile(r"^##\s*SECTION\s*13\b", re.IGNORECASE | re.MULTILINE)
-SECTION_BREAK_RE: Final = re.compile(r"^##\s*SECTION\b", re.IGNORECASE | re.MULTILINE)
 
 
 def has_completion_trigger(text: str) -> bool:
@@ -151,27 +149,9 @@ def check_cis_metrics(directive_n: int) -> tuple[bool, str]:
     return False, f"cis_directive_metrics: no row for directive_id={directive_n}"
 
 
-def check_manual_section_13(directive_n: int) -> tuple[bool, str]:
-    """Returns (entry_found, reason_if_not). Searches Section 13 body only."""
-    if not MANUAL_PATH.exists():
-        return True, "(MANUAL.md missing — skipped)"
-    try:
-        content = MANUAL_PATH.read_text()
-    except OSError as exc:
-        return True, f"(MANUAL.md read failed: {exc})"
-    header_match = SECTION_13_HEADER_RE.search(content)
-    if not header_match:
-        return True, "(Section 13 header missing — skipped)"
-    section_start = header_match.end()
-    next_section = SECTION_BREAK_RE.search(content, section_start)
-    section_end = next_section.start() if next_section else len(content)
-    body = content[section_start:section_end]
-    # Look for "#N" or "directive N" or "directive_N" patterns
-    n_str = str(directive_n)
-    pattern = re.compile(rf"#{n_str}\b|\bdirective[_#\s]+{n_str}\b", re.IGNORECASE)
-    if pattern.search(body):
-        return True, ""
-    return False, f"MANUAL.md Section 13: no entry referencing #{directive_n}"
+# NOTE: check_manual_section_13 removed 2026-05-27 (PR #1214 Agency_OS-uik).
+# docs/MANUAL.md is archived; the Manual Section 13 entry is no longer a
+# gated store. Drive mirror is best-effort (non-blocking) and NOT gated.
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -180,7 +160,12 @@ def check_manual_section_13(directive_n: int) -> tuple[bool, str]:
 
 
 def gate_check(text: str, now: datetime | None = None) -> tuple[bool, str | None]:
-    """Verify all 3 queryable stores are written for any claimed-complete directive.
+    """Verify both required stores are written for any claimed-complete directive.
+
+    Required stores (per amended LAW XV 2026-05-27 PR #1214):
+      1. ceo_memory (PRIMARY SSOT)
+      2. cis_directive_metrics
+    Drive mirror is best-effort and NOT gated.
 
     Returns (ok, blocker_reason):
       - ok=True, blocker_reason=None → message can post
@@ -206,9 +191,6 @@ def gate_check(text: str, now: datetime | None = None) -> tuple[bool, str | None
     ok_cis, reason_cis = check_cis_metrics(directive_n)
     if not ok_cis:
         blockers.append(reason_cis)
-    ok_man, reason_man = check_manual_section_13(directive_n)
-    if not ok_man:
-        blockers.append(reason_man)
     if blockers:
         return False, (
             f"R_LAW_XV_BLOCKED: directive {directive_n} — "

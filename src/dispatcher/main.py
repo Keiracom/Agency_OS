@@ -30,6 +30,7 @@ from pydantic import BaseModel
 
 import src.dispatcher.auth_minter  # noqa: F401 — imported for fail-fast side-effect
 from src.dispatcher.container_lifecycle import ContainerStartupError, DockerUnavailableError
+from src.dispatcher.idempotency import IdempotencyDecision, IdempotencyGate
 from src.dispatcher.interceptor_proxy import router as interceptor_router
 from src.dispatcher.reaper import Reaper
 from src.dispatcher.session_manager import Backend, SessionManager
@@ -80,6 +81,18 @@ _component_status: dict[str, str] = {
 
 _watchdog: Watchdog | None = None
 _reaper: Reaper | None = None
+
+# Pre-spawn idempotency gate (PR #1204 / Cat 21 lever 26 / cutover-blocker 5).
+# Set by tests or by a future env-driven config layer; None = no-op (rollout
+# phase 1 default — gate is wired but disabled until Valkey config lands).
+_idempotency_gate: IdempotencyGate | None = None
+
+
+def _set_idempotency_gate(gate: IdempotencyGate | None) -> None:
+    """Test-only setter for the idempotency gate (DI through module attr)."""
+    global _idempotency_gate  # noqa: PLW0603
+    _idempotency_gate = gate
+
 
 # Sessions spawned via /dispatcher/spawn, keyed by supervisor registry key.
 # Lets /dispatcher/terminate find the handle + backend for clean teardown.
@@ -302,6 +315,30 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
         backend = Backend(req.backend)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=f"unknown backend: {req.backend!r}") from exc
+
+    # Pre-spawn idempotency gate (Cat 21 lever 26 / cutover-blocker 5).
+    # Dedup duplicate spawn requests within a 60-second window via Valkey
+    # SET NX EX. source = "dispatcher-spawn-<backend>"; content = req.key.
+    # Fail-open: no-gate-wired / Valkey error → PROCEED (PR #1204 contract).
+    if _idempotency_gate is not None:
+        idem_result = await _idempotency_gate.check_and_claim(
+            source=f"dispatcher-spawn-{backend.value}",
+            content=req.key,
+        )
+        if idem_result.decision == IdempotencyDecision.DROP_DUPLICATE:
+            logger.info(
+                "KEI-213 idempotency gate dropped duplicate spawn key=%s backend=%s",
+                req.key,
+                backend.value,
+            )
+            return {
+                "spawned": False,
+                "key": req.key,
+                "backend": backend.value,
+                "decision": "drop_duplicate",
+                "reason": idem_result.reason,
+                "idempotency_key": idem_result.key,
+            }
 
     manager = SessionManager(backend=backend)
     try:

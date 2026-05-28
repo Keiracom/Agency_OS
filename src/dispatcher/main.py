@@ -45,6 +45,12 @@ from src.dispatcher.tmux_lifecycle import (
     TmuxUnavailableError,
 )
 from src.dispatcher.watchdog import Watchdog
+from src.keiracom_system.attribution.logger import (
+    SOURCE_TYPES,
+    TASK_TYPES,
+    SpawnAttributionEntry,
+    log_spawn_attribution,
+)
 from src.relay.budget_ceiling import (
     PRIORITY_NORMAL,
     SOURCE_DAVE_DM,
@@ -179,6 +185,78 @@ def _bounded_spawn_task_id(spawn_kwargs: dict[str, Any], registry_key: str) -> s
     """Pull a stable task identifier from spawn_kwargs, falling back to key."""
     explicit = str((spawn_kwargs or {}).get("task_id") or "").strip()
     return explicit or registry_key
+
+
+# Spawn-attribution emit toggle (PR #1207 / Cat 21 lever 27 / cutover-blocker 6
+# + PR #1209 / Cat 21 lever 23 / cutover-blocker 7 — per-task-type extension).
+# When True, /dispatcher/spawn emits a SpawnAttributionEntry JSONL after
+# successful register. Disabled in rollout phase 1.
+_ATTRIBUTION_ENABLED_ENV = "DISPATCHER_ATTRIBUTION_ENABLED"
+attribution_enabled: bool = os.environ.get(_ATTRIBUTION_ENABLED_ENV, "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+attribution_default_model: str = os.environ.get("DISPATCHER_ATTRIBUTION_MODEL", "claude-sonnet-4-6")
+
+
+def _spawn_kwargs_source_type(sk: dict) -> str:
+    """Derive source_type from spawn_kwargs per PR #1207 SOURCE_TYPES taxonomy."""
+    explicit = str(sk.get("source_type") or "").strip()
+    if explicit in SOURCE_TYPES:
+        return explicit
+    sender = str(sk.get("from") or "").lower().strip()
+    if sender == "dave":
+        return "slack"
+    if sender in {"cron", "scheduler"}:
+        return "cron"
+    return "inbox"
+
+
+def _spawn_kwargs_task_type(sk: dict, registry_key: str) -> str:
+    """Derive task_type from spawn_kwargs per PR #1207/#1209 TASK_TYPES taxonomy."""
+    explicit = str(sk.get("task_type") or "").lower().strip()
+    if explicit in TASK_TYPES:
+        return explicit
+    key_upper = registry_key.upper()
+    if "REVIEW-PR" in key_upper or "PR-REVIEW" in key_upper:
+        return "pr_review"
+    if "DELIBERATE" in key_upper or "DELIBERATION" in key_upper:
+        return "deliberation"
+    if key_upper.startswith("DISPATCH"):
+        return "dispatch_mgmt"
+    if str(sk.get("from") or "").lower().strip() == "dave":
+        return "chat"
+    return "build"
+
+
+def _emit_attribution(
+    *,
+    registry_key: str,
+    spawn_kwargs: dict,
+    callsign: str,
+) -> SpawnAttributionEntry | None:
+    """Emit a SpawnAttributionEntry; fail-open on telemetry exceptions."""
+    if not attribution_enabled:
+        return None
+    source_type = _spawn_kwargs_source_type(spawn_kwargs)
+    task_type = _spawn_kwargs_task_type(spawn_kwargs, registry_key)
+    try:
+        return log_spawn_attribution(
+            source_type=source_type,
+            source_id=registry_key,
+            callsign=callsign,
+            model=attribution_default_model,
+            task_type=task_type,
+        )
+    except Exception:  # noqa: BLE001 — telemetry must not block spawn
+        logger.exception(
+            "KEI-213 spawn attribution emit failed source_type=%s task_type=%s key=%s",
+            source_type,
+            task_type,
+            registry_key,
+        )
+        return None
 
 
 # Sessions spawned via /dispatcher/spawn, keyed by supervisor registry key.
@@ -504,6 +582,16 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
                 enforcement.prior.task_id if enforcement.prior else None,
                 enforcement.killed,
             )
+
+    # Spawn attribution emit (Cat 21 levers 27 + 23 / cutover-blockers 6 + 7).
+    # Fires AFTER successful register so attribution only records sessions that
+    # actually entered supervision.
+    callsign_hint = str((req.spawn_kwargs or {}).get("callsign") or "dispatcher")
+    _emit_attribution(
+        registry_key=req.key,
+        spawn_kwargs=req.spawn_kwargs or {},
+        callsign=callsign_hint,
+    )
 
     rsnap = _reaper.health_snapshot()
     response: dict[str, Any] = {

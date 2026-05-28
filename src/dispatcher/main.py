@@ -290,9 +290,10 @@ def _recall_block(
         # (matching spawn_recall.inject_prior_context's own outer catch) still
         # yields an empty block rather than a 500.
         try:
-            return spawn_recall.build_prior_context_block(
-                spawn_recall.query_for_spawn(task_type, task_brief)
-            )
+            # build_spawn_context_block = positive recall + (flag-gated) failure
+            # recall. Byte-identical to the positive-only block when
+            # RETRIEVAL_FAILURE_RECALL_ENABLED is off (Wave 6).
+            return spawn_recall.build_spawn_context_block(task_type, task_brief)
         except Exception:  # noqa: BLE001 — recall must never block a spawn
             logger.debug("workflow_recall: fresh block failed — no prior context", exc_info=True)
             return ""

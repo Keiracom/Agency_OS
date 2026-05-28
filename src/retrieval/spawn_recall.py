@@ -17,6 +17,11 @@ Contract:
         env[PRIOR_CONTEXT_ENV_KEY]; spawn_kwargs unchanged when nothing to
         inject.
 
+Wave 6 — negative-example recall (RETRIEVAL_FAILURE_RECALL_ENABLED, default
+off): build_spawn_context_block() appends a separate 'Past failures to avoid'
+block (query_failures_for_spawn -> build_failure_context_block) below the
+positive block. Byte-identical to the positive-only block when the flag is off.
+
 Fail-open by contract: Hindsight unreachable / any error → no block, the
 spawn proceeds without recall (never blocks). Budget-capped at the KEI-55
 500-token ceiling (enforced by agent_query.query() max_tokens + a hard
@@ -40,6 +45,9 @@ MAX_BLOCK_CHARS = MAX_TOKENS * 4  # ~4 chars/token belt-and-suspenders clamp
 BRIEF_PREFIX_CHARS = 100
 PRIOR_CONTEXT_ENV_KEY = "AGENCY_OS_PRIOR_CONTEXT"
 BLOCK_HEADER = "Prior context from memory (auto-recall — what failed before, canonical approach, superseded decisions):"
+FAILURE_BLOCK_HEADER = (
+    "Past failures to avoid (auto-recall — documented failure cases for tasks like this):"
+)
 
 
 def _build_query(task_type: str, task_brief: str) -> str:
@@ -74,12 +82,50 @@ def query_for_spawn(task_type: str, task_brief: str) -> list[str]:
     return [f"[{c.source_id} · {c.collection}] {c.excerpt}" for c in result.citations[:TOP_K]]
 
 
+def query_failures_for_spawn(task_type: str, task_brief: str) -> list[str]:
+    """Negative-example recall for an about-to-spawn agent (Wave 6).
+
+    Thin fail-open wrapper over agent_query.query_failures — itself flag-gated
+    (RETRIEVAL_FAILURE_RECALL_ENABLED, default off) and fail-open, so this
+    returns [] when the feature is disabled, on empty corpus, or on any error.
+    """
+    try:
+        from src.retrieval import agent_query  # lazy: keep dispatcher import light
+
+        return agent_query.query_failures(task_type, task_brief)
+    except Exception:  # noqa: BLE001 — failure recall must never block a spawn
+        logger.debug("spawn failure-recall failed — proceeding without it", exc_info=True)
+        return []
+
+
 def build_prior_context_block(results: list[str]) -> str:
-    """Format recall results into the injectable block, clamped to KEI-55."""
+    """Format positive recall results into the injectable block, clamped to KEI-55."""
     if not results:
         return ""
     lines = [BLOCK_HEADER, *(f"- {r}" for r in results)]
     return "\n".join(lines)[:MAX_BLOCK_CHARS]
+
+
+def build_failure_context_block(results: list[str]) -> str:
+    """Format failure recall results into a separate block, clamped to KEI-55."""
+    if not results:
+        return ""
+    lines = [FAILURE_BLOCK_HEADER, *(f"- {r}" for r in results)]
+    return "\n".join(lines)[:MAX_BLOCK_CHARS]
+
+
+def build_spawn_context_block(task_type: str, task_brief: str) -> str:
+    """The full spawn-context block: positive recall + (flag-gated) failures.
+
+    When RETRIEVAL_FAILURE_RECALL_ENABLED is off (default), the failure block is
+    empty and this is byte-identical to the positive-only block — no regression
+    on the existing path. When on, the 'Past failures to avoid' block is
+    appended as a separate section. Each section is independently KEI-55-clamped;
+    enabling failure recall opts the spawn into a second bounded block.
+    """
+    positive = build_prior_context_block(query_for_spawn(task_type, task_brief))
+    failures = build_failure_context_block(query_failures_for_spawn(task_type, task_brief))
+    return "\n\n".join(block for block in (positive, failures) if block)
 
 
 def inject_prior_context(
@@ -96,7 +142,7 @@ def inject_prior_context(
     inject.
     """
     try:
-        block = build_prior_context_block(query_for_spawn(task_type, task_brief))
+        block = build_spawn_context_block(task_type, task_brief)
         return inject_block(spawn_kwargs, block)
     except Exception:  # noqa: BLE001 — injection must never block a spawn
         logger.debug("inject_prior_context failed — spawn proceeds unchanged", exc_info=True)

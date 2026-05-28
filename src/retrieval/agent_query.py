@@ -425,3 +425,63 @@ async def query_async(
         citation_required=citation_required,
         started=started,
     )
+
+
+# ─── Negative-example recall (Wave 6, RETRIEVAL_FAILURE_RECALL_ENABLED) ────────
+# A first-class "what has failed before in situations like this?" query mode.
+# Distinct from the positive recall path — same retrieval backend, but framed
+# to surface documented failure cases (discovery-log failed_path entries,
+# anti-pattern memories, post-mortems) so an agent gets failures-to-avoid
+# alongside canonical context. Feature-flagged, default off.
+FAILURE_RECALL_ENABLED_ENV = "RETRIEVAL_FAILURE_RECALL_ENABLED"
+FAILURE_RECALL_AGENT = "failure-recall"
+FAILURE_FRAMING_TERMS: tuple[str, ...] = ("failure", "failed", "error", "wrong approach")
+FAILURE_BRIEF_PREFIX_CHARS = 200
+_TRUTHY_ENV_VALUES = frozenset({"1", "true", "yes", "on"})
+
+
+def failure_recall_enabled() -> bool:
+    """RETRIEVAL_FAILURE_RECALL_ENABLED gate — default False."""
+    return os.environ.get(FAILURE_RECALL_ENABLED_ENV, "").strip().lower() in _TRUTHY_ENV_VALUES
+
+
+def _build_failure_query(task_type: str, brief: str) -> str:
+    """Negative-framed query text steering recall toward failure cases."""
+    brief_head = (brief or "").strip()[:FAILURE_BRIEF_PREFIX_CHARS]
+    terms = ", ".join(FAILURE_FRAMING_TERMS)
+    return (
+        f'Documented failures for a {task_type or "build"} task: "{brief_head}". '
+        "What has failed before, errored, or been the wrong approach in situations "
+        f"like this? ({terms})"
+    )
+
+
+def query_failures(
+    task_type: str,
+    brief: str,
+    *,
+    agent: str = FAILURE_RECALL_AGENT,
+    tenant_id: str = orchestrator.FLEET_TENANT_SLUG,
+    top_k: int = 3,
+) -> list[str]:
+    """Negative-example recall — "what has failed before in situations like this?".
+
+    Queries the retrieval path with negative framing and returns up to `top_k`
+    formatted failure-memory strings ('[source · collection] excerpt'). Returns
+    [] when the feature flag is off (default), on an empty corpus, or on any
+    error — fail-open, so failure recall never blocks a caller.
+    """
+    if not failure_recall_enabled():
+        return []
+    try:
+        result = query(
+            _build_failure_query(task_type, brief),
+            agent=agent,
+            tenant_id=tenant_id,
+            max_tokens=DEFAULT_MAX_TOKENS,
+            k_returned=top_k,
+        )
+    except Exception:  # noqa: BLE001 — failure recall must never block the caller
+        logger.debug("failure recall failed — returning no failure context", exc_info=True)
+        return []
+    return [f"[{c.source_id} · {c.collection}] {c.excerpt}" for c in result.citations[:top_k]]

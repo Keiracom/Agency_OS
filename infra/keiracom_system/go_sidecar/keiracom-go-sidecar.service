@@ -1,0 +1,28 @@
+[Unit]
+Description=Keiracom System — Go Sidecar (mcp.go_sidecar Cat 10, Wave 1 dispatch Agency_OS-2c7m)
+Documentation=file:///home/elliotbot/clawd/Agency_OS/infra/keiracom_system/go_sidecar/README.md
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStartPre=/bin/bash -c 'test -x /home/elliotbot/clawd/Agency_OS/infra/keiracom_system/go_sidecar/bin/sidecar || /home/elliotbot/clawd/Agency_OS/infra/keiracom_system/go_sidecar/scripts/build.sh'
+ExecStart=/home/elliotbot/clawd/Agency_OS/infra/keiracom_system/go_sidecar/bin/sidecar
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS/infra/keiracom_system/go_sidecar
+Environment=SIDECAR_CONFIG_PATH=/etc/keiracom/sidecar.json
+Environment=SIDECAR_ADDR=127.0.0.1:4100
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+Restart=on-failure
+RestartSec=5
+StandardOutput=append:/home/elliotbot/clawd/logs/keiracom-go-sidecar.log
+StandardError=append:/home/elliotbot/clawd/logs/keiracom-go-sidecar.log
+MemoryMax=128M
+MemoryHigh=96M
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=read-only
+ReadWritePaths=/home/elliotbot/clawd/logs
+
+[Install]
+WantedBy=default.target

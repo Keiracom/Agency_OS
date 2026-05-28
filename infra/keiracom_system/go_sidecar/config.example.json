@@ -12,7 +12,12 @@
         "/var/keiracom/governance/",
         "/var/keiracom/temporal_state/"
       ],
-      "secret_patterns": ["sk-ant-", "sk-proj-", "AIza"]
+      "secret_patterns": ["sk-ant-", "sk-proj-", "AIza"],
+      "rate_limit": {"rps": 5, "burst": 20},
+      "mcp_servers": {
+        "search": "http://127.0.0.1:5001/mcp",
+        "telnyx": "http://127.0.0.1:5002/mcp"
+      }
     }
   },
   "global_secret_patterns": [

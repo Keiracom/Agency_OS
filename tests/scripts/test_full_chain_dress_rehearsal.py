@@ -1,0 +1,174 @@
+"""Tests for scripts/cutover/full_chain_dress_rehearsal.py (Agency_OS-jb4e).
+
+The harness drives the live loop only with --live + a reachable consumer
+(gated on f5yt); these tests cover the PURE gate logic — real-KEI selection,
+the memory-gap computation, and the §5 success evaluation (pass + every fail
+reason) — which is verifiable now, without the live loop. Plus the skip-guard.
+"""
+
+from __future__ import annotations
+
+import importlib.util
+import sys
+from pathlib import Path
+
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
+SCRIPT = REPO_ROOT / "scripts" / "cutover" / "full_chain_dress_rehearsal.py"
+
+
+def _load():
+    spec = importlib.util.spec_from_file_location("_dress_rehearsal", SCRIPT)
+    mod = importlib.util.module_from_spec(spec)
+    # Register before exec so @dataclass annotation resolution can find the module.
+    sys.modules[spec.name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+m = _load()
+
+
+def _hop(name, *, fired=True, bypass=False, cit="C-1", score=0.8):
+    return m.HopTrace(
+        hop=name,
+        agent=name,
+        fired=fired,
+        bypass_rerank=bypass,
+        top_citation_id=cit,
+        top_score=score,
+    )
+
+
+def _useful_run(kei="Agency_OS-real", active=True, hops=m.HOP_AGENTS_DEFAULT):
+    return m.RunResult(
+        kei=kei,
+        recall_active=active,
+        hop_traces=tuple(_hop(h) for h in hops),
+        pr_number=42,
+        pr_merged=True,
+        ci_passed=True,
+        governance={
+            "callsign_tagged": True,
+            "concur_count": 2,
+            "no_linear_write": True,
+            "claim_observed": True,
+        },
+        worker_retries=0,
+    )
+
+
+def _cold_run(kei="Agency_OS-real", hops=m.HOP_AGENTS_DEFAULT):
+    # recall off → hops fire but bypass / surface nothing useful
+    return m.RunResult(
+        kei=kei,
+        recall_active=False,
+        hop_traces=tuple(_hop(h, bypass=True, cit=None, score=0.0) for h in hops),
+        pr_number=43,
+        pr_merged=True,
+        ci_passed=True,
+        governance={
+            "callsign_tagged": True,
+            "concur_count": 2,
+            "no_linear_write": True,
+            "claim_observed": True,
+        },
+        worker_retries=1,
+    )
+
+
+# ─── §2 real-KEI selection ────────────────────────────────────────────────────
+
+
+def test_is_synthetic_flags_test_fixtures():
+    assert m.is_synthetic("KEI-TEST", "smoke") is True
+    assert m.is_synthetic("Agency_OS-test001", "bd claim smoke test") is True
+    assert (
+        m.is_synthetic("Agency_OS-jb4e", "full chain dress-rehearsal test") is True
+    )  # the harness's own KEI
+
+
+def test_is_synthetic_passes_real_kei():
+    assert m.is_synthetic("Agency_OS-abcd", "Add recency decay to retrieval scores") is False
+
+
+def test_select_real_kei_skips_synthetic_returns_first_real():
+    cands = [
+        {"id": "KEI-TEST", "title": "smoke"},
+        {"id": "Agency_OS-test001", "title": "bd claim smoke test"},
+        {"id": "Agency_OS-9xyz", "title": "Wire FlashRank sidecar timeout"},
+        {"id": "Agency_OS-zzzz", "title": "another real one"},
+    ]
+    assert m.select_real_kei(cands)["id"] == "Agency_OS-9xyz"
+
+
+def test_select_real_kei_none_when_all_synthetic():
+    assert m.select_real_kei([{"id": "KEI-TEST", "title": "smoke"}]) is None
+
+
+# ─── §3/§5-S5 memory gap ──────────────────────────────────────────────────────
+
+
+def test_memory_gap_active_outtraces_cold():
+    gap = m.memory_gap(_useful_run(), _cold_run())
+    assert gap["active_strictly_outtraces_cold"] is True
+    assert set(gap["active_only_hops"]) == set(m.HOP_AGENTS_DEFAULT)
+    assert gap["retries_not_worse"] is True
+
+
+def test_memory_gap_no_gap_when_equal():
+    gap = m.memory_gap(_useful_run(), _useful_run(active=False))
+    assert gap["active_strictly_outtraces_cold"] is False
+
+
+# ─── §5 gate evaluation ───────────────────────────────────────────────────────
+
+
+def test_gate_passes_when_all_criteria_met():
+    out = m.evaluate_gate(_useful_run(), _cold_run())
+    assert out.passed is True
+    assert out.reasons == ()
+
+
+def test_gate_fails_when_pr_not_merged():
+    active = _useful_run()
+    active = m.RunResult(**{**active.__dict__, "pr_merged": False})
+    out = m.evaluate_gate(active, _cold_run())
+    assert not out.passed and any("S1" in r for r in out.reasons)
+
+
+def test_gate_fails_on_insufficient_concur():
+    active = _useful_run()
+    active = m.RunResult(
+        **{**active.__dict__, "governance": {**active.governance, "concur_count": 1}}
+    )
+    out = m.evaluate_gate(active, _cold_run())
+    assert not out.passed and any("S3" in r and "concur" in r for r in out.reasons)
+
+
+def test_gate_fails_on_linear_write():
+    active = _useful_run()
+    active = m.RunResult(
+        **{**active.__dict__, "governance": {**active.governance, "no_linear_write": False}}
+    )
+    out = m.evaluate_gate(active, _cold_run())
+    assert not out.passed and any("Linear write" in r for r in out.reasons)
+
+
+def test_gate_fails_on_missing_hop_trace():
+    active = _useful_run(hops=("chat", "deliberator", "worker"))  # reviewer hop missing
+    out = m.evaluate_gate(active, _cold_run())
+    assert not out.passed and any("S4" in r and "reviewer" in r for r in out.reasons)
+
+
+def test_gate_fails_when_no_memory_gap():
+    out = m.evaluate_gate(_useful_run(), _useful_run(active=False))  # cold also useful → no gap
+    assert not out.passed and any("S5" in r for r in out.reasons)
+
+
+# ─── skip-guard ───────────────────────────────────────────────────────────────
+
+
+def test_main_skips_without_live_flag(capsys):
+    rc = m.main([])
+    assert rc == 0
+    assert "SKIP (dress-rehearsal)" in capsys.readouterr().out

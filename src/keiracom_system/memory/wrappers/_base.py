@@ -25,6 +25,8 @@ class HindsightClient(Protocol):
 
     def reflect(self, *, bank_id: str, query: str) -> dict[str, Any]: ...
 
+    def delete(self, *, bank_id: str, memory_id: str) -> dict[str, Any]: ...
+
 
 class TenantExtensionProtocol(Protocol):
     """Subset of Orion's KeiracomTenantExtension surface the wrappers need.

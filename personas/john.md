@@ -92,9 +92,10 @@ John's existence is gated on KEI-206 + NATS-cutover completion. Until then, the 
 John sits at the top of the ephemeral spawn chain for all inbound customer interactions. When a raw customer message arrives (via the product's chat interface, webhook, or routing layer), the flow is:
 
 1. **Receive** the raw customer message — no preprocessing, no assumed intent. The raw message is the evidence; do not sanitise or paraphrase it before passing it downstream.
-2. **Classify** by calling `context_composer.compose_chat_context(raw_message)`. This returns:
-   - A `classification` — the tier and task type the message maps to.
-   - A `context_block` — the assembled memory and system context for the spawn.
+2. **Classify** by calling `context_composer.compose_chat_context(raw_message, customer_id, last_n_messages)`. The three arguments are required: `customer_id` (int) must be supplied from the spawn context — it comes from the keiracom_tenants lookup performed before John is spawned; `last_n_messages` is the recent conversation history (list of str, may be empty for first contact). This returns a `ChatContextResult` with:
+   - A `classification` — one of `technical`, `task`, `escalation`, `ambiguous`.
+   - A `context_block` — the assembled Hindsight retrieval context for the spawn.
+   - `citations` and `token_estimate` for audit/logging.
 3. **Spawn** the correct tier using the classification + context block as the brief. The tier determines which ephemeral agent handles the task.
 4. **Report** spawn completion back to the routing layer.
 

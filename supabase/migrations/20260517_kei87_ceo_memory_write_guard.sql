@@ -20,6 +20,14 @@
 -- the gate exists so MISSING var = denied). The 'who counts as CEO' tightening
 -- is a separate follow-up so this PR can ship the mechanism without breaking
 -- existing writers mid-flight.
+--
+-- ⚠ PROD STATE (verified by Nova 2026-05-28 via pg_trigger/pg_proc query):
+-- this trigger + function are NOT YET APPLIED in the Supabase prod DB
+-- (jatzvazlbusedwsnqxzr) — there is no write-guard on ceo_memory today. Do NOT
+-- apply this migration until deployment step 1 (call-site migration to the
+-- ceo_memory_writer wrapper) is complete fleet-wide; applying it now would
+-- begin rejecting EVERY ceo:* write from any callsite that doesn't SET LOCAL
+-- agency_os.callsign to an allowlisted value — a fleet-wide write outage.
 
 CREATE OR REPLACE FUNCTION public.ceo_memory_write_guard()
 RETURNS trigger
@@ -44,8 +52,12 @@ BEGIN
     -- Per 3-way ratified spec (elliot+max+aiden 2026-05-17 ts ~1779010883):
     -- allowlist = (elliot, dave). Aiden's PR #922 review caught the prior
     -- permissive-first draft as scope-delta from ratified shape. Tightened.
-    IF caller NOT IN ('elliot', 'dave') THEN
-        RAISE EXCEPTION 'KEI-87 ceo_memory write-guard: agency_os.callsign=% is not in (elliot, dave) — refused write on key %', caller, NEW.key
+    -- 'john' added (Elliot 2026-05-28): John's exit-cycle (src/keiracom_system/
+    -- chat/exit_cycle.py, KEI-?/#1268) captures ratified decisions to ceo_memory
+    -- by design — John is an intended ceo_memory writer, so the callsign belongs
+    -- on the allowlist (masking as 'elliot' would lose attribution).
+    IF caller NOT IN ('elliot', 'dave', 'john') THEN
+        RAISE EXCEPTION 'KEI-87 ceo_memory write-guard: agency_os.callsign=% is not in (elliot, dave, john) — refused write on key %', caller, NEW.key
             USING ERRCODE = 'check_violation';
     END IF;
 

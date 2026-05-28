@@ -261,6 +261,21 @@ class WorkLoopConsumer:
                 reclaimed += 1
         return reclaimed
 
+    async def reconcile_all(self) -> int:
+        """Reconcile every tenant with a live counter (SCAN). Returns total reclaimed.
+
+        Drives the periodic crash-recovery sweep without a caller-maintained
+        tenant list: the `active_spawns:{tenant}` keys ARE the active-tenant set.
+        """
+        total = 0
+        seen: set[str] = set()
+        async for key in self._r.scan_iter(match=f"{_active_key('')}*"):
+            tenant_id = key.rsplit(":", 1)[-1]
+            if tenant_id and tenant_id not in seen:
+                seen.add(tenant_id)
+                total += await self.reconcile(tenant_id)
+        return total
+
     async def run(self) -> None:  # pragma: no cover — long-running loop, exercised via process_task
         """Subscribe to the tasks channel and process messages until cancelled."""
         pubsub = self._r.pubsub()

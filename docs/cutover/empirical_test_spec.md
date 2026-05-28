@@ -7,12 +7,13 @@ use it to answer a real task.
 
 - **Dispatch:** Elliot, 2026-05-28 (cutover gate item 2)
 - **Author:** Nova
-- **Status:** spec — **partially runnable now.** Stage A (retrieval quality)
-  and Stage B.1 (context injection) are runnable once PR #1246 merges. **Stage
-  B.2 + criterion P5 (agent consumes the injected memory) are BLOCKED** pending
-  the session-launch wrapper (see §6) — that wrapper does not yet exist
-  (`spawn_recall.py` marks it out-of-scope). This spec documents the gate
-  accurately at current state; full gate sign-off requires §6 first.
+- **Status:** spec — **runnable.** Stage A (retrieval quality), Stage B.1
+  (context injection), and Stage B.2 (agent consumes memory, via the §6 wrapper
+  `scripts/run_agent_with_recall.sh`) all have working mechanisms. Stage B.2 is
+  mechanically verified (block built + forwarded via `--append-system-prompt`);
+  the final **P5 green run is pending Anthropic account credit** (the test spawn
+  hit "Credit balance is too low" — external billing, not a defect). Re-run §2
+  Stage B.2 once credit is restored for full gate sign-off.
 - **Related:** PR #1246 (reranker on :8091), Wave 3 retrieval orchestrator
 
 ---
@@ -147,29 +148,36 @@ print(block)   # the "Prior context from memory" block that WOULD be injected
 Satisfies **P4** (block non-empty, contains the expected decision) and
 indirectly re-confirms P1–P3/P6 (the block is built from the reranked recall).
 
-### Stage B.2 — Agent-consumes-memory proof (⛔ BLOCKED — not yet runnable)
+### Stage B.2 — Agent-consumes-memory proof (RUNNABLE — wrapper built §6)
 
-> **Blocked pending §6.** The session-launch wrapper that reads
-> `env[AGENCY_OS_PRIOR_CONTEXT]` and forwards it to the agent CLI via
-> `--append-system-prompt` **does not exist yet** — `spawn_recall.py`'s own
-> docstring marks it "out of scope (separate PR)". Without it there is no path
-> for the injected block to reach a spawned agent's context, so **P5 cannot be
-> observed**. Do not mark gate item 2 fully passed until §6 lands and this stage
-> runs green.
+The session-launch wrapper `scripts/run_agent_with_recall.sh` (§6) now bridges
+the injected block to a real agent. Run it with the §1.1 task:
 
-Intended steps once unblocked:
-1. Spawn the ephemeral agent through the §6 wrapper with `kwargs["env"]` (so
-   `AGENCY_OS_PRIOR_CONTEXT` reaches the agent via `--append-system-prompt`).
-   The agent starts with **no other memory**.
-2. Give the agent the §1.1 task verbatim.
-3. Observe the agent's answer (P5) and the audit row:
-   ```sql
-   SELECT agent, top_citation_id, top_score, bypass_rerank, elapsed_ms, created_at
-   FROM public.retrieval_events
-   ORDER BY created_at DESC LIMIT 5;
-   ```
+```bash
+MODEL=claude-haiku-4-5 scripts/run_agent_with_recall.sh \
+  "Using only the prior-context block in your system prompt, answer: what has \
+this system ratified about multi-tenancy architecture? If the prior context \
+does not contain it, say 'NOT IN CONTEXT' — do not guess." research
+```
 
-### Stage C — Repeat Stage A + Stage B.1 for the §1.2 control task (B.2 when unblocked).
+The wrapper calls `inject_prior_context`, then `exec claude -p "<task>"
+--append-system-prompt "<block>"`. Then observe the agent's answer (P5) and the
+audit row:
+```sql
+SELECT agent, top_citation_id, top_score, bypass_rerank, elapsed_ms, created_at
+FROM public.retrieval_events
+ORDER BY created_at DESC LIMIT 5;
+```
+
+> **Mechanically verified 2026-05-28:** the wrapper built a 453-char prior-context
+> block from the reranked recall and forwarded it via `--append-system-prompt`
+> (stderr: "injecting 453 chars of prior context"). The final **P5 green run is
+> pending Anthropic account credit** — the test spawn returned "Credit balance
+> is too low" (confirmed account-wide via a trivial `claude -p` probe). This is
+> an external billing limit, **not** a wrapper/retrieval defect; re-run the
+> command above once credit is restored to capture P5.
+
+### Stage C — Repeat Stage A + Stage B.1/B.2 for the §1.2 control task.
 
 ---
 
@@ -181,14 +189,15 @@ Intended steps once unblocked:
 | P2 | Correct memory in top-3 | The §1.1 expected memory (tenant isolation, Dave=1/customers=2+) appears among the 3 returned nodes/citations |
 | P3 | Reranker discriminates | Top node score **≥ 0.5** for the primary task (observed 0.97); top score strictly greater than the 3rd |
 | P4 | Context actually injected | Stage B.1 `env[AGENCY_OS_PRIOR_CONTEXT]` is **non-empty** and contains the expected decision text — **RUNNABLE NOW** |
-| P5 | Agent uses retrieved memory | The ephemeral agent's answer states the ratified decision (single shared system, tenant isolation, Dave=1/customers=2+) and attributes it to the injected prior-context block — **not** a hedge ("I don't have that information") and **not** a fabricated answer — **⛔ BLOCKED: not runnable until the §6 wrapper exists** |
+| P5 | Agent uses retrieved memory | Via the §6 wrapper: the ephemeral agent's answer states the ratified multi-tenancy decision and attributes it to the injected prior-context block — **not** a hedge and **not** a fabrication. **Mechanism RUNNABLE** (wrapper built + injection verified); **green run pending Anthropic account credit** (test spawn hit "Credit balance is too low" — external). |
 | P6 | Audit trail written | A `public.retrieval_events` row exists for the run with non-null `top_citation_id` and `top_score > 0` |
 | P7 | Control task also passes | §1.2 satisfies P1–P4 + P6 now; P5 when unblocked (expected GOV-6 three-store memory in top-3, score ≥ 0.5) |
 
-**Runnable now (Stage A + B.1):** P1, P2, P3, P4, P6, and their P7 equivalents.
-**Blocked on §6 wrapper:** P5 (and P7's P5 component). The gate is **not fully
-signed off** until P5 passes — Stages A + B.1 green is a *partial* pass that
-proves retrieval quality + injection, but not end-to-end agent consumption.
+**Mechanism runnable (Stage A + B.1 + B.2):** P1–P4, P6, and P7 equivalents are
+runnable now; P5's wrapper (§6) is built + injection-verified. The gate is
+**not fully signed off** until a P5 **green run** is captured — currently
+pending Anthropic account credit (the test spawn hit "Credit balance is too
+low"). Re-run §2 Stage B.2 once credit is restored.
 
 ---
 
@@ -227,29 +236,27 @@ ephemeral agents does not proceed until all BLOCKs clear.
 
 ---
 
-## 6. Stage B.2 unblock — build the session-launch wrapper
+## 6. Stage B.2 wrapper — `scripts/run_agent_with_recall.sh` (BUILT)
 
-Stage B.2 / P5 cannot run until a wrapper bridges the injected env var to the
-agent CLI. Current gap: `spawn_recall.inject_prior_context` writes the recall
-block to `env[AGENCY_OS_PRIOR_CONTEXT]`, but nothing reads it back and forwards
-it to the spawned agent.
+The session-launch wrapper bridging the injected block to a real agent is built
+and committed.
 
-**Required wrapper** (e.g. `scripts/run_agent_with_recall.sh`):
-1. Read `AGENCY_OS_PRIOR_CONTEXT` from the environment.
-2. If non-empty, pass it to the agent CLI via `--append-system-prompt` (so the
-   block lands in the agent's system prompt); if empty, launch normally
-   (fail-open — recall outage never blocks a spawn).
-3. Be the launch path the dispatcher spawn uses for ephemeral agents, so the
-   injection from `inject_prior_context` actually reaches the agent.
+**What it does:**
+1. Calls `spawn_recall.inject_prior_context(task_type, task_brief)` → builds the
+   "Prior context from memory" block from a reranked Hindsight recall
+   (`DISPATCHER_RERANKER_ENABLED=true`, `HINDSIGHT_BASE` set by the wrapper).
+2. If the block is non-empty, `exec claude -p "<task>" --append-system-prompt
+   "<block>"` (optional `MODEL`); if empty, launches plain (fail-open — recall
+   outage never blocks a spawn).
 
-**Acceptance for the wrapper:** spawning through it with a populated
-`AGENCY_OS_PRIOR_CONTEXT` results in an agent whose system prompt contains the
-"Prior context from memory" block (verifiable by having the agent echo or act
-on it). Once it exists, run Stage B.2 → confirm P5 → full gate sign-off.
+**Mechanical verification (2026-05-28):** ran with the §1.1 task → wrapper built
+a 453-char block and forwarded it (stderr "injecting 453 chars of prior
+context"), invoking the Claude CLI with `--append-system-prompt`.
 
-**Sequencing:** filed as the next dispatch after this spec merges (Elliot,
-2026-05-28). This spec is accurate documentation of the gate at current state;
-the wrapper is the one remaining build to make the gate fully runnable.
+**Remaining for full P5 sign-off:** the test agent spawn returned "Credit
+balance is too low" (Anthropic account, confirmed account-wide). Once credit is
+restored, re-run the §2 Stage B.2 command, confirm the agent's answer cites the
+injected decision (P5), and mark cutover gate item 2 fully passed.
 
 ---
 

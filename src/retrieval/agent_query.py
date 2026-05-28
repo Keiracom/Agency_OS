@@ -21,7 +21,7 @@ from collections.abc import Coroutine
 from dataclasses import dataclass
 from typing import Any, Literal, TypeVar
 
-from src.retrieval import fusion, hyde, orchestrator
+from src.retrieval import fusion, hyde, multi_query, orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -324,11 +324,25 @@ def query(
     # BOTH the fusion and non-fusion recall paths. Observability + answer
     # synthesis (in _finalize) stay on the ORIGINAL query text.
     search_text = hyde.expand_query(text)
+    # Recall-strategy selection (all flags default off → base single-query path).
+    # Precedence: fusion (all-bank union) > multi-query (N variants) > base. These
+    # are independent experimental strategies; composing fusion×multi-query is a
+    # future KEI, so the higher-precedence flag wins when both are enabled.
     if fusion.fusion_enabled():
         fused_nodes = _run_coro_sync(
             fusion.fused_recall(search_text, tenant=tenant_id, top_k=k_initial)
         )
         outcome = _fusion_outcome(fused_nodes, collections)
+    elif multi_query.multi_query_enabled():
+        # Generates N query variants from the (HyDE-expanded) search text and
+        # merges+dedups results by memory_id; fail-open to single-query.
+        outcome = multi_query.retrieve_multi(
+            text=search_text,
+            collections=collections,
+            k_initial=k_initial,
+            k_returned=k_returned,
+            tenant_id=tenant_id,
+        )
     else:
         outcome = orchestrator.retrieve_with_outcome(
             text=search_text,
@@ -377,9 +391,20 @@ async def query_async(
     # both search the expanded text. _finalize keeps observability + synthesis
     # on the ORIGINAL text.
     search_text = await asyncio.to_thread(hyde.expand_query, text)
+    # Recall-strategy precedence mirrors query(): fusion > multi-query > base.
+    # Sync recall backends run via asyncio.to_thread so the event loop stays free.
     if fusion.fusion_enabled():
         fused_nodes = await fusion.fused_recall(search_text, tenant=tenant_id, top_k=k_initial)
         outcome = _fusion_outcome(fused_nodes, collections)
+    elif multi_query.multi_query_enabled():
+        outcome = await asyncio.to_thread(
+            multi_query.retrieve_multi,
+            text=search_text,
+            collections=collections,
+            k_initial=k_initial,
+            k_returned=k_returned,
+            tenant_id=tenant_id,
+        )
     else:
         outcome = await asyncio.to_thread(
             orchestrator.retrieve_with_outcome,

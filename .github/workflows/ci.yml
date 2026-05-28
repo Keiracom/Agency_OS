@@ -239,6 +239,29 @@ jobs:
         run: ./scripts/ci/check_no_raw_atom_store_outside_module.sh
 
   # ============================================
+  # Gate: Atom Granularity (Wave 1 CUTOVER GATE, Agency_OS-3g9t)
+  # ============================================
+  # Source: docs/architecture/atom_granularity_spec.md (Dave + Aiden + Viktor
+  # ratify 2026-05-27). Validates atom-shaped JSON/JSONL fixtures against the
+  # granularity spec (size bounds + single-concept heuristic + source-pointer).
+  # Runtime-enforced per GOV-12 (gate-as-code, not a comment). No-op exit 0
+  # until atom-shaped fixtures land; exit 1 on any violating atom.
+  atom-granularity-gate:
+    name: Atom Granularity Gate (Cutover)
+    runs-on: ubuntu-latest
+    needs: backend-lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Validate committed atoms against the granularity spec
+        run: python3 scripts/ci/check_atom_granularity.py --report
+
+  # ============================================
   # Guard: Composer-output isolation (atomization hard constraint)
   # ============================================
   # Source: ceo:atomization_architecture_v1 hard constraint #1 — "Composer

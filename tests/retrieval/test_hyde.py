@@ -11,6 +11,8 @@ from __future__ import annotations
 from types import SimpleNamespace
 from unittest.mock import patch
 
+import pytest
+
 from src.retrieval import agent_query, hyde, orchestrator
 
 
@@ -78,6 +80,39 @@ def test_generate_passes_model_through():
         hyde.generate_hypothetical("q", model="claude-haiku-4-5")
     assert captured["model"] == "claude-haiku-4-5"
     assert captured["max_tokens"] == hyde.MAX_TOKENS
+
+
+# ─── gateway routing (Aiden HOLD, PR #1243) ──────────────────────────────────
+
+
+def test_get_client_requires_base_url(monkeypatch):
+    """No ANTHROPIC_BASE_URL → _get_client raises rather than constructing a
+    direct (untracked) client."""
+    monkeypatch.delenv(hyde.ANTHROPIC_BASE_URL_ENV, raising=False)
+    with pytest.raises(RuntimeError, match=hyde.ANTHROPIC_BASE_URL_ENV):
+        hyde._get_client()
+
+
+def test_get_client_routes_through_gateway_when_set(monkeypatch):
+    """ANTHROPIC_BASE_URL set → the SDK client is constructed with that base_url
+    (no real network call — the SDK constructor does not connect)."""
+    monkeypatch.setenv(hyde.ANTHROPIC_BASE_URL_ENV, "http://127.0.0.1:4000")
+    monkeypatch.setenv("ANTHROPIC_API_KEY", "sk-test")
+    client = hyde._get_client()
+    assert str(client.base_url).startswith("http://127.0.0.1:4000")
+
+
+def test_missing_base_url_degrades_gracefully_no_untracked_call(monkeypatch):
+    """The HOLD scenario: ANTHROPIC_BASE_URL absent → expand_query returns the
+    original query unchanged. No crash, and no direct Anthropic SDK client is
+    ever constructed (so the budget gate sees no untracked call)."""
+    monkeypatch.setenv(hyde.HYDE_ENABLED_ENV, "1")
+    monkeypatch.delenv(hyde.ANTHROPIC_BASE_URL_ENV, raising=False)
+
+    import anthropic
+
+    with patch.object(anthropic, "Anthropic", side_effect=AssertionError("untracked direct call")):
+        assert hyde.expand_query("raw query") == "raw query"
 
 
 # ─── expand_query ────────────────────────────────────────────────────────────

@@ -24,11 +24,11 @@ Feature-flagged: RETRIEVAL_HYDE_ENABLED (default False).
 Fail-open: any generation error → fall back to the original query, so a
 HyDE outage never degrades retrieval below the pre-HyDE baseline.
 
-Cost note: uses the raw sync Anthropic SDK (a single short Haiku call) to
-match the synchronous retrieval entry point. It deliberately does NOT route
-through src.integrations.anthropic.AnthropicClient (async + budget-tracked);
-wiring HyDE through the budget tracker is a follow-up if it ships beyond the
-default-off flag.
+Cost note: uses the sync Anthropic SDK (a single short Haiku call) to match
+the synchronous retrieval entry point, but routed through the budget-tracked
+gateway via ANTHROPIC_BASE_URL (Aiden HOLD, PR #1243). When the gateway is
+not configured, generation fails open to the raw query rather than making an
+untracked pay-as-you-go API call the budget-ceiling gate cannot see.
 """
 
 from __future__ import annotations
@@ -56,11 +56,30 @@ def hyde_enabled() -> bool:
     return os.environ.get(HYDE_ENABLED_ENV, "").lower() in {"1", "true", "yes"}
 
 
+ANTHROPIC_BASE_URL_ENV = "ANTHROPIC_BASE_URL"
+
+
 def _get_client() -> Any:
-    """Lazily construct a sync Anthropic client (reads ANTHROPIC_API_KEY)."""
+    """Lazily construct a sync Anthropic client routed through the gateway.
+
+    HyDE LLM calls MUST go through the budget-tracked gateway (set via
+    ANTHROPIC_BASE_URL), never the pay-as-you-go API directly — an untracked
+    direct call is invisible to the budget-ceiling gate (Aiden HOLD, PR #1243).
+
+    Raises RuntimeError when ANTHROPIC_BASE_URL is unset; generate_hypothetical
+    catches it and falls back to the raw query, so no untracked call is ever
+    made. (Passing base_url=None would silently default to the direct API —
+    that is the exact failure mode this guard prevents.)
+    """
+    base_url = os.environ.get(ANTHROPIC_BASE_URL_ENV, "").strip()
+    if not base_url:
+        raise RuntimeError(
+            f"{ANTHROPIC_BASE_URL_ENV} unset — refusing a direct/untracked Anthropic "
+            "API call; HyDE routes through the budget-tracked gateway only"
+        )
     import anthropic  # lazy: keep retrieval import light + SDK optional
 
-    return anthropic.Anthropic()
+    return anthropic.Anthropic(base_url=base_url)
 
 
 def generate_hypothetical(query: str, model: str = DEFAULT_MODEL) -> str:

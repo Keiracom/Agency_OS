@@ -24,7 +24,7 @@ def test_alert_key_and_payload():
     assert key == "ceo:backup_alert:2026-06-01"
     assert len(calls) == 1
     callsign, written_key, value = calls[0]
-    assert callsign == "nova"
+    assert callsign == "elliot"  # KEI-87 write-guard allowlist
     assert written_key == key
     assert value["component"] == "weaviate_snapshot"
     assert value["error"] == "tar failed"

@@ -42,11 +42,23 @@ done
 systemctl --user daemon-reload
 systemctl --user enable --now weaviate-snapshot-r2.timer
 systemctl --user enable --now postgres-dump-r2.timer
-systemctl --user enable --now weaviate-restore-verify.timer
+
+# restore_verify.py launches a throwaway Weaviate from the bare host binary at
+# WEAVIATE_BIN (NOT the Docker image). Only enable its timer when that binary is
+# present — otherwise the weekly gate would fail every run with a false P1 alert.
+WEAVIATE_BIN="${WEAVIATE_BIN:-/home/elliotbot/clawd/weaviate-bin/weaviate}"
+if [[ -x "${WEAVIATE_BIN}" ]]; then
+    systemctl --user enable --now weaviate-restore-verify.timer
+    restore_verify_state="enabled"
+else
+    echo "WARNING: WEAVIATE_BIN not found at ${WEAVIATE_BIN} — restore-verify timer NOT enabled." >&2
+    echo "         Download the Weaviate binary, then: systemctl --user enable --now weaviate-restore-verify.timer" >&2
+    restore_verify_state="SKIPPED (WEAVIATE_BIN missing)"
+fi
 
 echo "install_backup_pipeline_r2: installed + enabled"
 echo "  weaviate-snapshot-r2.service   — daily 02:00 UTC"
 echo "  postgres-dump-r2.service       — hourly"
-echo "  weaviate-restore-verify.service — weekly Sun 03:00 UTC (hard gate)"
+echo "  weaviate-restore-verify.service — weekly Sun 03:00 UTC (hard gate) [${restore_verify_state}]"
 echo "Verify R2 round-trip once creds are set:"
 echo "  python3 -m src.keiracom_system.backup.weaviate_snapshot --dry-run"

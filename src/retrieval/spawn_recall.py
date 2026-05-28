@@ -97,13 +97,24 @@ def inject_prior_context(
     """
     try:
         block = build_prior_context_block(query_for_spawn(task_type, task_brief))
-        if not block:
-            return spawn_kwargs
-        new_kwargs = dict(spawn_kwargs)
-        env = dict(new_kwargs.get("env") or {})
-        env[PRIOR_CONTEXT_ENV_KEY] = block
-        new_kwargs["env"] = env
-        return new_kwargs
+        return inject_block(spawn_kwargs, block)
     except Exception:  # noqa: BLE001 — injection must never block a spawn
         logger.debug("inject_prior_context failed — spawn proceeds unchanged", exc_info=True)
         return spawn_kwargs
+
+
+def inject_block(spawn_kwargs: dict, block: str) -> dict:
+    """Place an already-built prior-context block into the spawn env.
+
+    Split out from inject_prior_context so a caller that produced the block by
+    another path (e.g. a workflow-scoped cache that reuses an earlier spawn's
+    recall — see src/retrieval/workflow_recall) injects it identically. Returns
+    spawn_kwargs unchanged when block is empty.
+    """
+    if not block:
+        return spawn_kwargs
+    new_kwargs = dict(spawn_kwargs)
+    env = dict(new_kwargs.get("env") or {})
+    env[PRIOR_CONTEXT_ENV_KEY] = block
+    new_kwargs["env"] = env
+    return new_kwargs

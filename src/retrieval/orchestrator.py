@@ -38,12 +38,52 @@ from src.retrieval import rerankers, weaviate_store
 
 logger = logging.getLogger(__name__)
 
-# Hindsight read endpoint — POST /v1/default/banks/{bank_id}/memories/recall
+# Hindsight read endpoint — POST /v1/{tenant_id}/banks/{bank_id}/memories/recall
 # with body {"query": str, "max_tokens": int, "top_k": int, "tags"?: list,
 # "tags_match"?: "all"|"any"}. Returns {"memories": [...]} or {"results": [...]}.
 HINDSIGHT_BASE = os.environ.get("HINDSIGHT_BASE", "http://localhost:8889")  # NOSONAR S5332 loopback
 HINDSIGHT_RECALL_TIMEOUT_SECONDS = 30.0
 HINDSIGHT_RECALL_MAX_TOKENS = 2000
+
+# Audit fix YELLOW-4 (Agency_OS-7sj6, 2026-05-28): every Hindsight recall callsite
+# must declare its tenant slug. Fleet-internal recall (shared fleet_* banks
+# under the fleet's own tenant slot) passes FLEET_TENANT_SLUG; customer recall
+# passes the customer tenant slug resolved via KeiracomTenantExtension. The
+# guard below rejects empty/None/path-traversal values at the wire boundary.
+FLEET_TENANT_SLUG = "default"
+_TENANT_SLUG_ALLOWED_CHARS = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-_")
+
+
+class MissingTenantContextError(ValueError):
+    """Raised when a Hindsight recall callsite omits or invalidates tenant context.
+
+    Per Aiden pre-cutover audit 2026-05-27 (Agency_OS-7sj6): data sovereignty
+    requires every recall call to declare which tenant slot it reads from.
+    Silent fall-through to a default would risk cross-tenant inference (V1
+    eleven_agreed_positions[4]: "Collective scope: tenant-bounded only").
+    """
+
+
+def _require_tenant_id(tenant_id: str | None) -> str:
+    """Validate the tenant slug used in the Hindsight URL path.
+
+    Returns the slug unchanged on success. Raises MissingTenantContextError
+    on empty/None/non-str values, and on values containing characters that
+    are not safe for a URL path segment (defence-in-depth against path
+    traversal even though the bank_id sub-segment is also validated upstream).
+    """
+    if not tenant_id or not isinstance(tenant_id, str):
+        raise MissingTenantContextError(
+            "Hindsight recall requires an explicit tenant_id "
+            "(fleet-internal callers must pass FLEET_TENANT_SLUG)"
+        )
+    if any(ch not in _TENANT_SLUG_ALLOWED_CHARS for ch in tenant_id):
+        raise MissingTenantContextError(
+            f"tenant_id {tenant_id!r} contains characters outside the allowed "
+            "URL-path set [A-Za-z0-9_-]"
+        )
+    return tenant_id
+
 
 # Local mirror of scripts/orchestrator/indexer_base.CLASS_TO_BANK so src/
 # doesn't import from scripts/. Drift between the two is caught by
@@ -134,16 +174,24 @@ class RetrievalOutcome:
     rerank_elapsed_ms: int
 
 
-def _hindsight_recall(text: str, bank_id: str, *, top_k: int) -> list[dict[str, Any]]:
-    """POST /v1/default/banks/{bank_id}/memories/recall — returns memories list.
+def _hindsight_recall(
+    text: str, bank_id: str, *, top_k: int, tenant_id: str
+) -> list[dict[str, Any]]:
+    """POST /v1/{tenant_id}/banks/{bank_id}/memories/recall — returns memories list.
+
+    `tenant_id` is the Hindsight tenant slug (per the V1 URL contract).
+    Fleet-internal callers pass FLEET_TENANT_SLUG; customer callers pass the
+    customer slug resolved via KeiracomTenantExtension. The slug is validated
+    at the wire boundary — empty/invalid raises MissingTenantContextError.
 
     Empty list on any HTTP/JSON failure (caller logs at the call site for
     per-collection visibility).
     """
+    tenant_slug = _require_tenant_id(tenant_id)
     body = {"query": text, "max_tokens": HINDSIGHT_RECALL_MAX_TOKENS, "top_k": top_k}
     data = json.dumps(body).encode("utf-8")
     req = urlrequest.Request(
-        f"{HINDSIGHT_BASE}/v1/default/banks/{bank_id}/memories/recall",
+        f"{HINDSIGHT_BASE}/v1/{tenant_slug}/banks/{bank_id}/memories/recall",
         data=data,
         method="POST",
         headers={"Content-Type": "application/json", "Accept": "application/json"},
@@ -159,6 +207,8 @@ def _gather_ann_pool(
     collections: tuple[str, ...],
     k_initial: int,
     weaviate_client: Any,
+    *,
+    tenant_id: str,
 ) -> list[RetrievedNode]:
     """Source the ANN pool from Hindsight `/memories/recall` per collection.
 
@@ -166,7 +216,13 @@ def _gather_ann_pool(
     `retrieve_with_outcome(client=...)` signature; ignored on the Hindsight
     path. Removed entirely in the next PR (after the write-path cutover).
     A3-c2 step 5-B, Agency_OS-0zv1.
+
+    `tenant_id` is validated once upfront (fail-fast before any HTTP) and
+    forwarded to every per-collection recall. A MissingTenantContextError
+    is intentionally NOT caught inside the per-collection try/except — bad
+    tenant context is a wire-contract violation, not a per-collection hiccup.
     """
+    _require_tenant_id(tenant_id)
     del weaviate_client  # noqa: ARG001 — retained for ABI; intentional ignore
     pool: list[RetrievedNode] = []
     for collection in collections:
@@ -180,7 +236,9 @@ def _gather_ann_pool(
             )
             continue
         try:
-            memories = _hindsight_recall(text, bank_id, top_k=k_initial)
+            memories = _hindsight_recall(text, bank_id, top_k=k_initial, tenant_id=tenant_id)
+        except MissingTenantContextError:
+            raise  # wire-contract violation — never swallow
         except Exception:  # noqa: BLE001
             logger.warning("hindsight recall failed for %s", collection, exc_info=True)
             continue
@@ -208,6 +266,7 @@ def retrieve_with_outcome(
     k_returned: int = DEFAULT_K_RETURNED,
     rerank: bool = True,
     client: Any | None = None,
+    tenant_id: str,
 ) -> RetrievalOutcome:
     """Run the two-stage retrieval and surface the bypass flag verbatim.
 
@@ -215,9 +274,13 @@ def retrieve_with_outcome(
     backwards-compat but ignored — Hindsight is now the recall backend and
     does not need a Weaviate client. Removed from the signature in the next
     PR after callers stop passing it.
+
+    Audit fix YELLOW-4 (Agency_OS-7sj6, 2026-05-28): `tenant_id` is a
+    keyword-only REQUIRED arg — every caller must declare which Hindsight
+    tenant slot it reads from. Fleet-internal callers pass FLEET_TENANT_SLUG.
     """
     del client  # noqa: ARG001 — retained for ABI; intentional ignore
-    pool = _gather_ann_pool(text, collections, k_initial, weaviate_client=None)
+    pool = _gather_ann_pool(text, collections, k_initial, weaviate_client=None, tenant_id=tenant_id)
     if not pool:
         return RetrievalOutcome((), False, "empty_pool", 0)
     if not rerank:
@@ -238,6 +301,7 @@ def retrieve_nodes(
     k_initial: int = DEFAULT_K_INITIAL,
     k_returned: int = DEFAULT_K_RETURNED,
     client: Any | None = None,
+    tenant_id: str,
 ) -> tuple[RetrievedNode, ...]:
     """Backwards-compatible thin wrapper — agents that only need the node
     tuple keep calling this; agents that want the bypass flag call
@@ -248,5 +312,6 @@ def retrieve_nodes(
         k_initial=k_initial,
         k_returned=k_returned,
         client=client,
+        tenant_id=tenant_id,
     )
     return outcome.nodes

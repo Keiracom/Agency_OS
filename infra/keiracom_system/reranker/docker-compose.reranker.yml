@@ -28,6 +28,14 @@ services:
       # candidate × 50 = 15k).
       - --max-batch-tokens=16384
       - --max-concurrent-requests=64
+      # Hindsight recall pools can exceed TEI's default 32-input cap (a real
+      # query returned 57 candidates); the orchestrator reranks the whole pool,
+      # so raise the per-request input ceiling to avoid a 413.
+      - --max-client-batch-size=128
+      # bge-reranker-base caps at 512 tokens. Real corpus docs (full ceo_memory
+      # JSON blobs) exceed that; without auto-truncate TEI 413s the request.
+      # Truncate to the model window instead of rejecting.
+      - --auto-truncate
       - --port=80
     ports:
       # localhost:8091 → container:80. 8090 is taken by Weaviate on the fleet

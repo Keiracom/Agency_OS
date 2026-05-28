@@ -74,6 +74,58 @@ RATE_WINDOW_SECONDS: Final = 60
 LITELLM_URL_ENV: Final = "LITELLM_URL"
 DEFAULT_LITELLM_URL: Final = "http://127.0.0.1:4000/v1/chat/completions"
 
+# Bounded-spawn discipline hook (Agency_OS-gcpm / Audit RED-7).
+# Off by default; production startup wires the enforcer accessor below.
+# The hook fires only when the request body carries both ``bounded_spawn_callsign``
+# and ``bounded_spawn_task_id`` metadata — until the dispatcher task pipeline
+# propagates that metadata to model calls this gate is a no-op even when wired.
+_bounded_spawn_enforcer_accessor: Any | None = None
+
+
+def set_bounded_spawn_enforcer_accessor(accessor: Any | None) -> None:
+    """Inject a callable that returns the live BoundedSpawnEnforcer (or None).
+
+    Using a callable accessor instead of a direct enforcer reference keeps the
+    interceptor decoupled from ``src.dispatcher.main`` (no circular import)
+    while still letting it consult the live state at request-time.
+    """
+    global _bounded_spawn_enforcer_accessor  # noqa: PLW0603
+    _bounded_spawn_enforcer_accessor = accessor
+
+
+def _check_bounded_spawn_via_metadata(body: dict) -> str | None:
+    """Return a violation reason if request body indicates a bounded-spawn violator.
+
+    Returns None when:
+      - hook not wired (no accessor injected)
+      - body lacks bounded-spawn metadata (rollout phase)
+      - enforcer says the (callsign, task_id) pair is consistent with active slot
+
+    Returns a structured reason string when the body's task_id does not match
+    the active slot's task_id for that callsign — i.e. the model call is
+    coming from a spawn that already had its slot reassigned (violator).
+    """
+    if _bounded_spawn_enforcer_accessor is None:
+        return None
+    callsign = str(body.get("bounded_spawn_callsign") or "").strip()
+    task_id = str(body.get("bounded_spawn_task_id") or "").strip()
+    if not callsign or not task_id:
+        return None
+    try:
+        enforcer = _bounded_spawn_enforcer_accessor()
+    except Exception:  # noqa: BLE001 — fail-open
+        logger.exception("bounded-spawn accessor raised — failing open")
+        return None
+    if enforcer is None:
+        return None
+    try:
+        if enforcer.would_violate(callsign=callsign, task_id=task_id):
+            return f"bounded_spawn_violator callsign={callsign} task_id={task_id}"
+    except Exception:  # noqa: BLE001 — fail-open
+        logger.exception("bounded-spawn would_violate raised — failing open")
+    return None
+
+
 # Context-window budget gate (PR #1210 / Cat 21 lever 25 / cutover-blocker 3).
 # Disabled by default; tests + production startup enable via env or DI.
 CONTEXT_WINDOW_ENABLED_ENV: Final = "DISPATCHER_CONTEXT_WINDOW_ENABLED"
@@ -291,6 +343,31 @@ async def intercept_request(
             reason=reason,
             status_code=403,
             payload={"error": "governance_denied", "reason": reason},
+        )
+
+    # Bounded-spawn discipline hook (Agency_OS-gcpm / Audit RED-7).
+    # Rejects model calls from violator spawns whose slot was already reassigned
+    # to a different task. Only fires when body carries the metadata fields;
+    # no-op until the dispatcher task pipeline starts tagging model calls.
+    bs_violation = _check_bounded_spawn_via_metadata(body)
+    if bs_violation is not None:
+        await _log_event(
+            tenant_id,
+            "deny_bounded_spawn",
+            bs_violation,
+            model,
+            None,
+            None,
+            None,
+            _ms_since(start),
+            insert_fn,
+        )
+        return InterceptorDecision(
+            allowed=False,
+            decision="deny_bounded_spawn",
+            reason=bs_violation,
+            status_code=409,
+            payload={"error": "bounded_spawn_violation", "reason": bs_violation},
         )
 
     spend_ok, _ = await _check_spend_budget(tenant_id, tier)

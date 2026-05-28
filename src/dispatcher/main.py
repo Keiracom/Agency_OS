@@ -29,6 +29,10 @@ from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 import src.dispatcher.auth_minter  # noqa: F401 — imported for fail-fast side-effect
+from src.dispatcher.bounded_spawn_enforcer import (
+    DECISION_VIOLATION,
+    BoundedSpawnEnforcer,
+)
 from src.dispatcher.container_lifecycle import ContainerStartupError, DockerUnavailableError
 from src.dispatcher.idempotency import IdempotencyDecision, IdempotencyGate
 from src.dispatcher.interceptor_proxy import router as interceptor_router
@@ -92,6 +96,59 @@ def _set_idempotency_gate(gate: IdempotencyGate | None) -> None:
     """Test-only setter for the idempotency gate (DI through module attr)."""
     global _idempotency_gate  # noqa: PLW0603
     _idempotency_gate = gate
+
+
+# Bounded-spawn enforcer (Agency_OS-gcpm / Audit fix RED-7). Enforces the
+# one-task-per-spawn discipline (per docs/architecture/ephemeral_persistence_boundary.md).
+# None = no-op (default until production startup wires a real enforcer via
+# _set_bounded_spawn_enforcer with a terminate_cb that calls into _spawned).
+_bounded_spawn_enforcer: BoundedSpawnEnforcer | None = None
+
+
+def _set_bounded_spawn_enforcer(enforcer: BoundedSpawnEnforcer | None) -> None:
+    """Test-only setter for the bounded-spawn enforcer (DI through module attr)."""
+    global _bounded_spawn_enforcer  # noqa: PLW0603
+    _bounded_spawn_enforcer = enforcer
+
+
+def _bounded_spawn_terminate(key: str) -> bool:
+    """Default terminate callback for the enforcer — tears down via _spawned.
+
+    Returns True when the violating spawn was found + terminated; False when
+    no live entry exists for ``key`` (already torn down / never registered).
+    """
+    entry = _spawned.pop(key, None)
+    if entry is None:
+        return False
+    handle = entry["handle"]
+    try:
+        SessionManager(backend=entry["backend"]).terminate(handle)
+    except Exception:  # noqa: BLE001 — fail-open per enforcer contract
+        logger.exception("bounded-spawn: SessionManager.terminate raised for key=%s", key)
+        return False
+    if _watchdog is not None:
+        with contextlib.suppress(Exception):
+            _watchdog.unregister(key)
+    if _reaper is not None:
+        try:
+            if isinstance(handle, SessionHandle):
+                _reaper.unregister_tmux(handle.session_name)
+            else:
+                _reaper.unregister_container(handle.id)
+        except Exception:  # noqa: BLE001
+            logger.exception("bounded-spawn: reaper unregister raised for key=%s", key)
+    return True
+
+
+def _bounded_spawn_callsign(spawn_kwargs: dict[str, Any]) -> str:
+    """Pull the callsign from spawn_kwargs; default ``dispatcher`` for unlabelled."""
+    return str((spawn_kwargs or {}).get("callsign") or "dispatcher")
+
+
+def _bounded_spawn_task_id(spawn_kwargs: dict[str, Any], registry_key: str) -> str:
+    """Pull a stable task identifier from spawn_kwargs, falling back to key."""
+    explicit = str((spawn_kwargs or {}).get("task_id") or "").strip()
+    return explicit or registry_key
 
 
 # Sessions spawned via /dispatcher/spawn, keyed by supervisor registry key.
@@ -357,8 +414,36 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     _spawned[req.key] = {"handle": handle, "backend": backend}
+
+    # Bounded-spawn enforcement (Agency_OS-gcpm / Audit RED-7).
+    # Runs AFTER register so the active-slot record reflects what's actually
+    # under supervision. On violation, the prior spawn is killed in-flight;
+    # the new spawn proceeds and is recorded as the canonical active slot.
+    bounded_spawn_result: dict[str, Any] | None = None
+    if _bounded_spawn_enforcer is not None:
+        callsign = _bounded_spawn_callsign(req.spawn_kwargs or {})
+        task_id = _bounded_spawn_task_id(req.spawn_kwargs or {}, req.key)
+        enforcement = _bounded_spawn_enforcer.record_spawn(
+            key=req.key,
+            callsign=callsign,
+            task_id=task_id,
+            backend=backend.value,
+        )
+        bounded_spawn_result = {
+            "decision": enforcement.decision,
+            "killed_prior": enforcement.killed,
+        }
+        if enforcement.decision == DECISION_VIOLATION:
+            logger.error(
+                "bounded-spawn violation: callsign=%s new_task=%s prior_task=%s killed=%s",
+                callsign,
+                task_id,
+                enforcement.prior.task_id if enforcement.prior else None,
+                enforcement.killed,
+            )
+
     rsnap = _reaper.health_snapshot()
-    return {
+    response: dict[str, Any] = {
         "spawned": True,
         "key": req.key,
         "backend": backend.value,
@@ -366,6 +451,9 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
         "watchdog_tracked": _watchdog.tracked,
         "reaper_tracked": int(rsnap["tracked_tmux"]) + int(rsnap["tracked_containers"]),
     }
+    if bounded_spawn_result is not None:
+        response["bounded_spawn"] = bounded_spawn_result
+    return response
 
 
 @app.post(
@@ -390,4 +478,8 @@ async def dispatcher_terminate(req: TerminateRequest) -> dict[str, Any]:
         _reaper.unregister_tmux(handle.session_name)
     else:
         _reaper.unregister_container(handle.id)
+    # Release the bounded-spawn slot so the next legitimate spawn for this
+    # callsign is treated as the first task on a fresh slot, not a violation.
+    if _bounded_spawn_enforcer is not None:
+        _bounded_spawn_enforcer.release_spawn(req.key)
     return {"terminated": True, "key": req.key, "watchdog_tracked": _watchdog.tracked}

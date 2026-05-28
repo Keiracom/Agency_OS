@@ -60,6 +60,7 @@ from src.relay.budget_ceiling import (
 )
 from src.retrieval import spawn_recall
 from src.retrieval.workflow_recall import CHARS_PER_TOKEN, WorkflowRecallContext
+from src.utils.log_safe import scrub
 
 logger = logging.getLogger(__name__)
 
@@ -290,9 +291,10 @@ def _recall_block(
         # (matching spawn_recall.inject_prior_context's own outer catch) still
         # yields an empty block rather than a 500.
         try:
-            return spawn_recall.build_prior_context_block(
-                spawn_recall.query_for_spawn(task_type, task_brief)
-            )
+            # build_spawn_context_block = positive recall + (flag-gated) failure
+            # recall. Byte-identical to the positive-only block when
+            # RETRIEVAL_FAILURE_RECALL_ENABLED is off (Wave 6).
+            return spawn_recall.build_spawn_context_block(task_type, task_brief)
         except Exception:  # noqa: BLE001 — recall must never block a spawn
             logger.debug("workflow_recall: fresh block failed — no prior context", exc_info=True)
             return ""
@@ -676,8 +678,8 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
         if enforcement.decision == DECISION_VIOLATION:
             logger.error(
                 "bounded-spawn violation: callsign=%s new_task=%s prior_task=%s killed=%s",
-                callsign,
-                task_id,
+                scrub(callsign),
+                scrub(task_id),
                 enforcement.prior.task_id if enforcement.prior else None,
                 enforcement.killed,
             )

@@ -12,16 +12,22 @@ natural follow-up if write latency starts mattering at scale.
 
 from __future__ import annotations
 
+import asyncio
+import concurrent.futures
 import logging
 import os
 import time
+from collections.abc import Coroutine
 from dataclasses import dataclass
-from typing import Literal
+from typing import Any, Literal, TypeVar
 
-from src.retrieval import hyde, orchestrator, overrides
+from src.retrieval import fusion, hyde, multi_query, orchestrator, overrides
 from src.retrieval._types import Citation
+from src.utils.log_safe import scrub
 
 logger = logging.getLogger(__name__)
+
+_T = TypeVar("_T")
 
 DEFAULT_COLLECTIONS: tuple[str, ...] = ("Discoveries", "Decisions", "Keis")
 DEFAULT_MAX_TOKENS = 500  # KEI-55 ceiling
@@ -65,8 +71,11 @@ def _record_event(
     audit trail.
     """
     payload = {
-        "agent": agent,
-        "query_text": query_text[:QUERY_TEXT_LOG_CAP],
+        # scrub() neutralises CR/LF in the agent + query before they reach the
+        # log sink (CodeQL py/log-injection); the audit row stores the same
+        # single-line form. Other fields are ints/bools/fixed names — not tainted.
+        "agent": scrub(agent),
+        "query_text": scrub(query_text, QUERY_TEXT_LOG_CAP),
         "collections": list(collections),
         "k_initial": k_initial,
         "k_returned": k_returned,
@@ -161,6 +170,110 @@ def _synthesise_answer(citations: tuple[Citation, ...], max_tokens: int) -> str:
     return answer[:char_cap]
 
 
+def _run_coro_sync(coro: Coroutine[Any, Any, _T]) -> _T:
+    """Drive a coroutine to completion from a sync caller.
+
+    Safe whether or not an event loop is already running on the current
+    thread. `query()` is a sync public API but may be invoked from inside an
+    async context (e.g. a FastAPI handler); `asyncio.run()` raises RuntimeError
+    when a loop is already running, so in that case the coroutine runs on a
+    dedicated worker thread with its own loop. Async callers should prefer
+    `query_async()` and skip this hop entirely.
+    """
+    try:
+        asyncio.get_running_loop()
+    except RuntimeError:
+        return asyncio.run(coro)
+    with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
+        return pool.submit(asyncio.run, coro).result()
+
+
+def _fusion_outcome(
+    fused_nodes: list[orchestrator.RetrievedNode], collections: tuple[str, ...]
+) -> orchestrator.RetrievalOutcome:
+    """Wrap fused nodes in a RetrievalOutcome.
+
+    Wave 5: fusion unions ALL mapped fleet banks, so the per-call `collections`
+    slice is ignored — logged at debug so the override is traceable.
+    `bypass_rerank=True`: fusion ranks on Hindsight scores directly; the
+    cross-encoder sidecar stage is not in the fused path.
+    """
+    logger.debug(
+        "fusion enabled — `collections`=%s ignored; recalling across all mapped fleet banks",
+        collections,
+    )
+    return orchestrator.RetrievalOutcome(
+        nodes=tuple(fused_nodes),
+        bypass_rerank=True,
+        rerank_reason="fusion",
+        rerank_elapsed_ms=0,
+    )
+
+
+def _finalize(
+    outcome: orchestrator.RetrievalOutcome,
+    *,
+    agent: str,
+    text: str,
+    collections: tuple[str, ...],
+    k_initial: int,
+    k_returned: int,
+    max_tokens: int,
+    citation_required: bool,
+    started: float,
+    task_type: str | None = None,
+) -> QueryResult:
+    """Shared post-recall path: citation extraction → overrides → KEI-198 top-N → event."""
+    citations = [_node_to_citation(n) for n in outcome.nodes]
+    # Wave 5 — customer overrides: drop ignored memories, boost preferred ones
+    # BEFORE the top-N slice so suppression/promotion shapes the final set.
+    # No-op unless RETRIEVAL_OVERRIDES_ENABLED is set.
+    citations = overrides.apply_overrides(citations, task_type=task_type)
+    # KEI-198 — distribution-aware citation selection.
+    # OLD shape (pre-KEI-192 audit): hard `score >= min_score` filter excluded
+    # everything when vectorizer=none collapsed all scores to 0.0 — 12/14 of the
+    # session's retrieval_events landed with top_citation_id=NULL despite
+    # k_returned=5 nodes.
+    # NEW shape: always sort + slice top-N; only drop on the all-zero sentinel
+    # when caller explicitly opted in via citation_required=True.
+    top_n: tuple[Citation, ...] = tuple(
+        sorted(citations, key=lambda c: c.score, reverse=True)[:k_returned]
+    )
+    all_zero = bool(top_n) and all(c.score == _ZERO_SCORE_SENTINEL for c in top_n)
+    if all_zero:
+        logger.warning(
+            "retrieval scores all 0.0 — vectorizer-regression sentinel (KEI-198) "
+            "agent=%s text=%s collections=%s",
+            scrub(agent),
+            scrub(text, QUERY_TEXT_LOG_CAP),
+            collections,
+        )
+    if citation_required and all_zero:
+        answer = ""
+        emitted_citations: tuple[Citation, ...] = ()
+    else:
+        emitted_citations = top_n
+        answer = _synthesise_answer(emitted_citations, max_tokens) if top_n else ""
+    elapsed_ms = int((time.monotonic() - started) * 1000)
+    top = emitted_citations[0] if emitted_citations else None
+    _record_event(
+        agent=agent,
+        query_text=text,
+        collections=collections,
+        k_initial=k_initial,
+        k_returned=k_returned,
+        elapsed_ms=elapsed_ms,
+        bypass_rerank=outcome.bypass_rerank,
+        top_citation=top,
+    )
+    return QueryResult(
+        answer=answer,
+        citations=emitted_citations,
+        elapsed_ms=elapsed_ms,
+        bypass_rerank=outcome.bypass_rerank,
+    )
+
+
 def query(
     text: str,
     *,
@@ -212,62 +325,167 @@ def query(
     """
     started = time.monotonic()
     # HyDE query expansion (Wave 4, RETRIEVAL_HYDE_ENABLED, default off).
-    # `expand_query` fuses the raw query with a hypothetical answer document
-    # so retrieval searches the answer space; fail-open to the raw query.
-    # Observability + answer synthesis below stay on the ORIGINAL query text.
+    # `expand_query` fuses the raw query with a hypothetical answer document so
+    # recall searches the answer space; fail-open to the raw query. Applies to
+    # BOTH the fusion and non-fusion recall paths. Observability + answer
+    # synthesis (in _finalize) stay on the ORIGINAL query text.
     search_text = hyde.expand_query(text)
-    outcome = orchestrator.retrieve_with_outcome(
-        text=search_text,
-        collections=collections,
-        k_initial=k_initial,
-        k_returned=k_returned,
-        tenant_id=tenant_id,
-    )
-    citations = [_node_to_citation(n) for n in outcome.nodes]
-    # Wave 5 — customer overrides: drop ignored memories, boost preferred ones
-    # BEFORE the top-N slice so suppression/promotion shapes the final set.
-    # No-op unless RETRIEVAL_OVERRIDES_ENABLED is set.
-    citations = overrides.apply_overrides(citations, task_type=task_type)
-    # KEI-198 — distribution-aware citation selection.
-    # OLD shape (pre-KEI-192 audit): hard `score >= min_score` filter excluded
-    # everything when vectorizer=none collapsed all scores to 0.0 — 12/14 of the
-    # session's retrieval_events landed with top_citation_id=NULL despite
-    # k_returned=5 nodes.
-    # NEW shape: always sort + slice top-N; only drop on the all-zero sentinel
-    # when caller explicitly opted in via citation_required=True.
-    top_n: tuple[Citation, ...] = tuple(
-        sorted(citations, key=lambda c: c.score, reverse=True)[:k_returned]
-    )
-    all_zero = bool(top_n) and all(c.score == _ZERO_SCORE_SENTINEL for c in top_n)
-    if all_zero:
-        logger.warning(
-            "retrieval scores all 0.0 — vectorizer-regression sentinel (KEI-198) "
-            "agent=%s text=%s collections=%s",
-            agent,
-            text[:QUERY_TEXT_LOG_CAP],
-            collections,
+    # Recall-strategy selection (all flags default off → base single-query path).
+    # Precedence: fusion (all-bank union) > multi-query (N variants) > base.
+    if fusion.fusion_enabled():
+        fused_nodes = _run_coro_sync(
+            fusion.fused_recall(search_text, tenant=tenant_id, top_k=k_initial)
         )
-    if citation_required and all_zero:
-        answer = ""
-        emitted_citations: tuple[Citation, ...] = ()
+        outcome = _fusion_outcome(fused_nodes, collections)
+    elif multi_query.multi_query_enabled():
+        outcome = multi_query.retrieve_multi(
+            text=search_text,
+            collections=collections,
+            k_initial=k_initial,
+            k_returned=k_returned,
+            tenant_id=tenant_id,
+        )
     else:
-        emitted_citations = top_n
-        answer = _synthesise_answer(emitted_citations, max_tokens) if top_n else ""
-    elapsed_ms = int((time.monotonic() - started) * 1000)
-    top = emitted_citations[0] if emitted_citations else None
-    _record_event(
+        outcome = orchestrator.retrieve_with_outcome(
+            text=search_text,
+            collections=collections,
+            k_initial=k_initial,
+            k_returned=k_returned,
+            tenant_id=tenant_id,
+        )
+    return _finalize(
+        outcome,
         agent=agent,
-        query_text=text,
+        text=text,
         collections=collections,
         k_initial=k_initial,
         k_returned=k_returned,
-        elapsed_ms=elapsed_ms,
-        bypass_rerank=outcome.bypass_rerank,
-        top_citation=top,
+        max_tokens=max_tokens,
+        citation_required=citation_required,
+        started=started,
+        task_type=task_type,
     )
-    return QueryResult(
-        answer=answer,
-        citations=emitted_citations,
-        elapsed_ms=elapsed_ms,
-        bypass_rerank=outcome.bypass_rerank,
+
+
+async def query_async(
+    text: str,
+    *,
+    agent: str,
+    collections: tuple[str, ...] = DEFAULT_COLLECTIONS,
+    max_tokens: int = DEFAULT_MAX_TOKENS,
+    citation_required: bool = True,
+    min_score: float = DEFAULT_MIN_SCORE,  # noqa: ARG001 KEI-198 back-compat  # NOSONAR S1172
+    k_initial: int = orchestrator.DEFAULT_K_INITIAL,
+    k_returned: int = orchestrator.DEFAULT_K_RETURNED,
+    tenant_id: str = orchestrator.FLEET_TENANT_SLUG,
+) -> QueryResult:
+    """Async-native variant of `query()`.
+
+    Prefer this from async callers (FastAPI handlers, awaited chains): it
+    awaits `fusion.fused_recall` directly instead of bouncing the coroutine
+    through `asyncio.run()` / a worker thread, which sync `query()` must do
+    because `asyncio.run()` raises inside a running loop. The non-fusion path
+    runs the blocking Hindsight recall via `asyncio.to_thread` so the event
+    loop stays free. Argument semantics are identical to `query()`.
+    """
+    started = time.monotonic()
+    # HyDE expansion (see query()) — runs the sync Anthropic call off-loop via
+    # asyncio.to_thread so the event loop stays free; fused/non-fused recall
+    # both search the expanded text. _finalize keeps observability + synthesis
+    # on the ORIGINAL text.
+    search_text = await asyncio.to_thread(hyde.expand_query, text)
+    # Recall-strategy precedence mirrors query(): fusion > multi-query > base.
+    # Sync recall backends run via asyncio.to_thread so the event loop stays free.
+    if fusion.fusion_enabled():
+        fused_nodes = await fusion.fused_recall(search_text, tenant=tenant_id, top_k=k_initial)
+        outcome = _fusion_outcome(fused_nodes, collections)
+    elif multi_query.multi_query_enabled():
+        outcome = await asyncio.to_thread(
+            multi_query.retrieve_multi,
+            text=search_text,
+            collections=collections,
+            k_initial=k_initial,
+            k_returned=k_returned,
+            tenant_id=tenant_id,
+        )
+    else:
+        outcome = await asyncio.to_thread(
+            orchestrator.retrieve_with_outcome,
+            text=search_text,
+            collections=collections,
+            k_initial=k_initial,
+            k_returned=k_returned,
+            tenant_id=tenant_id,
+        )
+    return _finalize(
+        outcome,
+        agent=agent,
+        text=text,
+        collections=collections,
+        k_initial=k_initial,
+        k_returned=k_returned,
+        max_tokens=max_tokens,
+        citation_required=citation_required,
+        started=started,
+        task_type=task_type,
     )
+
+
+# ─── Negative-example recall (Wave 6, RETRIEVAL_FAILURE_RECALL_ENABLED) ────────
+# A first-class "what has failed before in situations like this?" query mode.
+# Distinct from the positive recall path — same retrieval backend, but framed
+# to surface documented failure cases (discovery-log failed_path entries,
+# anti-pattern memories, post-mortems) so an agent gets failures-to-avoid
+# alongside canonical context. Feature-flagged, default off.
+FAILURE_RECALL_ENABLED_ENV = "RETRIEVAL_FAILURE_RECALL_ENABLED"
+FAILURE_RECALL_AGENT = "failure-recall"
+FAILURE_FRAMING_TERMS: tuple[str, ...] = ("failure", "failed", "error", "wrong approach")
+FAILURE_BRIEF_PREFIX_CHARS = 200
+_TRUTHY_ENV_VALUES = frozenset({"1", "true", "yes", "on"})
+
+
+def failure_recall_enabled() -> bool:
+    """RETRIEVAL_FAILURE_RECALL_ENABLED gate — default False."""
+    return os.environ.get(FAILURE_RECALL_ENABLED_ENV, "").strip().lower() in _TRUTHY_ENV_VALUES
+
+
+def _build_failure_query(task_type: str, brief: str) -> str:
+    """Negative-framed query text steering recall toward failure cases."""
+    brief_head = (brief or "").strip()[:FAILURE_BRIEF_PREFIX_CHARS]
+    terms = ", ".join(FAILURE_FRAMING_TERMS)
+    return (
+        f'Documented failures for a {task_type or "build"} task: "{brief_head}". '
+        "What has failed before, errored, or been the wrong approach in situations "
+        f"like this? ({terms})"
+    )
+
+
+def query_failures(
+    task_type: str,
+    brief: str,
+    *,
+    agent: str = FAILURE_RECALL_AGENT,
+    tenant_id: str = orchestrator.FLEET_TENANT_SLUG,
+    top_k: int = 3,
+) -> list[str]:
+    """Negative-example recall — "what has failed before in situations like this?".
+
+    Queries the retrieval path with negative framing and returns up to `top_k`
+    formatted failure-memory strings ('[source · collection] excerpt'). Returns
+    [] when the feature flag is off (default), on an empty corpus, or on any
+    error — fail-open, so failure recall never blocks a caller.
+    """
+    if not failure_recall_enabled():
+        return []
+    try:
+        result = query(
+            _build_failure_query(task_type, brief),
+            agent=agent,
+            tenant_id=tenant_id,
+            max_tokens=DEFAULT_MAX_TOKENS,
+            k_returned=top_k,
+        )
+    except Exception:  # noqa: BLE001 — failure recall must never block the caller
+        logger.debug("failure recall failed — returning no failure context", exc_info=True)
+        return []
+    return [f"[{c.source_id} · {c.collection}] {c.excerpt}" for c in result.citations[:top_k]]

@@ -122,3 +122,26 @@ The Deliberator determines the correct tier and either dispatches directly or ro
 - John never modifies the raw customer message before passing it to `context_composer` or to the Deliberator escalation payload. Paraphrased inputs change what downstream agents see and corrupt the evidence trail.
 - John never spawns without calling `context_composer` first.
 - John never caches a classification across messages.
+
+## End-of-conversation exit cycle
+
+John is an ephemeral spawn with no persistent memory. If a conversation contained a ratified decision, a confirmed pattern, an explicit Dave approval, or a Viktor explanation, that knowledge disappears when this spawn exits — unless John writes it to `ceo_memory` before closing.
+
+**John MUST call `classify_and_save` at the end of every conversation**, regardless of whether the conversation seemed decision-heavy. The classifier (Gemini Flash, confidence > 0.8, max 3 items) decides what is worth keeping — John does not pre-filter.
+
+```python
+from src.keiracom_system.chat.exit_cycle import classify_and_save
+
+result = await classify_and_save(
+    conversation=conversation_history,   # list[{"role": str, "content": str}]
+    customer_id=customer_id,
+)
+```
+
+`classify_and_save` is **fail-open**: any Gemini or DB error returns an `ExitCycleResult` with `skipped_reason` set and never raises. John does not retry on failure and does not block conversation completion on a non-zero `skipped_reason`. Log the result at INFO level and exit.
+
+**What is captured:** items with `kind` in `architectural_decision | confirmed_pattern | dave_approval | viktor_explanation`, confidence > 0.8, written to `ceo_memory` under `ceo:conversation_capture:{date}:{topic_slug}`. The atomiser promotes these to `fleet_decisions`; future John spawns retrieve them via Hindsight Layer 2 recall.
+
+**What is NOT captured:** status updates, questions, routine task dispatches, casual conversation. The classifier is conservative by design — precision over recall.
+
+**Sequence:** spawn completes task → sends final reply to customer → calls `classify_and_save` → exits. The exit cycle is the last action before the spawn closes, not an optional cleanup step.

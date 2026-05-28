@@ -36,6 +36,70 @@ DEFAULT_DECISIONS_BANK: str = "fleet_decisions"
 
 # Regex patterns used by source iterators.
 _DIRECTIVE_KEY_PATTERN = re.compile(r"^ceo:directive_(\d+)_complete$")
+
+# Full-coverage decision atomization (Dave directive: atomise everything
+# non-human-readable). A ceo: key qualifies as decision-class when its name
+# contains one of these substrings (case-insensitive).
+_CEO_DECISION_KEYWORDS: tuple[str, ...] = (
+    "ratif",
+    "locked",
+    "canonical",
+    "v1",
+    "v2",
+    "architecture",
+    "deliberation",
+    "cutover",
+    "governance",
+    "memory",
+    "atomization",
+    "comm_",
+    "spawn_context",
+)
+# Human-facing / operational keys — never decision content. Excluded by
+# substring match, plus the directive_NNN_status regex below.
+_CEO_KEY_EXCLUDE_SUBSTRINGS: tuple[str, ...] = (
+    "session_end_",
+    "diag_",
+    "heartbeat_",
+    "approval_flow",
+    "save_point_",
+    "handoff_",
+)
+_CEO_KEY_EXCLUDE_RE = re.compile(r"directive_\d+_status$")
+# A value with fewer than this many whitespace-separated tokens carries no
+# sentence — skip it (booleans, counters, status flags).
+_MIN_DECISION_WORDS = 3
+# Bare status/flag tokens that pass the word-count check only as JSON noise.
+_STATUS_FLAG_TOKENS = frozenset(
+    {"true", "false", "on", "off", "yes", "no", "null", "none", "pending", "active", "done", "ok"}
+)
+
+
+def _is_excluded_ceo_key(key: str) -> bool:
+    """True for human-facing / operational ceo: keys that are not decisions."""
+    if any(sub in key for sub in _CEO_KEY_EXCLUDE_SUBSTRINGS):
+        return True
+    return _CEO_KEY_EXCLUDE_RE.search(key) is not None
+
+
+def is_atomisable_value(value: str | None) -> bool:
+    """Skip values with no decision prose: <3 words, a bare scalar, or a status flag.
+
+    A JSON object/array value (a decision stored structured) is KEPT — only
+    scalar JSON (number/bool/null) and short status strings are dropped.
+    """
+    text = (value or "").strip()
+    if len(text.split()) < _MIN_DECISION_WORDS:
+        return False
+    if text.lower() in _STATUS_FLAG_TOKENS:
+        return False
+    try:
+        parsed = json.loads(text)
+    except (json.JSONDecodeError, ValueError):
+        return True  # not JSON — plain prose with >=3 words, keep
+    return not isinstance(parsed, bool | int | float) and parsed is not None
+
+
 _V2_INVENTORY_RATIFIED_ROW_RE = re.compile(
     r"^\|\s*([a-z0-9._-]+)\s*\|.*\|\s*RATIFIED-(?:CEO|DM)\s*\|.*\|.*\|.*\|\s*$",
     re.IGNORECASE,
@@ -174,6 +238,137 @@ def iter_manual_section_13(path: Path) -> Iterable[DecisionSource]:
 
 
 # ───────────────────────────────────────────────────────────────────────
+# (e) ceo_memory decision keys — non-directive ceo: keys with decision keywords
+# ───────────────────────────────────────────────────────────────────────
+
+
+def iter_ceo_memory_decisions(db: _DBProtocol) -> Iterable[DecisionSource]:
+    """Yield non-directive ceo: keys that name a ratified decision.
+
+    A key qualifies when it is NOT a directive_NNNNN_complete key (those are
+    source (a)), is not on the human-facing exclude list, contains a decision
+    keyword, and carries an atomisable value (>=3 words, not a scalar/flag).
+    """
+    db.execute("SELECT key, value::text FROM public.ceo_memory WHERE key LIKE 'ceo:%' ORDER BY key")
+    for row in db.fetchall() or []:
+        key, value = str(row[0]), row[1]
+        if _DIRECTIVE_KEY_PATTERN.match(key):
+            continue  # source (a) — iter_ceo_memory_directives
+        if _is_excluded_ceo_key(key):
+            continue
+        if not any(kw in key.lower() for kw in _CEO_DECISION_KEYWORDS):
+            continue
+        if not is_atomisable_value(value):
+            continue
+        yield DecisionSource(
+            source_ref=f"ceo_memory:{key}",
+            source_kind="governance_doc",
+            source_text=str(value),
+        )
+
+
+# ───────────────────────────────────────────────────────────────────────
+# (f) ceo_memory completion:KEI-* — completed engineering decisions
+# ───────────────────────────────────────────────────────────────────────
+
+
+def iter_ceo_memory_completions(db: _DBProtocol) -> Iterable[DecisionSource]:
+    """Yield completion:KEI-* keys — each a completed engineering decision + rationale."""
+    db.execute(
+        "SELECT key, value::text FROM public.ceo_memory "
+        "WHERE key LIKE 'completion:KEI-%' ORDER BY key"
+    )
+    for row in db.fetchall() or []:
+        key, value = str(row[0]), row[1]
+        if not is_atomisable_value(value):
+            continue
+        yield DecisionSource(
+            source_ref=f"ceo_memory:{key}",
+            source_kind="governance_doc",
+            source_text=str(value),
+        )
+
+
+# ───────────────────────────────────────────────────────────────────────
+# (g) ceo:deliberation:* — concurred product deliberations
+# ───────────────────────────────────────────────────────────────────────
+
+
+def iter_ceo_memory_deliberations(db: _DBProtocol) -> Iterable[DecisionSource]:
+    """Yield ceo:deliberation:* keys — concurred product deliberation records."""
+    db.execute(
+        "SELECT key, value::text FROM public.ceo_memory "
+        "WHERE key LIKE 'ceo:deliberation:%' ORDER BY key"
+    )
+    for row in db.fetchall() or []:
+        key, value = str(row[0]), row[1]
+        if not is_atomisable_value(value):
+            continue
+        yield DecisionSource(
+            source_ref=f"ceo_memory:{key}",
+            source_kind="governance_doc",
+            source_text=str(value),
+        )
+
+
+# ───────────────────────────────────────────────────────────────────────
+# (h) personas/*.md — agent role definitions
+# ───────────────────────────────────────────────────────────────────────
+
+
+def iter_persona_definitions(repo_root: Path = Path(".")) -> Iterable[DecisionSource]:
+    """Yield one DecisionSource per personas/*.md (agent role definitions)."""
+    pdir = repo_root / "personas"
+    if not pdir.is_dir():
+        log.warning("personas: %s not present — skipping", pdir)
+        return
+    for path in sorted(pdir.glob("*.md")):
+        text = path.read_text(encoding="utf-8")
+        if not is_atomisable_value(text):
+            continue
+        yield DecisionSource(
+            source_ref=f"personas/{path.name}",
+            source_kind="governance_doc",
+            source_text=text,
+        )
+
+
+# ───────────────────────────────────────────────────────────────────────
+# (i) docs/architecture/*.md — architecture decisions
+# ───────────────────────────────────────────────────────────────────────
+
+
+# Architecture docs already covered by a dedicated row-level iterator — skip
+# them in the whole-doc iterator to avoid double-atomising the same content.
+_ARCHITECTURE_DOCS_COVERED_ELSEWHERE: frozenset[str] = frozenset(
+    {"keiracom_architecture_v2_inventory.md"}  # source (c) iter_v2_inventory_ratified
+)
+
+
+def iter_architecture_docs(repo_root: Path = Path(".")) -> Iterable[DecisionSource]:
+    """Yield one DecisionSource per docs/architecture/**/*.md (architecture decisions).
+
+    Skips files already covered by a dedicated iterator (e.g. the V2 inventory,
+    which source (c) atomises row-by-row) so content is not double-atomised.
+    """
+    adir = repo_root / "docs" / "architecture"
+    if not adir.is_dir():
+        log.warning("architecture_docs: %s not present — skipping", adir)
+        return
+    for path in sorted(adir.rglob("*.md")):
+        if path.name in _ARCHITECTURE_DOCS_COVERED_ELSEWHERE:
+            continue
+        text = path.read_text(encoding="utf-8")
+        if not is_atomisable_value(text):
+            continue
+        yield DecisionSource(
+            source_ref=f"docs/architecture/{path.relative_to(adir).as_posix()}",
+            source_kind="governance_doc",
+            source_text=text,
+        )
+
+
+# ───────────────────────────────────────────────────────────────────────
 # Aggregator + helpers
 # ───────────────────────────────────────────────────────────────────────
 
@@ -183,18 +378,24 @@ def iter_all_decision_sources(
     db: _DBProtocol | None = None,
     repo_root: Path = Path("."),
 ) -> Iterable[DecisionSource]:
-    """Convenience iterator — walks all 4 sources in canonical order.
+    """Convenience iterator — walks every decision source in canonical order.
 
-    `db` may be None — the ceo_memory iterator is then skipped (e.g. for
-    docs-only smoke runs).
+    Original 4 sources (a–d) + the full-coverage extension (e–i). `db` may be
+    None — the ceo_memory iterators are then skipped (e.g. for docs-only smoke
+    runs); the file-based iterators always run.
     """
     if db is not None:
         yield from iter_ceo_memory_directives(db)
+        yield from iter_ceo_memory_decisions(db)
+        yield from iter_ceo_memory_completions(db)
+        yield from iter_ceo_memory_deliberations(db)
     yield from iter_consolidated_rules(repo_root / "docs" / "governance" / "CONSOLIDATED_RULES.md")
     yield from iter_v2_inventory_ratified(
         repo_root / "docs" / "architecture" / "keiracom_architecture_v2_inventory.md"
     )
     yield from iter_manual_section_13(repo_root / "docs" / "MANUAL.md")
+    yield from iter_persona_definitions(repo_root)
+    yield from iter_architecture_docs(repo_root)
 
 
 def _split_by_heading_regex(text: str, heading_re: re.Pattern[str]) -> Iterable[tuple[str, str]]:

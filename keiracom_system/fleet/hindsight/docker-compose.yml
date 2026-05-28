@@ -43,6 +43,11 @@ services:
     image: ghcr.io/vectorize-io/hindsight:latest
     container_name: keiracom-fleet-hindsight
     pull_policy: always
+    # Embedded Postgres needs ~534MB of shared memory for inline (async:false)
+    # embedding/extraction on a write. Docker's default /dev/shm is 64MB, so the
+    # PG shared-memory segment failed to grow → "No space left on device" → every
+    # INDEXER_HINDSIGHT_MIRROR write 500'd (Agency_OS-mzpp, 2026-05-28). 1g clears it.
+    shm_size: "1g"
     environment:
       HINDSIGHT_API_LLM_PROVIDER: openai
       HINDSIGHT_API_LLM_API_KEY: ${OPENAI_API_KEY:?OPENAI_API_KEY required — set in .env}

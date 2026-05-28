@@ -27,6 +27,8 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 
+from src.utils.log_safe import scrub
+
 logger = logging.getLogger(__name__)
 
 CHARS_PER_TOKEN = 4  # matches src/retrieval/agent_query token approximation
@@ -85,7 +87,9 @@ class WorkflowRecallContext:
         try:
             recalled = recall_fn() or ""
         except Exception:  # noqa: BLE001 — recall must never block the spawn
-            logger.exception("workflow_recall: recall_fn raised for workflow_id=%s", workflow_id)
+            logger.exception(
+                "workflow_recall: recall_fn raised for workflow_id=%s", scrub(workflow_id)
+            )
             return RecallOutcome(context="", cached=False)
         context = self._cap(str(recalled))
         self._store[workflow_id] = _Entry(context=context, stored_at=now)

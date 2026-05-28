@@ -60,6 +60,7 @@ from src.relay.budget_ceiling import (
 )
 from src.retrieval import spawn_recall
 from src.retrieval.workflow_recall import CHARS_PER_TOKEN, WorkflowRecallContext
+from src.utils.log_safe import scrub
 
 logger = logging.getLogger(__name__)
 
@@ -676,8 +677,8 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
         if enforcement.decision == DECISION_VIOLATION:
             logger.error(
                 "bounded-spawn violation: callsign=%s new_task=%s prior_task=%s killed=%s",
-                callsign,
-                task_id,
+                scrub(callsign),
+                scrub(task_id),
                 enforcement.prior.task_id if enforcement.prior else None,
                 enforcement.killed,
             )

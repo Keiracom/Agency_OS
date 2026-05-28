@@ -12,13 +12,14 @@ natural follow-up if write latency starts mattering at scale.
 
 from __future__ import annotations
 
+import asyncio
 import logging
 import os
 import time
 from dataclasses import dataclass
 from typing import Literal
 
-from src.retrieval import orchestrator
+from src.retrieval import fusion, orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -214,13 +215,26 @@ def query(
         `QueryResult` with answer + citations + elapsed_ms + bypass flag.
     """
     started = time.monotonic()
-    outcome = orchestrator.retrieve_with_outcome(
-        text=text,
-        collections=collections,
-        k_initial=k_initial,
-        k_returned=k_returned,
-        tenant_id=tenant_id,
-    )
+    if fusion.fusion_enabled():
+        # Wave 5: union recall across ALL mapped fleet banks (not just the
+        # `collections` slice), deduped by content hash + ranked by score.
+        # `bypass_rerank=True` — fusion ranks on Hindsight scores directly; the
+        # cross-encoder sidecar stage is not in the fused path.
+        fused_nodes = asyncio.run(fusion.fused_recall(text, tenant=tenant_id, top_k=k_initial))
+        outcome = orchestrator.RetrievalOutcome(
+            nodes=tuple(fused_nodes),
+            bypass_rerank=True,
+            rerank_reason="fusion",
+            rerank_elapsed_ms=0,
+        )
+    else:
+        outcome = orchestrator.retrieve_with_outcome(
+            text=text,
+            collections=collections,
+            k_initial=k_initial,
+            k_returned=k_returned,
+            tenant_id=tenant_id,
+        )
     citations = [_node_to_citation(n) for n in outcome.nodes]
     # KEI-198 — distribution-aware citation selection.
     # OLD shape (pre-KEI-192 audit): hard `score >= min_score` filter excluded

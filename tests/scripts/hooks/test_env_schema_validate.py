@@ -176,6 +176,11 @@ def test_script_syntax_valid() -> None:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.xfail(
+    reason="Claude Code hooks removed per Dave directive 2026-05-27 (hook-kill); "
+    ".claude/settings.json no longer carries a 'hooks' key. The env_schema_validate.sh "
+    "script still exists and its behaviour is exercised by the other tests in this file."
+)
 def test_hook_registered_first_in_session_start_chain() -> None:
     settings = json.loads((REPO_ROOT / ".claude" / "settings.json").read_text())
     session_start = settings["hooks"]["SessionStart"]

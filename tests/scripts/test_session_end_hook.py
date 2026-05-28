@@ -216,6 +216,11 @@ def test_module_entrypoint_swallows_exceptions(monkeypatch):
 # ─── settings.json wiring smoke ────────────────────────────────────────────
 
 
+@pytest.mark.xfail(
+    reason="Claude Code hooks removed per Dave directive 2026-05-27 (hook-kill); "
+    ".claude/settings.json no longer carries a 'hooks' key. The session_end_hook.py "
+    "module still exists and its behaviour is exercised by the unit tests above."
+)
 def test_settings_json_contains_session_end_hook():
     settings = json.loads(
         (Path(__file__).resolve().parent.parent.parent / ".claude" / "settings.json").read_text()

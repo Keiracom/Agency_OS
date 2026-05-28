@@ -255,6 +255,31 @@ jobs:
       - name: No Composer imports outside endpoints/
         run: ./scripts/ci/check_composer_output_never_reaches_agent_reasoning.sh
 
+  # ============================================
+  # Gate: Adversarial Retrieval Probe (Wave 6)
+  # ============================================
+  # Continuous adversarial probe of the memory layer: asks known questions and
+  # verifies the relevant memories surface (and that superseded / cross-tenant
+  # content does NOT). Non-blocking (warning) initially — the runner self-skips
+  # when HINDSIGHT_URL is unset (hermetic CI has no live Hindsight) and warns
+  # without failing the build below the precision threshold. Upgrades to a hard
+  # gate at cutover by setting RETRIEVAL_PROBE_BLOCKING=1 (GOV-12: the toggle is
+  # one env var, the gate is code not a comment).
+  retrieval-adversarial-probe:
+    name: Adversarial Retrieval Probe (non-blocking until cutover)
+    runs-on: ubuntu-latest
+    needs: backend-lint
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Run adversarial retrieval probe
+        run: python3 scripts/ci/check_retrieval_probe.py --report
+
   backend-typecheck:
     name: Backend Type Check (MyPy)
     runs-on: ubuntu-latest

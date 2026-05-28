@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass
 from typing import Literal
 
-from src.retrieval import multi_query, orchestrator
+from src.retrieval import hyde, multi_query, orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -214,12 +214,17 @@ def query(
         `QueryResult` with answer + citations + elapsed_ms + bypass flag.
     """
     started = time.monotonic()
+    # HyDE query expansion (Wave 4, RETRIEVAL_HYDE_ENABLED, default off).
+    # `expand_query` fuses the raw query with a hypothetical answer document
+    # so retrieval searches the answer space; fail-open to the raw query.
+    # Observability + answer synthesis below stay on the ORIGINAL query text.
+    search_text = hyde.expand_query(text)
     # Multi-query expansion (Wave 4, RETRIEVAL_MULTI_QUERY_ENABLED, default off).
-    # Generates N query variants and merges+deduplicates results by memory_id.
-    # Fail-open: falls back to single-query when flag is off or generation fails.
+    # Generates N query variants from the (possibly HyDE-expanded) search text,
+    # merges+deduplicates results by memory_id. Fail-open to single-query.
     if multi_query.multi_query_enabled():
         outcome = multi_query.retrieve_multi(
-            text=text,
+            text=search_text,
             collections=collections,
             k_initial=k_initial,
             k_returned=k_returned,
@@ -227,7 +232,7 @@ def query(
         )
     else:
         outcome = orchestrator.retrieve_with_outcome(
-            text=text,
+            text=search_text,
             collections=collections,
             k_initial=k_initial,
             k_returned=k_returned,

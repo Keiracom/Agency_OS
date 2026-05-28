@@ -9,22 +9,26 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+
+	"github.com/keiracom/keiracom_system/go_sidecar/internal/ratelimit"
 )
 
 // Tenant — the unit of isolation. One tenant per Keiracom customer.
 type Tenant struct {
-	ID              string   `json:"id"`
-	AllowedTools    []string `json:"allowed_tools"`     // MCP tool names whitelisted for this tenant
-	AllowedDomains  []string `json:"allowed_domains"`   // outbound HTTP domains allowed
-	AllowedPaths    []string `json:"allowed_paths"`     // file-system paths customer may read/write (PREFIX match)
-	SystemPathDeny  []string `json:"system_path_deny"`  // explicit deny list — system files NEVER queryable (ux.files.system_files_hidden)
-	SecretPatterns  []string `json:"secret_patterns"`   // regex/substring patterns scanned against responses (no raw secret leaks)
+	ID             string            `json:"id"`
+	AllowedTools   []string          `json:"allowed_tools"`    // MCP tool names whitelisted for this tenant
+	AllowedDomains []string          `json:"allowed_domains"`  // outbound HTTP domains allowed
+	AllowedPaths   []string          `json:"allowed_paths"`    // file-system paths customer may read/write (PREFIX match)
+	SystemPathDeny []string          `json:"system_path_deny"` // explicit deny list — system files NEVER queryable (ux.files.system_files_hidden)
+	SecretPatterns []string          `json:"secret_patterns"`  // regex/substring patterns scanned against responses (no raw secret leaks)
+	RateLimit      ratelimit.Spec    `json:"rate_limit"`       // per-tenant token-bucket — Wave 1 dispatch Agency_OS-2c7m
+	MCPServers     map[string]string `json:"mcp_servers"`      // logical name → upstream URL for /proxy forwarding
 }
 
 // Config — top level: tenant map + global deny patterns.
 type Config struct {
-	Tenants               map[string]Tenant `json:"tenants"`
-	GlobalSecretPatterns  []string          `json:"global_secret_patterns"`
+	Tenants              map[string]Tenant `json:"tenants"`
+	GlobalSecretPatterns []string          `json:"global_secret_patterns"`
 }
 
 // Load reads a JSON config file. YAML support is an engineer-tier choice;

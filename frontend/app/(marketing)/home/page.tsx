@@ -1,6 +1,12 @@
 /**
- * FILE: app/(marketing)/page.tsx
- * PURPOSE: Keiracom landing page root — hero section + 6 pricing tier cards.
+ * FILE: app/(marketing)/home/page.tsx
+ * PURPOSE: Keiracom landing page (served at /home) — hero section + 6 pricing tier cards.
+ *
+ * ROUTE: Moved out of route-group root to /home to resolve build conflict with
+ * app/page.tsx (current Agency OS landing also at /). Next.js silently picks one
+ * winner but Vercel's manifest post-processor still expects manifest files for
+ * the loser, causing ENOENT page_client-reference-manifest.js failures.
+ * Final URL slug TBD — Dave will decide whether this replaces / or stays at /home.
  *
  * SCAFFOLD STATUS: KEI-119
  * Sub-KEI claimers replace stub copy and add visual styling.

@@ -1,43 +1,66 @@
-# Keiracom System — Go Sidecar (scaffold)
+# Keiracom System — Go Sidecar
 
-Phase A4 research + scaffold. Canonical-key anchor: `ceo:keiracom_architecture_v2_locked` Cat 10 `mcp.go_sidecar` — **RATIFIED-DM**, V1-launch (BUILD pending). Owners: Atlas + Orion (engineer-tier).
+Phase A4 research → Wave 1 production build. Canonical-key anchor: `ceo:keiracom_architecture_v2_locked` Cat 10 `mcp.go_sidecar` — **RATIFIED-DM**, V1-launch. Wave 1 dispatch: `Agency_OS-2c7m` (systemd deploy + circuit breakers per MCP-server + per-tenant token-bucket rate limiter).
 
-This directory is the **research scaffold only.** Engineer-tier builds the production sidecar on this shape; the research doc at `docs/wave2/phase_a4_go_sidecar_research_and_scaffold.md` carries the full findings + handoff scope.
+Research history: `docs/wave2/phase_a4_go_sidecar_research_and_scaffold.md`.
 
 ## What's here
 
 | Path | Purpose |
 |---|---|
-| `cmd/sidecar/main.go` | HTTP listener (`/health` + `/validate`) — entrypoint |
-| `internal/config/config.go` | Static whitelist `Config` struct + JSON load |
+| `cmd/sidecar/main.go` | HTTP listener — `/health`, `/validate`, `/proxy` (forwarding) |
+| `cmd/sidecar/proxy_test.go` | 7 black-box handler tests — validate / proxy / breaker / rate-limit / secret-scan paths |
+| `internal/config/config.go` | Static whitelist `Config` struct + JSON load (extended with `rate_limit` + `mcp_servers`) |
 | `internal/validator/validator.go` | `Validator` interface + `DefaultValidator` (tool / path / domain / secret-scan) |
-| `config.example.json` | Example tenant config — allowed tools, denied system paths, secret patterns |
-| `Dockerfile` | Multi-stage build → distroless static binary |
+| `internal/validator/validator_test.go` | 8 tests — 5 Allow negative + 1 Allow positive + 2 ScanResponse |
+| `internal/breaker/breaker.go` | Per-MCP-server circuit breaker (Closed / Open / HalfOpen) — Wave 1 |
+| `internal/breaker/breaker_test.go` | 6 tests — closed allow, threshold trip, cooldown→half-open, probe success/failure, manager isolation |
+| `internal/ratelimit/ratelimit.go` | Per-tenant token-bucket rate limiter — Wave 1 |
+| `internal/ratelimit/ratelimit_test.go` | 7 tests — unregistered, zero-spec, burst, refill, cap, isolation, reset |
+| `config.example.json` | Example tenant config — allowlists, deny paths, secret patterns, rate-limit spec, MCP server map |
+| `keiracom-go-sidecar.service` | systemd unit (user-scope) — Wave 1 deploy |
+| `scripts/build.sh` | Builds the binary into `./bin/sidecar` (idempotent; invoked by `ExecStartPre`) |
+| `scripts/install-systemd.sh` | Installs + enables + restarts the systemd unit (idempotent) |
+| `Dockerfile` | Multi-stage build → distroless static binary (alternative deploy path) |
 | `docker-compose.go-sidecar.yml` | Per-tenant compose snippet (mirrors `embeddings/docker-compose.tei.yml`) |
-| `go.mod` / `go.sum` | Module declaration — `go 1.22`, **zero external deps in scaffold** (empty `go.sum`) |
-| `internal/validator/validator_test.go` | 8 tests — 5 Allow negative + 1 Allow positive + 2 ScanResponse (one each side) |
+| `go.mod` / `go.sum` | Module declaration — `go 1.22`, **stdlib only** (empty `go.sum`) |
 
-## Quick check (engineer-tier will run)
+## Quick check
 
 ```bash
 cd infra/keiracom_system/go_sidecar
-go build ./...                              # scaffold compiles, no external deps
-docker compose -f docker-compose.go-sidecar.yml up --build  # local sidecar :4100
-curl -fsS http://localhost:4100/health      # {"ok":true}
+./scripts/build.sh                                          # produces ./bin/sidecar
+SIDECAR_CONFIG_PATH=./config.example.json \
+  SIDECAR_ADDR=127.0.0.1:4100 ./bin/sidecar &               # run locally
+curl -fsS http://127.0.0.1:4100/health                      # {"ok":true}
 
-# Validate a sample tool call
-curl -fsS -X POST http://localhost:4100/validate \
+# Validate a sample tool call (validate-only path, no forwarding)
+curl -fsS -X POST http://127.0.0.1:4100/validate \
   -H 'content-type: application/json' \
   -d '{"TenantID":"tenant_demo","Tool":"read_file","Path":"/workspace/tenant_demo/notes.md"}'
 # {"allow":true}
 
-# Same call but pointed at a system path → 403
-curl -i -X POST http://localhost:4100/validate \
+# /proxy — validate + rate-limit + circuit-break + forward to MCP server
+curl -fsS -X POST http://127.0.0.1:4100/proxy \
   -H 'content-type: application/json' \
-  -d '{"TenantID":"tenant_demo","Tool":"read_file","Path":"/var/keiracom/system/reasoning.log"}'
-# HTTP/1.1 403 Forbidden
-# validator: system path access denied (ux.files.system_files_hidden)
+  -d '{"tenant_id":"tenant_demo","tool":"read_file","server":"search","body":{"q":"hi"}}'
 ```
+
+## Install as systemd service
+
+```bash
+cd infra/keiracom_system/go_sidecar
+sudo install -d -m 0755 /etc/keiracom
+sudo install -m 0600 -o $USER config.example.json /etc/keiracom/sidecar.json   # or your tenant config
+./scripts/install-systemd.sh                                                   # daemon-reload + enable + restart
+systemctl --user status keiracom-go-sidecar
+```
+
+## Wave 1 dispatch deliverables (Agency_OS-2c7m)
+
+1. **systemd service** — `keiracom-go-sidecar.service` + `scripts/install-systemd.sh`. User-scope, fail-loud on missing binary (`ExecStartPre` calls `scripts/build.sh`), 128M MemoryMax, `ProtectSystem=strict`, append-only log to `~/clawd/logs/keiracom-go-sidecar.log`.
+2. **Per-MCP-server circuit breakers** — `internal/breaker`. `Manager.Get(serverName)` lazy-instantiates one breaker per logical upstream; 5 consecutive failures → `Open`, 30s cooldown → `HalfOpen` single probe → `Closed` on success / `Open` on failure. `/proxy` 503s on `ErrBreakerOpen`.
+3. **Per-tenant token-bucket rate limiter** — `internal/ratelimit`. Spec loaded from `tenant.rate_limit` (`{rps, burst}`); continuous refill, hard cap at `burst`; bucket-empty → `/validate` and `/proxy` return 429. Zero spec = unlimited (explicit opt-out by absence in config).
 
 ## Three enforcement responsibilities (from V2 lock)
 

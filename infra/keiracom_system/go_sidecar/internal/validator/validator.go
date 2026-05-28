@@ -25,7 +25,7 @@ type ToolCall struct {
 
 // Validator — interface that interceptors call before forwarding to MCP server.
 type Validator interface {
-	Allow(c ToolCall) error                // returns nil on allow, error on deny (with reason)
+	Allow(c ToolCall) error                          // returns nil on allow, error on deny (with reason)
 	ScanResponse(tenantID string, body []byte) error // post-call: deny if secret pattern hit
 }
 

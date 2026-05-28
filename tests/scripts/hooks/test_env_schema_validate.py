@@ -172,14 +172,22 @@ def test_script_syntax_valid() -> None:
 
 
 # ---------------------------------------------------------------------------
-# Hook is registered FIRST in the SessionStart chain
+# Hook-kill compliance gate (Dave directive 2026-05-27)
+#
+# All .claude/settings.json hooks were removed (commit 3b6dfd224). This test
+# was originally a wiring-smoke ("env_schema_validate.sh must be FIRST in the
+# SessionStart * chain"); it now flips into a compliance gate that fails if
+# a SessionStart hook is silently re-introduced without re-ratifying the
+# directive. The script itself remains executable and is exercised by the
+# tests above — only its hook registration is forbidden.
 # ---------------------------------------------------------------------------
 
 
-def test_hooks_absent_per_hook_kill_directive() -> None:
-    # Compliance gate: Dave directive 2026-05-27 killed all Claude Code hooks.
+def test_session_start_hooks_absent_per_hook_kill_directive() -> None:
     settings = json.loads((REPO_ROOT / ".claude" / "settings.json").read_text())
-    assert "hooks" not in settings, (
-        "hooks key must be absent from .claude/settings.json per Dave directive 2026-05-27; "
-        f"found hooks: {list(settings.get('hooks', {}).keys())}"
+    hooks = settings.get("hooks", {})
+    assert "SessionStart" not in hooks, (
+        f"SessionStart hook re-introduced into .claude/settings.json after the "
+        f"2026-05-27 hook-kill directive; got {hooks.get('SessionStart')!r}. "
+        f"Re-ratify with Dave before restoring."
     )

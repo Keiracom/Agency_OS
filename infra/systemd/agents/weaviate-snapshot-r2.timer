@@ -1,0 +1,12 @@
+[Unit]
+Description=Daily 02:00 UTC Weaviate snapshot to R2 (KEI-242)
+Requires=weaviate-snapshot-r2.service
+
+[Timer]
+OnCalendar=*-*-* 02:00:00 UTC
+Persistent=true
+RandomizedDelaySec=300
+Unit=weaviate-snapshot-r2.service
+
+[Install]
+WantedBy=timers.target

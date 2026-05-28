@@ -1,0 +1,16 @@
+[Unit]
+Description=Weekly Weaviate snapshot restore verification (KEI-242 hard gate)
+Documentation=https://linear.app/keiracom/issue/KEI-242
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 -m src.keiracom_system.backup.restore_verify
+StandardOutput=append:/home/elliotbot/clawd/logs/weaviate-restore-verify.log
+StandardError=append:/home/elliotbot/clawd/logs/weaviate-restore-verify.log
+
+[Install]
+WantedBy=default.target

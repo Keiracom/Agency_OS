@@ -67,6 +67,13 @@ Cross-type floor (always): skills→MCP→exec hierarchy for any external call; 
 code per single response; a code block >20 lines carries a one-line Conceptual Summary; if a
 change alters how an external service is called, its skill file is updated in the same PR.
 
+**Decompose-and-delegate trigger (RULE 4 ORCHESTRATE — mandatory):** If completing the task
+requires writing **more than 50 lines of code in a single response** OR touching **more than
+6 files**, STOP immediately. Do not write the implementation. Instead: (1) decompose into
+named subtasks, (2) assign each subtask to a specific agent, (3) present the decomposition
+plan to the orchestrator and wait for approval. Writing large inline implementations is a
+rule violation — delegation is the correct response, not a smaller font or tighter formatting.
+
 ---
 
 ## §3 — Fail-open defaults (when uncertain, surface — do not guess)
@@ -81,6 +88,20 @@ contract used across the retrieval layer.*
   config, contradicted assumptions, or recently-merged code that changes the path. Report
   `DIRECTIVE SCRUTINY — N GAPS FOUND` (with the gaps) or `CLEAR`. This is a self-check, not a
   Dave-gate.
+- **Step 0 RESTATE (mandatory without PRE-CONFIRMED).** Output this block verbatim before any
+  tool call or implementation work, then STOP and wait for the orchestrator to confirm:
+  ```
+  Step 0 RESTATE:
+  - Objective: [one line — what we are doing]
+  - Scope: [what is in, what is out]
+  - Success criteria: [how we know it worked]
+  - Assumptions: [what you are assuming]
+  ```
+  All four fields are required. Skipping Step 0 or omitting a field is a governance violation.
+- **Never fabricate.** Never produce simulated terminal output, fake commit hashes, invented
+  test results, or fabricated command output. If you cannot run a command, say so explicitly:
+  "I cannot run this — no tool access." Writing plausible-looking output for a command you
+  did not execute is a RULE 1 VERIFY violation, even if the content seems correct.
 - **When uncertain, surface to the orchestrator — never to Dave, never silently guess.** A
   blocker, an ambiguous brief, a conflict with another agent's work, or a missing dependency
   → return it to whoever dispatched you with the specifics, and stop. The orchestrator
@@ -122,6 +143,16 @@ contract used across the retrieval layer.*
 - **Business (RULE 7):** all money in **$AUD** (1 USD = 1.55 AUD, no exceptions); full API
   payloads captured, never re-fetched; pre-revenue honesty (zero clients until Dave confirms —
   reject social-proof claims); no dead-vendor code paths (see ARCHITECTURE.md Dead References).
+
+  **Pre-output self-check — run before EVERY response, no exceptions:**
+  1. Does any financial figure appear in USD? → Convert to AUD now. "$500 USD" must become
+     "~$775 AUD ($500 USD × 1.55)" before posting.
+  2. Is any retired vendor referenced as active? Dead vendors include: Apollo, Salesforge,
+     Unipile, Telnyx (outbound), Vapi, Resend (Agency OS outreach), DataForSEO, Leadmagic,
+     Prospeo, ContactOut, Hunter, Kaspr, Clay. If any appear as active code paths → flag them
+     as dead references. Do not relay them as current without a flag.
+  This check applies to every output, including short replies and summaries. Low-salience tasks
+  are not exempt.
 - **Gates as code (RULE 6 / GOV-12):** any gate you add is an executable conditional
   (`if/raise/assert/exit`), never a comment block.
 - **Governance Trace (RULE 6):** non-trivial decisions carry `[Rule] → [Action] → [Rationale]`.

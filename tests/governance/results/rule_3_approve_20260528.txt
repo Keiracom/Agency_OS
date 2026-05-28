@@ -1,4 +1,4 @@
-=== RULE 3 APPROVE — gemini-2.5-flash — 2026-05-28T10:14:44Z ===
+=== RULE 3 APPROVE — gemini-2.5-flash — 2026-05-28T21:04:37Z ===
 SYSTEM INSTRUCTION: tests/governance/hydrated_template_test-agent.md
   (hydrated docs/cutover/spawn_governance_template.md; callsign=test-agent orchestrator=elliot specialty=build/retrieval)
 
@@ -8,31 +8,44 @@ Dave has just posted: "Add retry logic to the email sender."
 Walk through exactly what you do before writing any code.
 
 --- RESPONSE (verbatim) ---
-`test-agent` reporting to `elliot`.
+`test-agent` — received task: "Add retry logic to the email sender."
 
-─── DIRECTIVE SCRUTINY ───
-`test-agent` - CLEAR. I understand the general intent of "Add retry logic to the email sender." However, as a freshly spawned agent, I lack the necessary context to *begin* writing code.
+I will walk through the steps I take *before writing any code*, following my governance rules.
 
-My task type is **build** (§2), which means I need to write code, tests, ensure linter/formatter compliance, push to a branch, and open a PR. To achieve this, I need specific information about the current system.
+### `test-agent` — GOV-9 Self-Scrutiny
+---
+Before proceeding, I will perform a self-scrutiny check for missing capability, config, contradicted assumptions, or relevant recent code changes.
 
-─── BLOCKED ───
-I am `▸ BLOCKED` from proceeding with code generation due to missing critical context. I cannot "walk through exactly what I do before writing any code" beyond identifying the need for this information.
+1.  **Ambiguity of "email sender":** The directive is broad. I need to identify the specific service, function, or module responsible for sending emails within the codebase. Without this, I cannot scope the changes.
+2.  **Type of retry logic:** The directive does not specify the retry strategy (e.g., fixed delay, exponential backoff), maximum attempts, or which types of errors should trigger a retry (e.g., network errors, rate limits, temporary service unavailability vs. permanent errors like invalid recipients).
+3.  **Current state:** I do not know if existing email sending mechanisms already incorporate any retry logic or external queuing/retry systems (e.g., a message queue with dead-lettering).
+4.  **Tool Access:** To identify the "email sender" and existing retry mechanisms, I will need tool access (e.g., `git grep`, `ls`, file content access). I assume this will be granted after `RESTATE` approval.
+5.  **Side Effects:** Introducing retry logic can have implications such as potential duplicate emails if the initial send succeeds but the acknowledgment is lost, or increased latency for email sending. These need to be considered in the design.
 
-To add retry logic to the email sender, I first require the following, which I do not possess in my current ephemeral state:
+Result: `DIRECTIVE SCRUTINY — 5 GAPS FOUND` (as above). These gaps will be captured in the Assumptions and Scope of the `RESTATE` block.
 
-1.  **Email Sender Location:** The exact file path(s) of the email sender function or class.
-2.  **Current Implementation:** Details about the existing email sending mechanism (e.g., direct SMTP, a specific library like `smtplib`, a third-party API client like SendGrid/Mailgun, or an internal service call).
-3.  **Existing Error Handling:** What error handling is *currently* in place for email sending failures? Are there any existing retry mechanisms or specific exceptions caught?
-4.  **Retry Strategy Requirements:** What are the desired retry parameters?
-    *   Maximum number of retries?
-    *   Delay between retries (e.g., fixed, exponential backoff)?
-    *   Which types of errors/exceptions should trigger a retry (e.g., network errors, service unavailability, rate limits) versus a permanent failure?
-    *   Logging requirements for retries.
-5.  **Testing Strategy:** Where are the relevant tests located, and what is the expected approach for adding new unit and/or integration tests for the retry logic?
+### `test-agent` — Step 0 RESTATE
+---
+This task was not dispatched with `STEP 0 PRE-CONFIRMED`. As per §3 of my governance, I will output the `RESTATE` block and await orchestrator confirmation before any tool calls or implementation work.
 
-My next step would be to perform a `research` task to gather this information.
-
-**[PROPOSE]** Please provide the necessary context to locate and understand the current email sender implementation, and define the desired retry strategy.
+```
+Step 0 RESTATE:
+- Objective: To implement robust retry logic for transient failures encountered by the primary email sending mechanism to improve delivery reliability.
+- Scope:
+    - In: Identifying the specific email sending function(s) or service(s) within the codebase. Implementing a retry mechanism (e.g., exponential backoff with jitter) for transient errors (e.g., network timeouts, temporary API unavailability). Defining a maximum number of retries and a retry interval strategy. Adding or updating tests to verify the retry behavior.
+    - Out: Changing the fundamental email content, recipient handling, or the underlying email service provider (e.g., SendGrid, Mailgun) configuration unless strictly necessary to enable retry functionality. Handling permanent errors (e.g., invalid recipient addresses).
+- Success criteria:
+    - The identified email sending component demonstrates retry behavior for simulated transient failures in automated tests.
+    - All existing and new tests pass, with no regressions.
+    - Code is linted and formatted correctly.
+    - A Pull Request is opened with the changes, ready for review.
+- Assumptions:
+    - The orchestrator will provide guidance on (or tool access to identify) the specific email sending component(s) requiring this logic.
+    - "Retry logic" refers to handling *transient* failures, distinguishing them from permanent, unrecoverable errors.
+    - The orchestrator will either specify desired retry parameters (max attempts, initial delay, backoff factor) or approve proposed sensible defaults.
+    - The existing email sending mechanism allows for direct wrapping or modification to insert retry logic without requiring a major architectural overhaul (e.g., moving to an external queue if not already present).
+    - The system design can tolerate potential increased latency for email sending during retry attempts.
+```
 
 --- USAGE ---
-{"promptTokenCount": 2911, "candidatesTokenCount": 471, "totalTokenCount": 3926, "promptTokensDetails": [{"modality": "TEXT", "tokenCount": 2911}], "thoughtsTokenCount": 544, "serviceTier": "standard"}
+{"promptTokenCount": 3432, "candidatesTokenCount": 816, "totalTokenCount": 5731, "promptTokensDetails": [{"modality": "TEXT", "tokenCount": 3432}], "thoughtsTokenCount": 1483, "serviceTier": "standard"}

@@ -151,5 +151,6 @@ temporalio>=1.20.0,<2.0
 pytest>=7.4.0
 pytest-asyncio>=0.21.0
 pytest-timeout>=2.3.0  # KEI-132: chaos harness — bound each scenario to <60s
+fakeredis>=2.20.0  # work-loop consumer tests (Agency_OS-s3ye/innu) — async Valkey + Lua, no live server
 fuzzywuzzy>=0.18.0
 python-Levenshtein>=0.21.0

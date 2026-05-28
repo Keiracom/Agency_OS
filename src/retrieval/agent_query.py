@@ -21,7 +21,7 @@ from collections.abc import Coroutine
 from dataclasses import dataclass
 from typing import Any, Literal, TypeVar
 
-from src.retrieval import fusion, orchestrator
+from src.retrieval import fusion, hyde, orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -318,12 +318,20 @@ def query(
         `QueryResult` with answer + citations + elapsed_ms + bypass flag.
     """
     started = time.monotonic()
+    # HyDE query expansion (Wave 4, RETRIEVAL_HYDE_ENABLED, default off).
+    # `expand_query` fuses the raw query with a hypothetical answer document so
+    # recall searches the answer space; fail-open to the raw query. Applies to
+    # BOTH the fusion and non-fusion recall paths. Observability + answer
+    # synthesis (in _finalize) stay on the ORIGINAL query text.
+    search_text = hyde.expand_query(text)
     if fusion.fusion_enabled():
-        fused_nodes = _run_coro_sync(fusion.fused_recall(text, tenant=tenant_id, top_k=k_initial))
+        fused_nodes = _run_coro_sync(
+            fusion.fused_recall(search_text, tenant=tenant_id, top_k=k_initial)
+        )
         outcome = _fusion_outcome(fused_nodes, collections)
     else:
         outcome = orchestrator.retrieve_with_outcome(
-            text=text,
+            text=search_text,
             collections=collections,
             k_initial=k_initial,
             k_returned=k_returned,
@@ -364,13 +372,18 @@ async def query_async(
     loop stays free. Argument semantics are identical to `query()`.
     """
     started = time.monotonic()
+    # HyDE expansion (see query()) — runs the sync Anthropic call off-loop via
+    # asyncio.to_thread so the event loop stays free; fused/non-fused recall
+    # both search the expanded text. _finalize keeps observability + synthesis
+    # on the ORIGINAL text.
+    search_text = await asyncio.to_thread(hyde.expand_query, text)
     if fusion.fusion_enabled():
-        fused_nodes = await fusion.fused_recall(text, tenant=tenant_id, top_k=k_initial)
+        fused_nodes = await fusion.fused_recall(search_text, tenant=tenant_id, top_k=k_initial)
         outcome = _fusion_outcome(fused_nodes, collections)
     else:
         outcome = await asyncio.to_thread(
             orchestrator.retrieve_with_outcome,
-            text=text,
+            text=search_text,
             collections=collections,
             k_initial=k_initial,
             k_returned=k_returned,

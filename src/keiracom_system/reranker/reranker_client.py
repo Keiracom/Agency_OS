@@ -192,7 +192,9 @@ class RerankerClient:
             if not isinstance(idx, int) or not (0 <= idx < n_texts):
                 raise RerankClientError(f"rerank: row {i} index {idx} out of range [0, {n_texts})")
             if not isinstance(score, (int, float)):
-                raise RerankClientError(f"rerank: row {i} score is not numeric: {type(score).__name__}")
+                raise RerankClientError(
+                    f"rerank: row {i} score is not numeric: {type(score).__name__}"
+                )
             text = row.get("text") if isinstance(row.get("text"), str) else None
             out.append(RerankHit(index=int(idx), score=float(score), text=text))
         return out

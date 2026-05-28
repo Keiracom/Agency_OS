@@ -18,7 +18,7 @@ import time
 from dataclasses import dataclass
 from typing import Literal
 
-from src.retrieval import hyde, orchestrator
+from src.retrieval import hyde, multi_query, orchestrator
 
 logger = logging.getLogger(__name__)
 
@@ -219,13 +219,25 @@ def query(
     # so retrieval searches the answer space; fail-open to the raw query.
     # Observability + answer synthesis below stay on the ORIGINAL query text.
     search_text = hyde.expand_query(text)
-    outcome = orchestrator.retrieve_with_outcome(
-        text=search_text,
-        collections=collections,
-        k_initial=k_initial,
-        k_returned=k_returned,
-        tenant_id=tenant_id,
-    )
+    # Multi-query expansion (Wave 4, RETRIEVAL_MULTI_QUERY_ENABLED, default off).
+    # Generates N query variants from the (possibly HyDE-expanded) search text,
+    # merges+deduplicates results by memory_id. Fail-open to single-query.
+    if multi_query.multi_query_enabled():
+        outcome = multi_query.retrieve_multi(
+            text=search_text,
+            collections=collections,
+            k_initial=k_initial,
+            k_returned=k_returned,
+            tenant_id=tenant_id,
+        )
+    else:
+        outcome = orchestrator.retrieve_with_outcome(
+            text=search_text,
+            collections=collections,
+            k_initial=k_initial,
+            k_returned=k_returned,
+            tenant_id=tenant_id,
+        )
     citations = [_node_to_citation(n) for n in outcome.nodes]
     # KEI-198 — distribution-aware citation selection.
     # OLD shape (pre-KEI-192 audit): hard `score >= min_score` filter excluded

@@ -223,20 +223,25 @@ def test_module_entrypoint_swallows_exceptions():
     assert ei.value.code == 0
 
 
-# ─── settings.json wiring smoke ────────────────────────────────────────────
+# ─── settings.json hook-kill compliance gate (Dave directive 2026-05-27) ───
+#
+# All .claude/settings.json hooks were removed (commit 3b6dfd224). This was a
+# wiring-smoke ("PreToolUse must reference governance_hooks.py"); it now flips
+# into a compliance gate that fails if PreToolUse is silently re-introduced
+# without re-ratifying the directive. The governance_hooks.py module itself
+# remains importable + exercised by the unit tests above.
 
 
-def test_settings_json_contains_pretooluse_hook():
+def test_settings_json_pretooluse_hook_absent_per_hook_kill_directive():
     settings = json.loads(
         (Path(__file__).resolve().parent.parent.parent / ".claude" / "settings.json").read_text()
     )
-    assert "PreToolUse" in settings.get("hooks", {})
-    pre = settings["hooks"]["PreToolUse"]
-    assert any(
-        "governance_hooks.py" in h.get("command", "")
-        for entry in pre
-        for h in entry.get("hooks", [])
-    ), "governance_hooks.py not registered in PreToolUse"
+    hooks = settings.get("hooks", {})
+    assert "PreToolUse" not in hooks, (
+        f"PreToolUse hook re-introduced into .claude/settings.json after the "
+        f"2026-05-27 hook-kill directive; got {hooks.get('PreToolUse')!r}. "
+        f"Re-ratify with Dave before restoring."
+    )
 
 
 # ─── security guard surface (defence-in-depth) ─────────────────────────────

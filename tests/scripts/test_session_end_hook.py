@@ -213,20 +213,22 @@ def test_module_entrypoint_swallows_exceptions(monkeypatch):
     assert ei.value.code == 0
 
 
-# ─── settings.json wiring smoke ────────────────────────────────────────────
+# ─── settings.json hook-kill compliance gate (Dave directive 2026-05-27) ───
+#
+# All .claude/settings.json hooks were removed (commit 3b6dfd224). This was a
+# wiring-smoke ("SessionEnd must reference session_end_hook.py"); it now flips
+# into a compliance gate that fails if SessionEnd is silently re-introduced
+# without re-ratifying the directive. The session_end_hook module itself
+# remains importable + exercised by the unit tests above.
 
 
-def test_settings_json_contains_session_end_hook():
+def test_settings_json_session_end_hook_absent_per_hook_kill_directive():
     settings = json.loads(
         (Path(__file__).resolve().parent.parent.parent / ".claude" / "settings.json").read_text()
     )
-    assert "hooks" in settings
-    assert "SessionEnd" in settings["hooks"]
-    se = settings["hooks"]["SessionEnd"]
-    assert isinstance(se, list) and len(se) >= 1
-    # The first SessionEnd entry references our hook script
-    cmd_block = se[0]
-    assert "hooks" in cmd_block
-    assert any("session_end_hook.py" in h.get("command", "") for h in cmd_block["hooks"]), (
-        "session_end_hook.py not registered in .claude/settings.json"
+    hooks = settings.get("hooks", {})
+    assert "SessionEnd" not in hooks, (
+        f"SessionEnd hook re-introduced into .claude/settings.json after the "
+        f"2026-05-27 hook-kill directive; got {hooks.get('SessionEnd')!r}. "
+        f"Re-ratify with Dave before restoring."
     )

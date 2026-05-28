@@ -59,16 +59,19 @@ systemctl --user stop keiracom-fleet-hindsight    # or: docker compose -f keirac
 # Do NOT delete the named volume keiracom_fleet_hindsight_pg_data — it holds the mirror (needed for §3).
 ```
 
-**Step C — Restore the fleet to operational state.** The persistent tmux fleet (sessions `aiden atlas elliottbot maxbot nova orion scout`) is supervised by systemd `--user` units. After Step A's redeploy, restart the supervised services so each callsign reattaches to a clean worktree on latest `main`:
+**Step C — Restore the fleet to operational state.** The persistent tmux fleet (sessions `aiden atlas elliottbot maxbot nova orion scout`) is supervised by systemd `--user` units: `<callsign>-agent.service` (KEI-94 tmux keep-alive — recreates the session if it died), `<callsign>-inbox-watcher.service` (dispatch routing), `<callsign>-nats-*-bridge.service` (NATS routing — the suffix varies per callsign: `-dispatch-`, `-review-`, `-inbox-`), and `agent-self-claim-loop@<callsign>.service` (KEI-92). After Step A's redeploy, restart **every running fleet unit** so each callsign reattaches to a clean worktree on latest `main`.
+
+Enumerate-live (drift-proof as the fleet grows — do **not** hardcode a callsign list):
 
 ```bash
-systemctl --user restart \
-  {elliot,aiden,max,atlas,orion,scout,nova}-inbox-watcher.service \
-  {atlas,orion}-agent.service orion-nats-dispatch-bridge.service \
-  agent-self-claim-loop@atlas.service agent-self-claim-loop@orion.service
+systemctl --user list-units --type=service --state=running --plain --no-legend \
+  | awk '{print $1}' \
+  | grep -E -- '-(agent|inbox-watcher|nats-[a-z]+-bridge)\.service$|^agent-self-claim-loop@' \
+  | grep -vE '^(gpg-agent|agent-memories-indexer)\.service$' \
+  | xargs -r systemctl --user restart
 ```
 
-(The `<callsign>-agent.service` units are the KEI-94 tmux keep-alive; restarting them recreates the session if it died. Inbox-watchers + NATS bridges restore dispatch routing.)
+The pattern matches all four fleet unit families for every callsign. The second `grep -v` excludes the only non-fleet collisions (`gpg-agent`, `agent-memories-indexer`); the `nats-server` broker is **not** matched (it has no `-agent`/`-inbox-watcher`/`-nats-*-bridge` suffix) and must never be restarted here — doing so disrupts all inter-agent comms. Verified live 2026-05-28: the pattern selects 27 units (7 agents + 7 inbox-watchers + 7 NATS bridges + 6 active claim-loops; `agent-self-claim-loop@elliot` is intentionally inactive and is correctly left untouched). Relay-watchers are intentionally inactive and excluded; resurrect them only if a specific recovery needs them.
 
 **Step D — Confirm operational.** `tmux list-sessions` shows all 7; `systemctl --user --failed` is clean (note: `migration-apply-watcher.service` may already be failed pre-rollback — confirm it is not newly broken); one `a5_smoke_recall.py` run returns relevant memories from the restored Weaviate read path.
 

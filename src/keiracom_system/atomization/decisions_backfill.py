@@ -284,8 +284,11 @@ STAGING_BANK = "fleet_decisions_staging"
 def _connect_cursor() -> tuple[Any | None, Any | None]:
     """Open a psycopg connection+cursor from DATABASE_URL (CLI-local).
 
-    psycopg is imported here, not at module top, so the library stays free of a
-    direct DB driver import (atomization/ is not BMV1-exempt; AtomStore uses DI).
+    psycopg is imported inside this CLI helper, never in the library functions
+    (run_direct/build_atom_from_source take an injected db). This module is on
+    the BMV1 Guard (b) exemption list — CLI backfill entrypoint, not the agent
+    hot path; see scripts/ci/check_no_direct_db_outside_mal.sh (the guard greps
+    indented imports too, so the exemption — not deferral — is what permits it).
     Returns (None, None) when no DSN is set — caller falls back to docs-only.
     """
     import os

@@ -25,15 +25,19 @@ Inputs:
 
 Outputs (always JSON to stdout, even on no-op):
     {
-      "claimed":      bool,
-      "issue_id":     str | null,
-      "title":        str | null,
-      "priority":     str | null,   ('P0'|'P1'|'P2'|'P3'|'P4')
-      "callsign":     str,
-      "reason":       str,          ('claimed'|'no_eligible_work'|
-                                     'race_lost_all'|'bd_unavailable'|
-                                     'invalid_callsign'|'dry_run')
-      "attempted":    [str, ...]    issue ids we tried before settling
+      "claimed":            bool,
+      "issue_id":           str | null,
+      "title":              str | null,
+      "priority":           str | null,   ('P0'|'P1'|'P2'|'P3'|'P4')
+      "callsign":           str,
+      "reason":             str,          ('claimed'|'no_eligible_work'|
+                                           'race_lost_all'|'all_pr_merged'|
+                                           'bd_unavailable'|
+                                           'invalid_callsign'|'dry_run')
+      "attempted":          [str, ...]    issue ids we tried before settling
+      "skipped_pr_merged":  [str, ...]    issue ids closed because their
+                                          linked GH PR was already merged
+                                          on origin/main (Agency_OS-y2al)
     }
 
 Exit codes:
@@ -46,8 +50,13 @@ Selection policy:
         unassigned  OR  assignee == callsign
     so the hook never poaches another agent's work.
   - We sort by priority (P0 first → P4 last), then by created date asc.
-  - We attempt 'bd update <id> --claim' on the first match; on failure
-    (e.g. another agent grabbed it microseconds before), try the next.
+  - Agency_OS-y2al pre-check: for each candidate in priority order, scan its
+    metadata for a GitHub PR ref (full URL or `gh-NNNN`); if `gh pr view`
+    reports the PR is MERGED on origin/main, CLOSE the issue and skip — no
+    brief, no claim, no agent context spent. Merged-skips do NOT consume the
+    max_attempts (claim-race) budget.
+  - We attempt 'bd update <id> --claim' on the next remaining candidate; on
+    failure (another agent grabbed it microseconds before), try the next.
 """
 
 from __future__ import annotations
@@ -62,6 +71,18 @@ import sys
 from typing import Any
 
 _CALLSIGN_RE = re.compile(r"^[A-Za-z][A-Za-z0-9_-]*$")
+
+# Agency_OS-y2al — skip dispatch + close any KEI whose linked GitHub PR is
+# already merged on origin/main. Five+ stale dispatches in one V1 session
+# (each consuming an agent context to pre-flight and report no-op) make this
+# a real bug. The regex matches either a full PR URL or the `gh-NNNN` shortform
+# used in bd --external-ref.
+_GH_PR_RE = re.compile(
+    r"github\.com/[\w.-]+/[\w.-]+/pull/(\d+)|\bgh-(\d+)\b",
+    re.IGNORECASE,
+)
+# Fields on a bd ready item where a PR reference may surface.
+_PR_REF_FIELDS = ("external_ref", "title", "description", "notes")
 
 
 def _priority_key(item: dict) -> tuple:
@@ -118,6 +139,63 @@ def _bd_claim(bd_bin: str, issue_id: str) -> bool:
     return result.returncode == 0
 
 
+def _extract_pr_number(item: dict) -> int | None:
+    """Find a GitHub PR number referenced in an issue's metadata, or None.
+
+    Scans external_ref + title + description + notes for either a full PR URL
+    (github.com/<owner>/<repo>/pull/<N>) or the `gh-<N>` shortform commonly
+    used in bd --external-ref. Returns the FIRST match found. Linear-only
+    external_refs (no embedded GH URL) return None — those skip the merged
+    check and proceed to claim normally.
+    """
+    for field in _PR_REF_FIELDS:
+        text = str(item.get(field) or "")
+        if not text:
+            continue
+        m = _GH_PR_RE.search(text)
+        if m:
+            return int(m.group(1) or m.group(2))
+    return None
+
+
+def _gh_pr_merged_on_main(pr_number: int) -> bool:
+    """`gh pr view <N> --json state,baseRefName` → MERGED on `main`. Fail-closed.
+
+    Fail-closed (False on any error or missing `gh`) — better to keep a dispatch
+    open than to close-out an issue we can't verify is actually merged.
+    """
+    try:
+        result = subprocess.run(
+            ["gh", "pr", "view", str(pr_number), "--json", "state,baseRefName"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+    if result.returncode != 0:
+        return False
+    try:
+        data = json.loads(result.stdout or "{}")
+    except json.JSONDecodeError:
+        return False
+    return data.get("state") == "MERGED" and data.get("baseRefName") == "main"
+
+
+def _bd_close(bd_bin: str, issue_id: str, reason: str) -> bool:
+    """`bd close <id> --reason "..."`. Returns True on success."""
+    try:
+        result = subprocess.run(
+            [bd_bin, "close", issue_id, "--reason", reason],
+            capture_output=True,
+            text=True,
+            timeout=15,
+        )
+    except (subprocess.TimeoutExpired, FileNotFoundError):
+        return False
+    return result.returncode == 0
+
+
 def _eligible(item: dict, callsign: str) -> bool:
     """KEI-150 — assignee filtering removed (Dave 2026-05-17).
 
@@ -140,6 +218,7 @@ def _result(
     reason: str,
     issue: dict | None = None,
     attempted: list[str] | None = None,
+    skipped_pr_merged: list[str] | None = None,
 ) -> dict[str, Any]:
     return {
         "claimed": claimed,
@@ -149,6 +228,7 @@ def _result(
         "callsign": callsign,
         "reason": reason,
         "attempted": attempted or [],
+        "skipped_pr_merged": skipped_pr_merged or [],
     }
 
 
@@ -160,8 +240,15 @@ def run(
     dry_run: bool = False,
     ready_fn=None,
     claim_fn=None,
+    pr_merged_fn=None,
+    close_fn=None,
 ) -> dict[str, Any]:
-    """Pure-Python entry point. Side effects injectable for tests."""
+    """Pure-Python entry point. Side effects injectable for tests.
+
+    `pr_merged_fn(pr_number) -> bool` and `close_fn(issue_id, reason) -> bool`
+    are the Agency_OS-y2al seams — when a candidate's linked PR is already
+    merged on origin/main, the issue is closed and skipped (no brief, no claim).
+    """
     if not _CALLSIGN_RE.fullmatch(callsign):
         return _result(claimed=False, callsign=callsign, reason="invalid_callsign")
 
@@ -170,6 +257,8 @@ def run(
     ready_fn_injected = ready_fn is not None
     ready_fn = ready_fn or (lambda: _bd_ready(bd_bin))
     claim_fn = claim_fn or (lambda iid: _bd_claim(bd_bin, iid))
+    pr_merged_fn = pr_merged_fn or _gh_pr_merged_on_main
+    close_fn = close_fn or (lambda iid, reason: _bd_close(bd_bin, iid, reason))
 
     items = ready_fn()
     if not items:
@@ -185,6 +274,7 @@ def run(
 
     eligible.sort(key=_priority_key)
     attempted: list[str] = []
+    skipped_pr_merged: list[str] = []
 
     if dry_run:
         target = eligible[0]
@@ -196,9 +286,18 @@ def run(
             attempted=[target["id"]],
         )
 
-    for candidate in eligible[:max_attempts]:
+    # Walk every eligible candidate; merged-PR skips do NOT count against the
+    # max_attempts (race-loss) budget — only actual claim attempts do.
+    for candidate in eligible:
+        if len(attempted) >= max_attempts:
+            break
         iid = candidate.get("id")
         if not iid:
+            continue
+        pr_n = _extract_pr_number(candidate)
+        if pr_n is not None and pr_merged_fn(pr_n):
+            close_fn(iid, f"auto-claim: linked PR #{pr_n} already merged on main (y2al)")
+            skipped_pr_merged.append(iid)
             continue
         attempted.append(iid)
         if claim_fn(iid):
@@ -208,12 +307,21 @@ def run(
                 reason="claimed",
                 issue=candidate,
                 attempted=attempted,
+                skipped_pr_merged=skipped_pr_merged,
             )
+    if not attempted and skipped_pr_merged:
+        return _result(
+            claimed=False,
+            callsign=callsign,
+            reason="all_pr_merged",
+            skipped_pr_merged=skipped_pr_merged,
+        )
     return _result(
         claimed=False,
         callsign=callsign,
-        reason="race_lost_all",
+        reason="race_lost_all" if attempted else "no_eligible_work",
         attempted=attempted,
+        skipped_pr_merged=skipped_pr_merged,
     )
 
 

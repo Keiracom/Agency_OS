@@ -17,10 +17,24 @@ REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 VAULT_HOME="${HOME}/clawd/vault"
 UNITS_DIR="${HOME}/.config/systemd/user"
 LOG_DIR="${HOME}/clawd/logs"
+AGENCY_CFG_DIR="${HOME}/.config/agency-os"  # stable home for the boot unseal script + init keys
 
-mkdir -p "${VAULT_HOME}/config" "${VAULT_HOME}/data" "${UNITS_DIR}" "${LOG_DIR}"
-chmod 777 "${VAULT_HOME}/data"
-install -m 0644 "${REPO_DIR}/infra/vault/vault.hcl" "${VAULT_HOME}/config/vault.hcl"
+mkdir -p "${VAULT_HOME}/config" "${VAULT_HOME}/data" "${UNITS_DIR}" "${LOG_DIR}" "${AGENCY_CFG_DIR}"
+# Only meaningful on true first install (empty dir owned by us). On re-run the dir is
+# owned by the container's vault uid and this chmod is both unnecessary and not-permitted
+# — so it must be non-fatal under `set -e`.
+chmod 777 "${VAULT_HOME}/data" 2>/dev/null || true
+# First install only: once the container is running it takes ownership of the
+# bind-mounted config dir, so re-installing the hcl would fail (not-permitted) and is
+# unnecessary (the running vault is already using it). Skip if present.
+if [[ ! -f "${VAULT_HOME}/config/vault.hcl" ]]; then
+    install -m 0644 "${REPO_DIR}/infra/vault/vault.hcl" "${VAULT_HOME}/config/vault.hcl"
+fi
+
+# Copy the unseal script to a stable, worktree-independent path (the unit's ExecStart
+# targets this, NOT the repo path — see keiracom-vault-unseal.service for why).
+install -m 0755 "${REPO_DIR}/scripts/vault_auto_unseal.sh" \
+    "${AGENCY_CFG_DIR}/vault_auto_unseal.sh"
 
 if ! sg docker -c "docker ps -a --format '{{.Names}}'" | grep -qx keiracom-vault; then
     echo "starting keiracom-vault (file storage)..."

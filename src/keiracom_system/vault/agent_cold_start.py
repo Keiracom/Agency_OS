@@ -304,6 +304,28 @@ def save_exit_atoms(task: dict, rc: int, status: str) -> None:
         logger.exception("save_exit_atoms: unexpected error for task=%s", task.get("id"))
 
 
+def _recall_spawn_context(task: dict) -> str:
+    """zr7e.5 — L2 Hindsight recall block for this task's spawn prompt.
+
+    Delegates to src.retrieval.spawn_recall.build_spawn_context_block which
+    already enforces the KEI-55 per-block context-budget cap (so we never blow
+    the agent's context window). Fail-open: returns "" on any error so the
+    spawn proceeds without prior context rather than aborting.
+    """
+    try:
+        from src.retrieval.spawn_recall import (  # noqa: PLC0415 — lazy
+            build_spawn_context_block,
+        )
+
+        return build_spawn_context_block(
+            task_type=task.get("task_type") or "build",
+            task_brief=task.get("description") or task.get("title") or "",
+        )
+    except Exception as exc:  # noqa: BLE001 — recall must never block a spawn
+        logger.warning("agent_cold_start: L2 spawn-recall failed (non-fatal): %s", exc)
+        return ""
+
+
 def run(
     *,
     resolve: Callable[..., Any] = resolve_into_env,
@@ -313,6 +335,7 @@ def run(
     finalize: Callable[..., None] = finalize_task,
     notify: Callable[..., None] = notify_complete,
     save_atoms: Callable[..., None] = save_exit_atoms,
+    spawn_recall: Callable[[dict], str] = _recall_spawn_context,
 ) -> int:
     """Cold-start orchestration. Returns the process exit code."""
     logging.basicConfig(level=logging.INFO)
@@ -331,7 +354,14 @@ def run(
             "agent_cold_start: task %s not claimable (already taken) — exiting clean", task_id
         )
         return 0  # another agent owns it; not our failure
-    rc = agent(compose_prompt(task))
+    # zr7e.5: prepend the L2 Hindsight recall block (when present) ahead of the
+    # task-centric prompt so the agent enters the chain with prior context
+    # instead of cold.
+    prompt = compose_prompt(task)
+    recall_block = spawn_recall(task)
+    if recall_block:
+        prompt = f"{recall_block}\n\n{prompt}"
+    rc = agent(prompt)
     finalize(task_id, rc, task.get("acceptance_criteria"))
     status = "done" if rc == 0 else "blocked"
     save_atoms(task, rc, status)  # AtomV1 memory capture (zr7e.4) — fail-open

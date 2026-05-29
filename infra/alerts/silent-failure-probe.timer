@@ -1,0 +1,9 @@
+[Unit]
+Description=Run silent-failure-probe every 5 minutes (Agency_OS-52wu liveness check)
+
+[Timer]
+OnCalendar=*:0/5
+Persistent=true
+
+[Install]
+WantedBy=timers.target

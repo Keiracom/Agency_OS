@@ -1,0 +1,13 @@
+[Unit]
+Description=Agency OS — Silent failure probe (Agency_OS-52wu): liveness check for all critical services
+Documentation=https://linear.app/keiracom/issue/Agency_OS-52wu
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/silent_failure_probe.py
+StandardOutput=append:/home/elliotbot/clawd/logs/silent-failure-probe.log
+StandardError=append:/home/elliotbot/clawd/logs/silent-failure-probe.log
+MemoryMax=128M

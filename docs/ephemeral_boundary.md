@@ -16,7 +16,7 @@ Every agent in the V1 chain runs as a **separate, short-lived spawn** — Face �
 | **Hindsight** (Weaviate `fleet_decisions` bank) | AtomV1 atoms — the decisions/knowledge an agent produced | any agent on exit (`exit_cycle.classify_and_save`) | next spawn, Layer 2 recall |
 | **Postgres `public.tasks`** | task rows: status, title/brief, acceptance criteria, concur/reject | Worker + Reviewers | dispatcher, work-loop consumer |
 | **Postgres `public.keiracom_spawn_attribution`** | per-spawn cost/telemetry (`cost_usd`, tokens, source, completion_status) | Worker (and dispatcher hook) on exit | operator rollups |
-| **Postgres `public.persona_bank`** | role system prompts (5 rows: face/aiden/max/orion/atlas) | provisioning (Orion) | spawn, Layer 1 |
+| **Postgres `public.persona_bank`** | role system prompts (6 rows: face/aiden/max/orion/atlas/elliot) | provisioning (Orion) | spawn, Layer 1 |
 | **Postgres `public.agent_memories` / `public.ceo_memory`** | facts, daily logs, directives; `ceo_memory` is the governance audit/admin target | agents + governance writers | recall, governance gates |
 | **Valkey / Redis** | task queue + concurrency leases (see TTLs below) | work-loop consumer | work-loop consumer |
 
@@ -35,7 +35,7 @@ Every agent in the V1 chain runs as a **separate, short-lived spawn** — Face �
 | `keiracom:tasks:attempts:{task_id}` | INT | 3600s | spawn-attempt counter (drives dead-letter at max) |
 | `keiracom:tasks:deadletter` | LIST | none | tasks that exhausted retries |
 
-> **Cutover note:** Postgres is Supabase today and migrating to Railway Postgres (`ceo:two_store_architecture_v1`). Post-cutover, Hindsight is the sole knowledge store and `ceo_memory` is audit/admin only — **not a pipeline step** (`ceo:session_2026-05-28_architecture_decisions`). The boundary in this doc is store-role-stable across that move.
+> **Cutover note:** Postgres is Supabase today, migrating to **self-hosted Vultr VPS** (ratified: `ceo:session_2026-05-28_architecture_decisions`, Dave 2026-05-28 — *"All data migrates to self-hosted Vultr"*). Vultr provisioning is currently deferred (KEI-241), so the live store is still Supabase. Railway Postgres is an alternative still under consideration (`ceo:two_store_architecture_v1`, **PENDING DAVE SIGN-OFF — not ratified**). Post-cutover, Hindsight is the sole knowledge store and `ceo_memory` is audit/admin only — **not a pipeline step**. The boundary in this doc is store-role-stable across the move.
 
 ---
 
@@ -89,9 +89,9 @@ On spawn, the dispatcher hydrates the agent through four layers (`ceo:session_20
 
 ## Notes — canonical sources (audit-dispatch checklist)
 
-- `ceo:v1_chain_architecture` (2026-05-29): chain = `Face -> Aiden (deliberate) -> Max (challenge) -> [CONCUR] -> Worker -> Orion (spec) + Atlas (safety) -> [DUAL CONCUR] -> Slack`; handoff = AtomV1 pointer over NATS (`task_id + atom_id`), recalled at spawn; persona_bank = 5 rows served via `GET /dispatcher/persona`.
+- `ceo:v1_chain_architecture` (2026-05-29): chain = `Face -> Aiden (deliberate) -> Max (challenge) -> [CONCUR] -> Worker -> Orion (spec) + Atlas (safety) -> [DUAL CONCUR] -> Slack`; handoff = AtomV1 pointer over NATS (`task_id + atom_id`), recalled at spawn; persona_bank = 6 rows (face/aiden/max/orion/atlas/elliot) served via `GET /dispatcher/persona`.
 - `ceo:v1_chain_roles_ratified_2026_05_29`: role identities (Face / Aiden=Architect / Max=Challenger / Orion=Spec / Atlas=Quality+Safety).
 - `ceo:ephemeral_capture_model_v1` (v2): direct-write capture — `exit_cycle.classify_and_save`; nothing writes automatically.
-- `ceo:session_2026-05-28_architecture_decisions`: two-store model + 4-layer ephemeral spawn contract.
+- `ceo:session_2026-05-28_architecture_decisions` (RATIFIED, Dave 2026-05-28): two-store model + 4-layer ephemeral spawn contract; supabase retired → all data migrates to self-hosted Vultr; ceo_memory = audit/admin only.
 - `ceo:atomization_architecture_v1`: AtomV1 schema.
-- `ceo:two_store_architecture_v1`: Postgres (operational) + Hindsight (knowledge); Supabase → Railway cutover.
+- `ceo:two_store_architecture_v1` (**status: PENDING DAVE SIGN-OFF** — cited as a pending alternative, not as fact): proposes the operational/knowledge store split with Railway Postgres. The ratified cutover target is self-hosted Vultr per the session-decisions key above.

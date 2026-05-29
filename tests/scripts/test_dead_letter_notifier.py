@@ -65,6 +65,8 @@ def test_format_contains_all_required_fields():
     msg = m.format_dead_letter_message(dlt)
     assert "t9" in msg and "build X" in msg and "3" in msg and "timeout" in msg
     assert "not deleted" in msg  # row retained for audit
+    assert "[DEAD-LETTER]" in msg  # plain-text marker (Aiden flag)
+    assert "🔴" not in msg  # no emoji — renders identically in every Slack client
 
 
 def test_format_degrades_gracefully_on_unknowns():

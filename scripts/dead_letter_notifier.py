@@ -74,11 +74,13 @@ def format_dead_letter_message(dlt: DeadLetterTask) -> str:
     Degrades gracefully when the consumer has not captured retry/error yet."""
     retry = dlt.retry_count if dlt.retry_count is not None else "unknown"
     err = dlt.final_error.strip() or "(not captured — see consumer logs)"
+    # Plain-text marker (not an emoji) so it renders identically in every Slack
+    # client — Aiden flag 2026-05-29.
     return (
-        f"🔴 *Dead-letter* — task `{dlt.task_id}` dropped after {retry} attempts.\n"
-        f"• *What it was doing:* {dlt.description or '(no title)'}\n"
-        f"• *Retry count:* {retry}\n"
-        f"• *Final error:* {err}\n"
+        f"[DEAD-LETTER] task `{dlt.task_id}` dropped after {retry} attempts.\n"
+        f"• What it was doing: {dlt.description or '(no title)'}\n"
+        f"• Retry count: {retry}\n"
+        f"• Final error: {err}\n"
         f"• Row retained in `public.tasks` (status=`{DEAD_LETTER_STATUS}`) for audit — not deleted."
     )
 

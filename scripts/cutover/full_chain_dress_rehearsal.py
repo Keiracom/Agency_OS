@@ -320,6 +320,19 @@ def classify_spawn_failure(status_code: int, body: str = "") -> str | None:  # n
     return None if 200 <= status_code < 300 else "spawn_rejected"
 
 
+def classify_failure_path(run: RunResult) -> str | None:
+    """Map a crash / dead_letter RunResult to a FAILURE_MODES entry; None on a
+    clean failure-path outcome. Symmetric with classify_spawn_failure — it ties
+    the §9 crash_unrecovered / not_dead_lettered modes to the observed run so the
+    harness reports them (P3/P4) instead of hanging. Non-failure-path run_modes
+    (cold / recall) return None."""
+    if run.run_mode == "crash":
+        return None if run.recovered else "crash_unrecovered"
+    if run.run_mode == "dead_letter":
+        return None if run.dead_lettered else "not_dead_lettered"
+    return None
+
+
 # ─── v2.0 WITNESS — live #ceo stream (Dave watches; Dave's table signs off) ───
 
 

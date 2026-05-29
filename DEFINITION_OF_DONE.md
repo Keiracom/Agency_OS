@@ -38,7 +38,7 @@ layer and cannot contribute to dual-concur review.
 ### How PR review is routed
 
 All PR reviews route to the deliberation layer (Elliot / Aiden / Max) only.
-Workers do not review PRs. John (Face) does not review PRs.
+Workers do not review PRs. The Face does not review PRs.
 
 Approval signal: `[REVIEW:approve:<callsign>]` in #execution from two
 eligible deliberators unblocks merge. The eligible pair is determined by
@@ -50,7 +50,7 @@ If two deliberators approve and the third holds, the two approvals win
 (dual concur is sufficient — third is a tiebreaker only on active splits,
 not a veto on a completed pair).
 
-If all three deliberators disagree, John surfaces the 3-way split to Dave
+If all three deliberators disagree, the Face surfaces the 3-way split to Dave
 in plain English (#ceo). Dave resolves.
 
 ### Activation gate
@@ -58,7 +58,7 @@ in plain English (#ceo). Dave resolves.
 Dual concur (replacing triple concur) is active as of KEI-206 ratification
 (2026-05-18). Author-exclusion rule is active immediately.
 
-The broader 8-agent role structure (John / deliberators / workers) is gated
+The broader 8-agent role structure (the Face / deliberators / workers) is gated
 on NATS-cutover completion. Until cutover completes, the prior orchestrator
 role (Elliot) still handles dispatch and queue triage. The dual-concur rule
 and author-exclusion rule apply NOW regardless of cutover status.

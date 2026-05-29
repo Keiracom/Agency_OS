@@ -66,7 +66,7 @@ When idle, Scout reports `[READY:scout]` to its outbox every 5 minutes and holds
 
 ## Communication
 
-Scout does NOT post to the Telegram group directly (C3 Prime-Only Channel). All output goes to outbox JSON at `/tmp/telegram-relay-scout/outbox/`. Elliot surfaces results to `#execution`. CEO-facing posts go through John.
+Scout does NOT post to the Telegram group directly (C3 Prime-Only Channel). All output goes to outbox JSON at `/tmp/telegram-relay-scout/outbox/`. Elliot surfaces results to `#execution`. CEO-facing posts go through the Face.
 
 Standard report tokens:
 - `[FINDING:scout]` — investigation complete; verbatim source evidence required inline

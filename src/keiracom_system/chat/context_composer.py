@@ -1,6 +1,6 @@
-"""Dynamic context composer for the Chat agent (John).
+"""Dynamic context composer for the Chat agent (the Face).
 
-John's spawn system prompt is intentionally minimal (identity + the spawn
+The Face's spawn system prompt is intentionally minimal (identity + the spawn
 governance contract per docs/cutover/spawn_governance_template.md). What it
 needs to *answer* the current message is injected at spawn time by this module:
 classify the latest customer message, then run a Hindsight retrieval pass scoped
@@ -27,7 +27,7 @@ and are surfaced by the retrieval pass, not hardcoded here.
 Two entry points for two lifecycle moments (additive, non-overlapping):
   * `compose_chat_context` — per *message*: classify the incoming message and
     retrieve the context block to answer it.
-  * `compose_context` — per *spawn startup*: hydrate a fresh John spawn with
+  * `compose_context` — per *spawn startup*: hydrate a fresh Face spawn with
     tenant config + prior decisions/patterns before it sees any message. Async
     + fail-open; every source degrades to empty/{} independently.
 """
@@ -138,7 +138,7 @@ def _default_retrieve(query_text: str, collections: tuple[str, ...]) -> Any:
     when scores are low/zero (the chat agent wants context, not an empty block).
     """
     return agent_query.query(
-        query_text, agent="john", collections=collections, citation_required=False
+        query_text, agent="face", collections=collections, citation_required=False
     )
 
 
@@ -191,7 +191,7 @@ def compose_chat_context(
     llm_client: LLMClient | None = None,
     retrieve_fn: RetrieveFn | None = None,
 ) -> ChatContextResult:
-    """Classify `message` and return the dynamic context block for John's spawn.
+    """Classify `message` and return the dynamic context block for the Face's spawn.
 
     `llm_client` / `retrieve_fn` are injection seams for tests (mock Gemini +
     mock Hindsight); production uses the LiteLLM Gemini client + agent_query.
@@ -211,7 +211,7 @@ def compose_chat_context(
 
 # ─────────────────────── Spawn-startup hydration ───────────────────────
 # compose_context: a SECOND, additive entry point. Where compose_chat_context
-# reacts to one message, this hydrates a fresh John spawn at startup from three
+# reacts to one message, this hydrates a fresh Face spawn at startup from three
 # sources — keiracom tenant config, Hindsight prior decisions/patterns, and
 # relevant ceo_memory keys — and returns a ChatContext. Async + fail-open; the
 # three fetchers are injection seams (tests mock them).
@@ -249,7 +249,7 @@ async def _default_async_retrieve(query_text: str, collections: tuple[str, ...])
     """Production Hindsight pass (async). citation_required=False → best-available."""
     return await agent_query.query_async(
         query_text,
-        agent="john",
+        agent="face",
         collections=collections,
         k_returned=max(MAX_DECISIONS, MAX_PATTERNS),
         citation_required=False,
@@ -357,7 +357,7 @@ async def compose_context(
     memory_fetch: MemoryFetch | None = None,
     retrieve_fn: AsyncRetrieveFn | None = None,
 ) -> ChatContext:
-    """Assemble the spawn-startup context payload for a John spawn.
+    """Assemble the spawn-startup context payload for a Face spawn.
 
     Fail-open: each of the three sources degrades to empty/{} independently —
     a failure in one never blocks the spawn. The three fetchers are injection

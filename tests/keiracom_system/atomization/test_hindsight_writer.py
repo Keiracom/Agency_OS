@@ -26,7 +26,7 @@ def _atom() -> AtomV1:
         anti_pattern="Do not re-query ceo_memory at spawn time.",
         example="A fresh spawn recalls 3-5 atoms.",
         provenance={
-            "source": "live_spawn_exit:john:customer_42",
+            "source": "live_spawn_exit:face:customer_42",
             "freshness": "2026-05-29",
             "confidence": 0.95,
             "last_validated": "2026-05-29",

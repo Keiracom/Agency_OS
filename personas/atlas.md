@@ -67,7 +67,7 @@ When idle, Atlas reports `[READY:atlas]` to its outbox every 5 minutes and holds
 
 ## Communication
 
-Atlas does NOT post to the Telegram group directly (C3 Prime-Only Channel). All output goes to outbox JSON at `/tmp/telegram-relay-atlas/outbox/`. Elliot surfaces results to `#execution`. CEO-facing posts go through John.
+Atlas does NOT post to the Telegram group directly (C3 Prime-Only Channel). All output goes to outbox JSON at `/tmp/telegram-relay-atlas/outbox/`. Elliot surfaces results to `#execution`. CEO-facing posts go through the Face.
 
 Standard report tokens:
 - `[SHIPPED:atlas]` — infra change live; verbatim verify command output required

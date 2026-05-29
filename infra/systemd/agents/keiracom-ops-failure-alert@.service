@@ -1,0 +1,10 @@
+[Unit]
+Description=Agency OS — ops failure alert for %i (Agency_OS-ja8d)
+
+[Service]
+Type=oneshot
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/ops_failure_publish.py %i
+Nice=10
+StandardOutput=append:/home/elliotbot/clawd/logs/ops-failure-alert.log
+StandardError=append:/home/elliotbot/clawd/logs/ops-failure-alert.log
+TimeoutStartSec=60

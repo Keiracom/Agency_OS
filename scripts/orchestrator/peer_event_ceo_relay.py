@@ -44,7 +44,8 @@ from pathlib import Path
 import nats
 
 NATS_URL = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
-SUBJECTS = ("keiracom.elliot.inbox", "keiracom.review.>")
+OPS_FAILURE_SUBJECT = "keiracom.ops.failure"
+SUBJECTS = ("keiracom.elliot.inbox", "keiracom.review.>", OPS_FAILURE_SUBJECT)
 STATE_PATH = Path("/tmp/peer_event_ceo_relay_state.json")
 RELAY = "/home/elliotbot/clawd/Agency_OS/scripts/slack_relay.py"
 PYTHON = "/home/elliotbot/clawd/Agency_OS/.venv/bin/python3"
@@ -188,6 +189,20 @@ def _summary_to_bullets(summary: str, max_bullets: int = 5) -> str:
     return body
 
 
+def _handle_ops_failure(envelope: dict) -> None:
+    """Relay a keiracom.ops.failure event to #ceo with a per-unit throttle."""
+    unit = envelope.get("unit") or "unknown unit"
+    throttle_key = ("ops_failure", unit)
+    if _is_throttled(throttle_key):
+        log.debug("ops_failure throttled: unit=%s", unit)
+        return
+    _throttle[throttle_key] = time.time()
+    body = f"- Unit: {unit}\n" + _summary_to_bullets(
+        envelope.get("summary") or f"{unit} entered failed state", max_bullets=4
+    )
+    _post_ceo("Service failure", body)
+
+
 def _handle_envelope(subject: str, envelope: dict) -> None:
     kind = (envelope.get("kind") or "").lower()
     sender = (envelope.get("from") or "unknown").lower()
@@ -198,6 +213,10 @@ def _handle_envelope(subject: str, envelope: dict) -> None:
 
     if _is_duplicate(envelope):
         log.debug("dup skip: from=%s kind=%s", sender, kind)
+        return
+
+    if subject == OPS_FAILURE_SUBJECT or kind == "ops_failure":
+        _handle_ops_failure(envelope)
         return
 
     # Review verdicts — track approver/holder per PR, only post on flips

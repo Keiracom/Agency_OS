@@ -64,9 +64,12 @@ nats --server=nats://127.0.0.1:4222 rtt
 
 ```bash
 source /home/elliotbot/.config/agency-os/.env
-psql "$DATABASE_URL" -c "SELECT to_regclass('public.tasks') AS tasks, EXISTS(SELECT 1 FROM pg_trigger WHERE tgname LIKE 'kei45%') AS trigger_present;"
+DSN="${DATABASE_URL//postgresql+asyncpg/postgresql}"
+psql "$DSN" -t -c "SELECT to_regclass('public.tasks'), to_regclass('kei45_task_event_trigger');"
 ```
-**Expect:** `public.tasks | t`. Either NULL → §5.5.
+The `${DATABASE_URL//postgresql+asyncpg/postgresql}` strip is required: `DATABASE_URL` carries the SQLAlchemy-style `postgresql+asyncpg://…` prefix, which `psql` cannot parse, causing it to silently fall back to the missing local socket.
+
+**Expect:** the first column resolves to `public.tasks` (table present). If either column is empty/NULL the relation does not exist → §5.5.
 
 ### 1.6 Chain state file clean (no stranded prior run)
 

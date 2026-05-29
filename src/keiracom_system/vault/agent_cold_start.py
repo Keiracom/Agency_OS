@@ -201,6 +201,40 @@ def notify_complete(
         logger.exception("notify_complete: unexpected error for task=%s", task_id)
 
 
+def save_exit_atoms(task: dict, rc: int, status: str) -> None:
+    """Capture the completed task as AtomV1 atoms in Hindsight (Agency_OS-zr7e.4).
+
+    Mirrors face.py's exit-cycle: feed the task brief + completion stamp to
+    ``classify_and_save``, which writes an atom per ratified decision it detects
+    above the confidence threshold (most build tasks detect none — that is fine).
+
+    Fail-open: ``classify_and_save`` is already internally fail-open, but the
+    import, ``asyncio.run`` and any unexpected error are also swallowed here —
+    memory capture must NEVER block the task lifecycle.
+    """
+    try:
+        import asyncio
+
+        from src.keiracom_system.chat.exit_cycle import classify_and_save
+
+        brief = task.get("description") or task.get("title") or ""
+        conversation = [
+            {
+                "role": "user",
+                "content": f"Task {task['id']}: {task.get('title') or ''}\n\n{brief}".strip(),
+            },
+            {
+                "role": "assistant",
+                "content": f"Task {task['id']} completed rc={rc} (status={status}).",
+            },
+        ]
+        customer_id = int(os.environ.get("AGENT_CUSTOMER_ID", "1"))  # fleet tenant 1 = Dave
+        result = asyncio.run(classify_and_save(conversation, customer_id))
+        logger.info("save_exit_atoms: %s", getattr(result, "skipped_reason", None) or "atoms saved")
+    except Exception:  # noqa: BLE001 — never block completion on memory capture
+        logger.exception("save_exit_atoms: unexpected error for task=%s", task.get("id"))
+
+
 def run(
     *,
     resolve: Callable[..., Any] = resolve_into_env,
@@ -209,6 +243,7 @@ def run(
     agent: Callable[..., int] = run_agent,
     finalize: Callable[..., None] = finalize_task,
     notify: Callable[..., None] = notify_complete,
+    save_atoms: Callable[..., None] = save_exit_atoms,
 ) -> int:
     """Cold-start orchestration. Returns the process exit code."""
     logging.basicConfig(level=logging.INFO)
@@ -230,6 +265,7 @@ def run(
     rc = agent(compose_prompt(task))
     finalize(task_id, rc, task.get("acceptance_criteria"))
     status = "done" if rc == 0 else "blocked"
+    save_atoms(task, rc, status)  # AtomV1 memory capture (zr7e.4) — fail-open
     notify(
         task_id,
         os.environ.get("AGENT_CALLSIGN", "worker"),

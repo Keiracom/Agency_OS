@@ -980,3 +980,73 @@ async def dispatcher_terminate(req: TerminateRequest) -> dict[str, Any]:
     if tenant_id:
         await work_loop.release_on_exit(str(tenant_id), req.key)
     return {"terminated": True, "key": req.key, "watchdog_tracked": _watchdog.tracked}
+
+
+# ---------------------------------------------------------------------------
+# /dispatcher/task_complete — result-back-to-Slack hook
+#
+# Called by agent_cold_start after finalize_task(). The dispatcher runs in
+# the host env (has SLACK_BOT_TOKEN from .env); spawned agents run in a
+# scrubbed env and cannot post to Slack directly. This endpoint bridges the
+# gap: the agent makes a loopback HTTP call here; the dispatcher posts the
+# result to #ceo via slack_relay.py with CALLSIGN=elliot.
+#
+# Fail-open: Slack errors are logged but never propagate to the caller —
+# a notification failure must never block the task lifecycle.
+# ---------------------------------------------------------------------------
+
+
+class TaskCompleteRequest(BaseModel):
+    """Result-back-to-Slack payload from agent_cold_start."""
+
+    task_id: str
+    callsign: str = "worker"
+    title: str = ""
+    status: str  # "done" | "blocked"
+    rc: int = 0
+
+
+_SLACK_RELAY_SCRIPT = os.path.join(
+    os.environ.get("DISPATCHER_AGENT_WORKDIR", "/home/elliotbot/clawd/Agency_OS"),
+    "scripts",
+    "slack_relay.py",
+)
+
+
+@app.post("/dispatcher/task_complete")
+async def dispatcher_task_complete(req: TaskCompleteRequest) -> dict[str, Any]:
+    """Post a task-completion notice to #ceo via slack_relay (Elliot's relay).
+
+    Spawned agents cannot post to Slack directly (SLACK_ACCESS_DENIED for
+    non-Elliot callsigns; scrubbed env has no SLACK_BOT_TOKEN). This endpoint
+    runs in the dispatcher process which has the token in its env.
+    """
+    icon = "✅" if req.status == "done" else "🔴"
+    title_part = f" '{req.title}'" if req.title else ""
+    msg = (
+        f"{icon} [{req.callsign.upper()}] Task{title_part} {req.status} "
+        f"(rc={req.rc}) — ID: {req.task_id}"
+    )
+    try:
+        import subprocess as _sp
+        import sys as _sys
+
+        result = _sp.run(
+            [_sys.executable, _SLACK_RELAY_SCRIPT, "-d", msg],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            env={**os.environ, "CALLSIGN": "elliot"},
+        )
+        if result.returncode != 0:
+            logger.warning(
+                "task_complete: slack_relay rc=%d stderr=%r",
+                result.returncode,
+                result.stderr[:200],
+            )
+            return {"notified": False, "reason": f"slack_relay rc={result.returncode}"}
+    except Exception:  # noqa: BLE001 — notification must never break the lifecycle
+        logger.exception("task_complete: slack_relay raised for task=%s", req.task_id)
+        return {"notified": False, "reason": "exception"}
+    logger.info("task_complete: notified #ceo task=%s callsign=%s", req.task_id, req.callsign)
+    return {"notified": True}

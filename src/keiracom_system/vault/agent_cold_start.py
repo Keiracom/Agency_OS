@@ -33,10 +33,13 @@ the orchestration is unit-testable without Vault, a DB, or a real ``claude``.
 
 from __future__ import annotations
 
+import json
 import logging
 import os
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from collections.abc import Callable
 from typing import Any
 
@@ -45,6 +48,7 @@ from src.keiracom_system.vault.kv_resolver import resolve_into_env
 logger = logging.getLogger(__name__)
 
 AGENT_WORKDIR = os.environ.get("DISPATCHER_AGENT_WORKDIR", "/home/elliotbot/clawd/Agency_OS")
+_DISPATCHER_URL = os.environ.get("DISPATCHER_URL", "http://127.0.0.1:4001")
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
 # NB: public.tasks has NO task_type column — task_type is derived from tags and
 # reaches the agent via the AGENT_TASK_TYPE env var (injected by the dispatcher).
@@ -164,6 +168,39 @@ def finalize_task(
             conn.close()
 
 
+def notify_complete(
+    task_id: str,
+    callsign: str,
+    title: str,
+    status: str,
+    rc: int,
+    *,
+    dispatcher_url: str = _DISPATCHER_URL,
+) -> None:
+    """POST /dispatcher/task_complete so Dave sees the result in #ceo.
+
+    Fail-open: any error (network, dispatcher down, Slack failure) is logged
+    and swallowed — a notification failure must never block the task lifecycle.
+    """
+    payload = json.dumps(
+        {"task_id": task_id, "callsign": callsign, "title": title, "status": status, "rc": rc}
+    ).encode()
+    url = f"{dispatcher_url.rstrip('/')}/dispatcher/task_complete"
+    try:
+        req = urllib.request.Request(
+            url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:
+            body = resp.read()
+        logger.info("notify_complete: dispatcher responded %s", body[:200])
+    except (urllib.error.URLError, OSError):
+        logger.warning(
+            "notify_complete: dispatcher unreachable for task=%s", task_id, exc_info=True
+        )
+    except Exception:  # noqa: BLE001
+        logger.exception("notify_complete: unexpected error for task=%s", task_id)
+
+
 def run(
     *,
     resolve: Callable[..., Any] = resolve_into_env,
@@ -171,6 +208,7 @@ def run(
     claim: Callable[..., bool] = claim_task,
     agent: Callable[..., int] = run_agent,
     finalize: Callable[..., None] = finalize_task,
+    notify: Callable[..., None] = notify_complete,
 ) -> int:
     """Cold-start orchestration. Returns the process exit code."""
     logging.basicConfig(level=logging.INFO)
@@ -191,7 +229,15 @@ def run(
         return 0  # another agent owns it; not our failure
     rc = agent(compose_prompt(task))
     finalize(task_id, rc, task.get("acceptance_criteria"))
-    logger.info("agent_cold_start: task %s finished, agent rc=%d", task_id, rc)
+    status = "done" if rc == 0 else "blocked"
+    notify(
+        task_id,
+        os.environ.get("AGENT_CALLSIGN", "worker"),
+        task.get("title") or "",
+        status,
+        rc,
+    )
+    logger.info("agent_cold_start: task %s finished rc=%d status=%s", task_id, rc, status)
     return rc
 
 

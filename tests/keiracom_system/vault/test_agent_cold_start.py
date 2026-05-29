@@ -535,3 +535,53 @@ def test_recall_spawn_context_fail_open_returns_empty_on_error(monkeypatch):
     monkeypatch.setattr(sr, "build_spawn_context_block", boom)
 
     assert acs._recall_spawn_context({"id": "t-x", "task_type": "build"}) == ""
+
+
+# ---- nd3b notify suppression for intermediate V1-chain steps -----------------
+
+
+def _nd3b_run(monkeypatch, *, chain_step: str | None):
+    """Drive run() once with notify recorded + CHAIN_STEP set/unset as requested."""
+    monkeypatch.setenv("AGENT_TASK_ID", "t-cs")
+    monkeypatch.setattr(acs.sys, "argv", ["agent_cold_start"])
+    if chain_step is None:
+        monkeypatch.delenv("CHAIN_STEP", raising=False)
+    else:
+        monkeypatch.setenv("CHAIN_STEP", chain_step)
+    notify_calls: list = []
+    acs.run(
+        resolve=lambda: None,
+        fetch=lambda _t: {"id": "t-cs", "title": "T", "acceptance_criteria": None},
+        claim=lambda _t, _c: True,
+        agent=lambda _p: 0,
+        finalize=lambda *a: None,
+        save_atoms=lambda *a, **k: None,
+        notify=lambda *a, **kw: notify_calls.append((a, kw)),
+        spawn_recall=lambda _t: "",
+    )
+    return notify_calls
+
+
+def test_run_suppresses_notify_for_intermediate_chain_step(monkeypatch):
+    """CHAIN_STEP=intermediate hop → notify must NOT fire (no #ceo spam)."""
+    for intermediate in ("aiden_plan", "max_challenge", "nova_build", "orion_spec"):
+        notify_calls = _nd3b_run(monkeypatch, chain_step=intermediate)
+        assert notify_calls == [], f"intermediate step {intermediate!r} should suppress notify"
+
+
+def test_run_calls_notify_for_final_chain_step(monkeypatch):
+    """CHAIN_STEP=atlas_safety → notify fires (final reviewer posts to #ceo)."""
+    notify_calls = _nd3b_run(monkeypatch, chain_step="atlas_safety")
+    assert len(notify_calls) == 1
+
+
+def test_run_calls_notify_when_chain_step_unset(monkeypatch):
+    """CHAIN_STEP absent → notify fires as today (non-chain tasks unaffected)."""
+    notify_calls = _nd3b_run(monkeypatch, chain_step=None)
+    assert len(notify_calls) == 1
+
+
+def test_run_calls_notify_when_chain_step_blank(monkeypatch):
+    """CHAIN_STEP set but whitespace-only → treated as unset → notify fires."""
+    notify_calls = _nd3b_run(monkeypatch, chain_step="   ")
+    assert len(notify_calls) == 1

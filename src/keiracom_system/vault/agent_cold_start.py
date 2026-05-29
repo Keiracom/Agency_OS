@@ -67,6 +67,18 @@ RC_TASK_ABSENT = 3
 NATS_URL = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
 HANDOFF_SUBJECT = "keiracom.agent.handoff"
 
+# nd3b — chain-step taxonomy mirrors src.keiracom_system.chain.v1_chain_orchestrator
+# CHAIN_STEPS (aiden_plan, max_challenge, nova_build, orion_spec, atlas_safety).
+# The chain branches after nova_build → BOTH reviewers in parallel; per the
+# canonical (ceo:v1_chain_architecture) Atlas reviews AFTER Orion confirms spec,
+# so atlas_safety is the last step in time — the only one whose completion
+# warrants the #ceo task_complete post from this entrypoint. All other
+# CHAIN_STEP values are intermediate hops; suppress notify so the chain does not
+# spam #ceo with per-hop completions. (The final dual-concur result post lands
+# via zqni once both reviewers concur.) CHAIN_STEP unset = non-chain task →
+# notify as today (fail-open default; manual / pre-chain dispatches unaffected).
+_FINAL_CHAIN_STEPS: frozenset[str] = frozenset({"atlas_safety"})
+
 
 def _dsn() -> str:
     dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_DSN")
@@ -365,13 +377,24 @@ def run(
     finalize(task_id, rc, task.get("acceptance_criteria"))
     status = "done" if rc == 0 else "blocked"
     save_atoms(task, rc, status)  # AtomV1 memory capture (zr7e.4) — fail-open
-    notify(
-        task_id,
-        os.environ.get("AGENT_CALLSIGN", "worker"),
-        task.get("title") or "",
-        status,
-        rc,
-    )
+    # nd3b — suppress notify for intermediate V1-chain hops; only the final
+    # reviewer step (atlas_safety) posts to #ceo from this entrypoint. Non-chain
+    # tasks have CHAIN_STEP unset and notify as today (fail-open default).
+    chain_step = os.environ.get("CHAIN_STEP", "").strip()
+    if chain_step and chain_step not in _FINAL_CHAIN_STEPS:
+        logger.info(
+            "agent_cold_start: suppress notify for intermediate chain_step=%s task=%s",
+            chain_step,
+            task_id,
+        )
+    else:
+        notify(
+            task_id,
+            os.environ.get("AGENT_CALLSIGN", "worker"),
+            task.get("title") or "",
+            status,
+            rc,
+        )
     logger.info("agent_cold_start: task %s finished rc=%d status=%s", task_id, rc, status)
     return rc
 

@@ -58,6 +58,33 @@ Agents are Claude Code sessions running under fixed callsigns. Deliberation tier
 
 ---
 
+## Agent loop architecture (V1 chain)
+
+The runtime execution loop — distinct from the callsign org chart above — moves a request through four roles. The roles never share in-process state: each runs as an ephemeral spawn that exits after its turn and hands off through **AtomV1 atoms** in Hindsight plus task rows in Postgres.
+
+```mermaid
+flowchart LR
+    User([Dave / #ceo]) --> Chat
+    Chat[Chat / Face<br/>Haiku listener] --> Delib[Deliberator<br/>the Floor]
+    Delib -->|task rows| Worker[Worker<br/>ephemeral spawn]
+    Worker --> Reviewer[Reviewer<br/>acceptance + concur]
+    Reviewer -->|mark done| Delib
+    Worker -.->|AtomV1 on exit| H[(Hindsight<br/>fleet_decisions)]
+    H -.->|Layer 2 recall on spawn| Worker
+```
+
+**Chat (Face)** — the user-facing voice. A `claude-haiku-4-5` agent spawns per `#ceo` message via Slack Socket Mode, classifies with a full LLM pass, and either records a decision (writes an AtomV1 atom to Hindsight plus a `ceo_memory` audit row) or exits on noise. Rate-capped at 10 spawns/hour via Valkey. Face and the Floor are the same entity — Face is its voice, and it always returns one recommendation, never a pros-and-cons list. Trivial commands bypass the Floor entirely.
+
+**Deliberator (the Floor)** — the multi-agent deliberation layer. It turns a request into a concurred plan (which Face presents for confirmation), forces a single recommendation on evaluative questions, resolves or escalates an agent's mid-task decisions, recalculates the task tree when a plan changes, and is the *only* authority that may mark a task done.
+
+**Worker** — an ephemeral agent spawned to execute one unblocked task. The work-loop consumer watches Postgres: a `trg_tasks_unblock_dependents` trigger publishes `task_id + callsign + tenant_id` to the Valkey `keiracom:tasks:available` queue; the consumer checks the tenant's tier ceiling and, if under the concurrent-spawn limit, calls `POST /dispatcher/spawn` (overflow is requeued, never dropped; a Valkey lock prevents duplicate spawns). Each spawn is hydrated by a 4-layer context contract — L1 system prompt, L2 Hindsight recall (3–5 atoms), L3 Valkey spend gate, L4 dispatcher wiring — fail-open at every layer.
+
+**Reviewer** — verification before work is accepted. The Floor checks a completed PR against its acceptance criteria, and runtime or governance PRs additionally require 2-of-3 deliberator concur (the orchestrator-merge-after-NATS-concur pattern) before an admin squash-merge.
+
+**Hand-off via AtomV1** — roles do not pass state in process. When an agent finishes, its exit cycle (`src.keiracom_system.chat.exit_cycle.classify_and_save`) writes the decision **directly** to the Hindsight `fleet_decisions` bank as an AtomV1 atom — a Gemini classifier (confidence > 0.8, max 3 atoms) is the precision gate. The next spawn picks it up through Layer 2 Hindsight recall at spawn time. Postgres carries operational state and the task-unblock triggers; Hindsight carries all knowledge. There is no intermediate store, and nothing writes automatically — write discipline at exit is the gate. An AtomV1 atom carries `trigger_condition`, `content`, `anti_pattern`, `example`, `provenance`, `supersession_edges`, and `composition_tags`. Post-cutover, `ceo_memory` is an audit log and admin target — not a pipeline step.
+
+---
+
 ## Quickstart
 
 Targets a fresh clone building locally in under 30 minutes.

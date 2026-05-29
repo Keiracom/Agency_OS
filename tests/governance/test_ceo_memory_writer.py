@@ -63,10 +63,25 @@ def test_upsert_sets_local_callsign_before_write() -> None:
     with patch("psycopg.connect", return_value=conn):
         ceo_memory_writer.upsert_ceo_memory_key("elliot", "ceo:phase_lock", {"v": 1})
     sqls = [s for s, _ in conn.cur.executed]
-    assert "SET LOCAL agency_os.callsign" in sqls[0]
+    # Must use the PARAMETERIZED set_config form — `SET LOCAL <var> = %s` is a
+    # Postgres syntax error (bind params rejected) that crashed every write.
+    assert "set_config('agency_os.callsign'" in sqls[0]
+    assert "SET LOCAL" not in sqls[0]
     assert conn.cur.executed[0][1] == ("elliot",)
     assert "INSERT INTO public.ceo_memory" in sqls[1]
+    # context is NOT NULL (migration 20260524_0scg) — must be in the INSERT.
+    assert "context" in sqls[1]
+    assert "fleet" in conn.cur.executed[1][1]
     assert conn.commits == 1
+
+
+def test_upsert_context_param_overrides_default() -> None:
+    conn = _Conn()
+    with patch("psycopg.connect", return_value=conn):
+        ceo_memory_writer.upsert_ceo_memory_key(
+            "elliot", "ceo:phase_lock", {"v": 1}, context="product"
+        )
+    assert "product" in conn.cur.executed[1][1]
 
 
 def test_update_sets_local_callsign_then_update() -> None:
@@ -74,7 +89,8 @@ def test_update_sets_local_callsign_then_update() -> None:
     with patch("psycopg.connect", return_value=conn):
         ceo_memory_writer.update_ceo_memory_value("dave", "ceo:phase_lock", {"v": 2})
     sqls = [s for s, _ in conn.cur.executed]
-    assert "SET LOCAL agency_os.callsign" in sqls[0]
+    assert "set_config('agency_os.callsign'" in sqls[0]
+    assert "SET LOCAL" not in sqls[0]
     assert conn.cur.executed[0][1] == ("dave",)
     assert "UPDATE public.ceo_memory" in sqls[1]
     assert conn.commits == 1
@@ -133,8 +149,8 @@ def test_upsert_propagates_trigger_check_violation() -> None:
     )
     with patch("psycopg.connect", return_value=conn), pytest.raises(CheckViolation):
         ceo_memory_writer.upsert_ceo_memory_key("aiden", "ceo:phase_lock", {"v": 1})
-    # SET LOCAL still executed; the exception happens on the INSERT (call 2)
-    assert any("SET LOCAL agency_os.callsign" in s for s, _ in conn.cur.executed)
+    # callsign session var still set; the exception happens on the INSERT (call 2)
+    assert any("set_config('agency_os.callsign'" in s for s, _ in conn.cur.executed)
 
 
 def test_update_propagates_trigger_check_violation() -> None:

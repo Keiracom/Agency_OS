@@ -43,8 +43,16 @@ def _require_callsign(callsign: str) -> str:
     return cs
 
 
-def upsert_ceo_memory_key(callsign: str, key: str, value: Mapping[str, Any]) -> None:
-    """Idempotent upsert into public.ceo_memory under the KEI-87 write-guard."""
+def upsert_ceo_memory_key(
+    callsign: str, key: str, value: Mapping[str, Any], *, context: str = "fleet"
+) -> None:
+    """Idempotent upsert into public.ceo_memory under the KEI-87 write-guard.
+
+    `context` is the NOT-NULL lane classifier (migration 20260524_0scg):
+    'fleet' | 'product' | 'both' | 'archive'. Defaults to 'fleet' — all current
+    callers (migration-apply-watcher debt rows, exit-cycle captures, backup
+    alerts) are fleet-internal. On conflict the existing context is preserved.
+    """
     import psycopg  # local import — keeps callers without psycopg from paying import cost
 
     cs = _require_callsign(callsign)
@@ -52,15 +60,19 @@ def upsert_ceo_memory_key(callsign: str, key: str, value: Mapping[str, Any]) -> 
     # pooler is txn-mode pgbouncer; psycopg3 cached prepared statements break on
     # first repeated execute() across pool connections.
     with psycopg.connect(_dsn(), prepare_threshold=None) as conn, conn.cursor() as cur:
-        cur.execute("SET LOCAL agency_os.callsign = %s", (cs,))
+        # `SET LOCAL <var> = %s` is NOT parameterizable — Postgres SET is a
+        # utility statement that rejects bind params ("syntax error at $1"),
+        # which crashed every ceo_memory write (incl. migration-apply-watcher).
+        # set_config(name, value, is_local=true) is the parameterized SET LOCAL.
+        cur.execute("SELECT set_config('agency_os.callsign', %s, true)", (cs,))
         cur.execute(
             """
-            INSERT INTO public.ceo_memory (key, value, updated_at)
-            VALUES (%s, %s::jsonb, NOW())
+            INSERT INTO public.ceo_memory (key, value, context, updated_at)
+            VALUES (%s, %s::jsonb, %s, NOW())
             ON CONFLICT (key) DO UPDATE
               SET value = EXCLUDED.value, updated_at = NOW()
             """,
-            (key, json.dumps(dict(value))),
+            (key, json.dumps(dict(value)), context),
         )
         conn.commit()
 
@@ -74,7 +86,11 @@ def update_ceo_memory_value(callsign: str, key: str, value: Mapping[str, Any]) -
     # pooler is txn-mode pgbouncer; psycopg3 cached prepared statements break on
     # first repeated execute() across pool connections.
     with psycopg.connect(_dsn(), prepare_threshold=None) as conn, conn.cursor() as cur:
-        cur.execute("SET LOCAL agency_os.callsign = %s", (cs,))
+        # `SET LOCAL <var> = %s` is NOT parameterizable — Postgres SET is a
+        # utility statement that rejects bind params ("syntax error at $1"),
+        # which crashed every ceo_memory write (incl. migration-apply-watcher).
+        # set_config(name, value, is_local=true) is the parameterized SET LOCAL.
+        cur.execute("SELECT set_config('agency_os.callsign', %s, true)", (cs,))
         cur.execute(
             "UPDATE public.ceo_memory SET value = %s::jsonb, updated_at = NOW() WHERE key = %s",
             (json.dumps(dict(value)), key),

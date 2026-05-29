@@ -31,7 +31,10 @@ logger = logging.getLogger(__name__)
 
 PG_NOTIFY_CHANNEL = "task_event"
 NEW_AVAILABLE = "new_available"
-DEFAULT_BACKEND = "container"
+# Phase-1 spawn backend is scrubbed-tmux (Agency_OS-87ei, Elliot-decided): reuse
+# the working tmux spawn under env -i (no .env inheritance) — no container image
+# to build. Env-overridable so the container fast-follow flips this to "container".
+DEFAULT_BACKEND = os.environ.get("WORK_LOOP_BACKEND", "tmux")
 DEFAULT_CALLSIGN = "worker"
 DEFAULT_FLEET_TENANT_ID = "default"
 # Recall keys consumed by the dispatcher (spawn_recall): brief + task_type feed

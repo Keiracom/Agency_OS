@@ -140,3 +140,63 @@ def test_bot_message_does_not_spawn(monkeypatch):
 def test_handle_event_reports_spawn_failure(monkeypatch):
     monkeypatch.setattr(m, "spawn_capture_agent", lambda t: False)
     assert m.handle_event(_event("Decision: real human decision here")) == "spawn_failed"
+
+
+# ─── direct Slack→task creator (Agency_OS-evbn) ───────────────────────────────
+
+
+def test_is_task_command_detects_prefix_case_insensitive():
+    assert m.is_task_command("TASK: wire the foo") is True
+    assert m.is_task_command("  task: lowercase works  ") is True
+    assert m.is_task_command("Decision: not a task") is False
+    assert m.is_task_command("") is False
+
+
+def test_extract_task_title_strips_prefix_and_caps():
+    assert m.extract_task_title("TASK: fix the typo in README") == "fix the typo in README"
+    assert m.extract_task_title("task:   trimmed  ") == "trimmed"
+    assert len(m.extract_task_title("TASK: " + "X" * 1000)) == m.TASK_TITLE_MAX_CHARS
+
+
+def test_task_insert_sql_is_parameterised_and_available():
+    # Atlas wire #1283: status MUST be 'available' (fires the kei45 trigger); values bound.
+    assert (
+        m._TASK_INSERT_SQL
+        == "INSERT INTO public.tasks (id, title, status) VALUES (%s, %s, 'available')"
+    )
+
+
+def test_create_task_returns_none_without_dsn(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("RETRIEVAL_EVENTS_DSN", raising=False)
+    assert m.create_task_from_message("TASK: do a thing") is None  # fail-open, no crash
+
+
+def test_create_task_returns_none_on_empty_body(monkeypatch):
+    monkeypatch.setenv("DATABASE_URL", "postgresql://x")
+    assert m.create_task_from_message("TASK:   ") is None  # no title → no task
+
+
+def test_handle_event_routes_task_command_to_creator(monkeypatch):
+    monkeypatch.setattr(m, "create_task_from_message", lambda t: "ceo-task-123")
+    monkeypatch.setattr(
+        m,
+        "spawn_capture_agent",
+        lambda t: (_ for _ in ()).throw(AssertionError("must not spawn a TASK:")),
+    )
+    assert m.handle_event(_event("TASK: wire the dispatcher health probe")) == "task_created"
+
+
+def test_handle_event_non_task_still_spawns_capture(monkeypatch):
+    monkeypatch.setattr(
+        m,
+        "create_task_from_message",
+        lambda t: (_ for _ in ()).throw(AssertionError("not a TASK:")),
+    )
+    monkeypatch.setattr(m, "spawn_capture_agent", lambda t: True)
+    assert m.handle_event(_event("We have ratified the multi-tenancy decision.")) == "spawned"
+
+
+def test_handle_event_reports_task_create_failure(monkeypatch):
+    monkeypatch.setattr(m, "create_task_from_message", lambda t: None)
+    assert m.handle_event(_event("TASK: something")) == "task_create_failed"

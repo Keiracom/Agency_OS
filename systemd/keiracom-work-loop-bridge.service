@@ -22,7 +22,9 @@ EnvironmentFile=/home/elliotbot/.config/agency-os/.env
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS
 ExecStart=/usr/bin/python3 -B -m src.keiracom_system.work_loop.bridge
 
-Restart=on-failure
+# P11 (Agency_OS-c2xk): always restart — a long-running loop driver must never
+# stay down (Restart=always covers clean exits too, not just failures).
+Restart=always
 RestartSec=10
 
 StandardOutput=append:/home/elliotbot/clawd/logs/keiracom-work-loop-bridge.log

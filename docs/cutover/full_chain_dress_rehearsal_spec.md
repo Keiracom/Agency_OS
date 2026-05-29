@@ -39,10 +39,37 @@ The KEI under test MUST be a genuine backlog item, never a test fixture. The har
 
 | Run | Recall config | Purpose |
 |---|---|---|
-| **A — recall-active** | `DISPATCHER_SPAWN_RECALL_ENABLED=true` + retrieval flags on; Hindsight + reranker reachable | the real ephemeral pipeline |
-| **B — cold** | spawn recall disabled (no prior-context injection) | the control — agents act with no memory |
+| **A — recall-active** | `DISPATCHER_SPAWN_RECALL_ENABLED=true` + **restart dispatcher**; Hindsight + reranker reachable | the real ephemeral pipeline |
+| **B — cold** | `DISPATCHER_SPAWN_RECALL_ENABLED` **unset** + **restart dispatcher** | the control — agents act with no memory |
 
-Both runs use the **same KEI** (reset between runs). The task payload carries `recall_mode` so the consumer/dispatcher spawns the chain in the right config — **wiring dependency on the consumer (Atlas)**: the consumer must honour `recall_mode`, or the operator flips the fleet env between runs.
+Both runs use the **same task** (re-seeded between). **Recall is toggled by the
+`DISPATCHER_SPAWN_RECALL_ENABLED` env on the dispatcher + a restart between arms —
+NOT a per-task flag** (Atlas grounding 2026-05-29). Restart-between-arms is
+acceptable; the harness runs one arm, the operator (or the harness's restart
+hook) flips the env + restarts the dispatcher, then runs the other arm.
+
+### Seed (Atlas-grounded 2026-05-29)
+
+Each arm is driven by inserting a task row — the `public.tasks` AFTER-INSERT
+trigger (#1275) publishes to `keiracom:tasks:available`, which the consumer
+drains:
+
+```sql
+INSERT INTO public.tasks (id, title, status) VALUES ('rehearsal-1', 'rehearsal task', 'available');
+```
+
+The harness binds the values as parameters (injection-safe). **Open question for
+Elliot:** Viktor's design says "real backlog KEI, not synthetic", but Atlas's
+seed example is a dedicated `rehearsal task`. The harness defaults to a real
+`bd ready` KEI (§2); confirm whether a dedicated rehearsal task is the canonical
+gate subject instead.
+
+### THE recall assert (Elliot 2026-05-29)
+
+`assert_recall_returned_atom(recall_active_run)` — the recall-active arm MUST
+surface **≥1 relevant atom** (a hop where recall fired, was not bypassed, and
+returned a scored citation). Zero atoms in the recall arm = gate FAIL (criterion
+S5). This is the concrete, measured memory proof.
 
 **Memory gap (what we measure per hop):** recall-active hops have non-empty `retrieval_events` rows with `bypass_rerank=false` and `top_score > 0`; cold hops have empty / bypassed retrieval. The gate requires the active run to **strictly out-trace** the cold run (≥1 hop where active surfaced a citation the cold run did not) AND the active run to reach merge with fewer worker retries than (or equal to and no worse than) cold. The gap is the proof.
 
@@ -84,8 +111,24 @@ Until 1+2 land, `scripts/cutover/full_chain_dress_rehearsal.py` **self-skips** (
 - `scripts/cutover/full_chain_dress_rehearsal.py` — driver: real-KEI selection (§2), seed task per run (§3), poll hops, collect per-hop traces (§4), dual run + gap (§3/§5-S5), success evaluation (§5). `--live` + loop-reachable required; otherwise SKIP.
 - `tests/scripts/test_full_chain_dress_rehearsal.py` — unit tests for the pure core (KEI selection, gap computation, success evaluation, skip-guard) — runnable + green now, without the live loop.
 
+## §9 — Failure-path scenarios (the harness must detect + report each, never hang)
+
+| Failure mode | Trigger | Detection |
+|---|---|---|
+| `spawn_rejected` | `/dispatcher/spawn` non-2xx — **TODAY: 400 = missing container image/name/port** (Atlas container-defaults fix pending) | `classify_spawn_failure(status)` → surfaced, not a silent hang |
+| `no_trace` | a hop fired no `retrieval_events` row | S4 — missing-hop reason |
+| `no_recall_atom` | recall arm surfaced 0 relevant atoms | `assert_recall_returned_atom` → S5 |
+| `pr_not_opened` / `not_merged` | chain produced no PR / PR unmerged | S1 |
+| `ci_failed` | PR CI not green | S2 |
+| `governance_violation` | callsign / <2 concur / claim / Linear-write | S3 |
+| `no_memory_gap` | recall arm did not out-trace cold | S5 |
+
+The harness classifies the failure and reports it; it never reports a false pass.
+
 ## §8 — Open wiring dependencies (flagged to Elliot / Atlas)
 
-- **`recall_mode` honouring** in the consumer/dispatcher (§3) — confirm with Atlas (#1275 owner) or fall back to fleet-env flip between runs.
-- **Task-seed schema** — the production path is a Postgres task-row insert that triggers the publish to `keiracom:tasks:available`; the harness publishes to that channel directly (contract-equivalent for the consumer). Confirm the exact task payload fields with Atlas before the live run.
-- **Governance-honoured (S3) automation** — callsign + concur checks via `gh`; claim-before-touch + no-Linear-write are observed from logs. Final S3 automation may need the enforcer's signals.
+- **Real-spawn arm gated on the dispatcher container-defaults fix.** Live container spawn returns **400 today** (missing image/name/port); Atlas is shipping the fix. Until it lands, `spawn_rejected` fires and the real-spawn arm cannot complete. Everything else (seed, trace collection, dual-arm comparison, recall-atom assert, gate evaluation, failure classification) is built + tested now.
+- **Recall toggle** is env (`DISPATCHER_SPAWN_RECALL_ENABLED`) + dispatcher restart between arms (Atlas grounding 2026-05-29) — resolved; no per-task flag needed.
+- **Seed schema** = `INSERT INTO public.tasks (id, title, status) VALUES (…, 'available')` (Atlas grounding) — resolved; harness binds values as parameters.
+- **Real-KEI vs rehearsal-task** — confirm whether the gate subject is a real `bd ready` KEI (Viktor) or a dedicated `rehearsal task` (Atlas's seed example). Harness defaults to a real KEI.
+- **Governance-honoured (S3) automation** — callsign + concur via `gh`; claim-before-touch + no-Linear-write observed from logs / enforcer signals.

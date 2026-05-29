@@ -30,6 +30,26 @@ HOP_AGENTS_DEFAULT = ("chat", "deliberator", "worker", "reviewer")
 SYNTHETIC_ID_MARKERS = ("kei-test", "-test", "test001")
 SYNTHETIC_TITLE_MARKERS = ("smoke", "test", "scaffold", "dress-rehearsal", "dress rehearsal")
 
+# Recall toggle (Atlas grounding 2026-05-29): NOT a per-task flag. The recall arm
+# sets DISPATCHER_SPAWN_RECALL_ENABLED=true and restarts the dispatcher; the cold
+# arm unsets it and restarts. Restart-between-arms is acceptable.
+RECALL_ENABLED_ENV = "DISPATCHER_SPAWN_RECALL_ENABLED"
+
+# Failure taxonomy — what the harness must detect + report at each stage (never a
+# silent hang). spawn_rejected covers TODAY's 400 (missing container image/name/
+# port; Atlas is shipping the dispatcher container-defaults fix — the real-spawn
+# arm runs after that lands).
+FAILURE_MODES = (
+    "spawn_rejected",  # /dispatcher/spawn non-2xx (400 = container defaults missing)
+    "no_trace",  # a hop fired no retrieval_events row
+    "no_recall_atom",  # recall arm surfaced 0 relevant atoms
+    "pr_not_opened",  # chain produced no PR
+    "ci_failed",  # PR CI not green
+    "not_merged",  # PR not merged
+    "governance_violation",  # callsign / concur / claim / linear
+    "no_memory_gap",  # recall arm did not out-trace cold
+)
+
 
 # ─── data model ───────────────────────────────────────────────────────────────
 
@@ -142,14 +162,60 @@ def evaluate_gate(
     missing = [h for h in hop_agents if h not in fired]
     if missing:
         reasons.append(f"S4: no retrieval trace at hop(s): {', '.join(missing)}")
-    # S5 memory gap
+    # S5 memory gap + the explicit recall-atom assert
     gap = memory_gap(active, cold)
+    atom_ok, atom_n = assert_recall_returned_atom(active)
+    gap["recall_atoms_active"] = atom_n
+    if not atom_ok:
+        reasons.append("S5: recall-active returned 0 relevant atoms (assert recall>=1 failed)")
     if not gap["active_strictly_outtraces_cold"]:
         reasons.append("S5: recall-active did not out-trace cold (memory gap not demonstrated)")
     if not gap["retries_not_worse"]:
         reasons.append("S5: recall-active had MORE worker retries than cold")
 
     return GateOutcome(passed=not reasons, reasons=tuple(reasons), gap=gap)
+
+
+# ─── §7 seed + asserts + failure classification (Atlas-grounded) ──────────────
+
+
+def build_seed_sql() -> str:
+    """Parameterised INSERT for one task row — values are bound separately, never
+    interpolated (injection-safe). The public.tasks AFTER-INSERT trigger (#1275)
+    publishes to keiracom:tasks:available, which the work-loop consumer drains."""
+    return "INSERT INTO public.tasks (id, title, status) VALUES (%s, %s, 'available')"
+
+
+def seed_task(task_id: str, title: str, *, dsn: str | None = None) -> str:
+    """Seed the task row that drives one arm. Both arms reuse the same task id
+    (reset between). Live-only (needs DATABASE_URL); returns the task id."""
+    dsn = dsn or os.environ.get("DATABASE_URL") or os.environ.get("RETRIEVAL_EVENTS_DSN")
+    if not dsn:
+        raise RuntimeError("no DATABASE_URL/RETRIEVAL_EVENTS_DSN — cannot seed task")
+    import psycopg
+
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    with (
+        psycopg.connect(dsn, prepare_threshold=None, autocommit=True) as conn,
+        conn.cursor() as cur,
+    ):
+        cur.execute(build_seed_sql(), (task_id, title))
+    return task_id
+
+
+def assert_recall_returned_atom(run: RunResult) -> tuple[bool, int]:
+    """THE memory assert (Elliot 2026-05-29): the recall-active arm must surface
+    >=1 relevant atom — a hop where recall fired, was not bypassed, and returned a
+    scored citation. Returns (passed, count)."""
+    n = len(_useful_hops(run))
+    return (n >= 1, n)
+
+
+def classify_spawn_failure(status_code: int, body: str = "") -> str | None:  # noqa: ARG001
+    """Map a /dispatcher/spawn response to a FAILURE_MODES entry; None on success.
+    A 400 today = missing container image/name/port (Atlas container-defaults fix
+    pending) — surfaced as spawn_rejected, never swallowed."""
+    return None if 200 <= status_code < 300 else "spawn_rejected"
 
 
 # ─── live orchestration (gated) ───────────────────────────────────────────────

@@ -165,6 +165,65 @@ def test_gate_fails_when_no_memory_gap():
     assert not out.passed and any("S5" in r for r in out.reasons)
 
 
+# ─── §7 seed (injection-safe) ─────────────────────────────────────────────────
+
+
+def test_build_seed_sql_is_parameterised():
+    sql = m.build_seed_sql()
+    assert "VALUES (%s, %s, 'available')" in sql  # values bound, not interpolated
+    assert "public.tasks" in sql and "id, title, status" in sql
+
+
+# ─── recall-atom assert (THE memory assert) ───────────────────────────────────
+
+
+def test_assert_recall_returned_atom_passes_on_useful_run():
+    ok, n = m.assert_recall_returned_atom(_useful_run())
+    assert ok is True and n == len(m.HOP_AGENTS_DEFAULT)
+
+
+def test_assert_recall_returned_atom_fails_on_cold_run():
+    ok, n = m.assert_recall_returned_atom(_cold_run())
+    assert ok is False and n == 0
+
+
+def test_gate_fails_when_recall_returns_no_atom():
+    # recall-active arm where every hop fired but bypassed / surfaced nothing
+    barren = m.RunResult(
+        kei="Agency_OS-real",
+        recall_active=True,
+        hop_traces=tuple(_hop(h, bypass=True, cit=None, score=0.0) for h in m.HOP_AGENTS_DEFAULT),
+        pr_number=42,
+        pr_merged=True,
+        ci_passed=True,
+        governance={
+            "callsign_tagged": True,
+            "concur_count": 2,
+            "no_linear_write": True,
+            "claim_observed": True,
+        },
+    )
+    out = m.evaluate_gate(barren, _cold_run())
+    assert not out.passed
+    assert any("0 relevant atoms" in r for r in out.reasons)
+    assert out.gap["recall_atoms_active"] == 0
+
+
+# ─── §9 failure classification (spawn 400 etc.) ───────────────────────────────
+
+
+def test_classify_spawn_failure_success_is_none():
+    assert m.classify_spawn_failure(200) is None
+    assert m.classify_spawn_failure(201) is None
+
+
+def test_classify_spawn_failure_400_today_is_spawn_rejected():
+    # TODAY's known failure: 400 = missing container image/name/port (Atlas fix pending)
+    assert m.classify_spawn_failure(400, "missing image") == "spawn_rejected"
+    assert m.classify_spawn_failure(503) == "spawn_rejected"
+    assert "spawn_rejected" in m.FAILURE_MODES
+
+
 # ─── skip-guard ───────────────────────────────────────────────────────────────
 
 

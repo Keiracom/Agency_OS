@@ -62,6 +62,17 @@ CAPTURE_COMMAND = os.environ.get(
     '-- "$CEO_CAPTURE_MESSAGE"',
 )
 
+# Direct Slack→task creator (Agency_OS-evbn, Dave approved 2026-05-29). A
+# 'TASK:'-prefixed #ceo message creates a public.tasks row directly; the
+# kei45_emit_task_event trigger then drives the work-loop (Atlas wire #1283:
+# id supplied, title NOT NULL, status MUST be 'available'). Skips Linear
+# entirely — the [CEO]→Linear→webhook path is dead AND writing Linear violates
+# the Linear-read-only LAW.
+TASK_PREFIX = "TASK:"
+TASK_TITLE_MAX_CHARS = 500
+# kei45 trigger fires new_available only on INSERT with this status.
+_TASK_INSERT_SQL = "INSERT INTO public.tasks (id, title, status) VALUES (%s, %s, 'available')"
+
 
 def is_human_ceo_message(event: dict) -> bool:
     """Event hygiene only (NOT a content filter): a top-level human text message
@@ -119,11 +130,59 @@ def spawn_capture_agent(text: str) -> bool:
         return False
 
 
+def is_task_command(text: str) -> bool:
+    """A 'TASK:'-prefixed #ceo message is a direct task-creation command (evbn)."""
+    return (text or "").strip().upper().startswith(TASK_PREFIX)
+
+
+def extract_task_title(text: str) -> str:
+    """Task title = the message body after the 'TASK:' prefix (trimmed + capped)."""
+    body = (text or "").strip()
+    if body.upper().startswith(TASK_PREFIX):
+        body = body[len(TASK_PREFIX) :].strip()
+    return body[:TASK_TITLE_MAX_CHARS]
+
+
+def create_task_from_message(text: str, *, dsn: str | None = None) -> str | None:
+    """INSERT one public.tasks row from a 'TASK:' message (Atlas wire #1283). The
+    kei45_emit_task_event trigger then drives the loop. Values are bound as params
+    (injection-safe); NO Linear. Returns the task id, or None on any error
+    (fail-open — task-creation failure must never crash the listener)."""
+    title = extract_task_title(text)
+    if not title:
+        logger.warning("TASK: message had no body — no task created")
+        return None
+    dsn = dsn or os.environ.get("DATABASE_URL") or os.environ.get("RETRIEVAL_EVENTS_DSN")
+    if not dsn:
+        logger.warning("no DATABASE_URL — cannot create task from #ceo TASK: message")
+        return None
+    task_id = f"ceo-task-{int(time.time() * 1000)}"
+    try:
+        import psycopg
+
+        clean = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+        with (
+            psycopg.connect(clean, prepare_threshold=None, autocommit=True) as conn,
+            conn.cursor() as cur,
+        ):
+            cur.execute(_TASK_INSERT_SQL, (task_id, title))
+        logger.info("created task %s ('%s') from #ceo TASK: message", task_id, title[:60])
+        return task_id
+    except Exception:  # noqa: BLE001 — task creation must never crash the listener
+        logger.warning("task creation failed (non-fatal)", exc_info=True)
+        return None
+
+
 def handle_event(event: dict) -> str:
-    """Spawn a Haiku capture agent for one human #ceo message. Returns an action label."""
+    """Route one human #ceo message: a 'TASK:' command creates a public.tasks row
+    (drives the work-loop); anything else spawns a Haiku capture agent. Returns an
+    action label."""
     if not is_human_ceo_message(event):
         return "skip"
-    return "spawned" if spawn_capture_agent(event["text"]) else "spawn_failed"
+    text = event["text"]
+    if is_task_command(text):
+        return "task_created" if create_task_from_message(text) else "task_create_failed"
+    return "spawned" if spawn_capture_agent(text) else "spawn_failed"
 
 
 def main() -> int:

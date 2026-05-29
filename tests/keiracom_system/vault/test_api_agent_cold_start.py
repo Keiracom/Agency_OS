@@ -1,0 +1,360 @@
+"""Tests for src/keiracom_system/vault/api_agent_cold_start.py (Agency_OS-l6i2)."""
+
+from __future__ import annotations
+
+import json
+import sys
+import types
+from unittest.mock import MagicMock
+
+import pytest
+
+from src.keiracom_system.vault import api_agent_cold_start as aacs
+
+
+# ---------------------------------------------------------------------------
+# CALLSIGN_TO_PERSONA mapping
+# ---------------------------------------------------------------------------
+
+
+def test_callsign_to_persona_covers_all_chain_callsigns():
+    """Every V1 chain callsign + face must have a persona mapping."""
+    expected = {"aiden", "max", "nova", "orion", "atlas", "face"}
+    assert set(aacs.CALLSIGN_TO_PERSONA.keys()) >= expected
+    assert aacs.CALLSIGN_TO_PERSONA["aiden"] == ("deliberator", "aiden")
+    assert aacs.CALLSIGN_TO_PERSONA["nova"] == ("worker", "nova")
+    assert aacs.CALLSIGN_TO_PERSONA["atlas"] == ("reviewer", "atlas")
+
+
+# ---------------------------------------------------------------------------
+# compute_cost
+# ---------------------------------------------------------------------------
+
+
+def test_compute_cost_zero_tokens_zero_cost():
+    usd, aud = aacs.compute_cost(0, 0)
+    assert usd == 0.0
+    assert aud == 0.0
+
+
+def test_compute_cost_sample_tokens_and_aud_conversion():
+    """1M input + 1M output → USD = 3 + 15 = 18; AUD = 18 * 1.55 = 27.9."""
+    usd, aud = aacs.compute_cost(1_000_000, 1_000_000)
+    assert usd == pytest.approx(18.0)
+    assert aud == pytest.approx(27.9)
+
+
+def test_compute_cost_small_values_preserves_precision():
+    """100 in + 200 out → USD = (100*3 + 200*15)/1e6 = 0.0033."""
+    usd, _ = aacs.compute_cost(100, 200)
+    assert usd == pytest.approx(0.0033)
+
+
+# ---------------------------------------------------------------------------
+# fetch_persona — success / 404 retry / hard error / unknown callsign
+# ---------------------------------------------------------------------------
+
+
+class _FakeResp:
+    def __init__(self, body: bytes):
+        self._body = body
+
+    def read(self) -> bytes:
+        return self._body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_):
+        pass
+
+
+def test_fetch_persona_success(monkeypatch: pytest.MonkeyPatch):
+    """Happy path: 200 with prompt_text returns the string."""
+    captured: dict = {}
+
+    def fake_urlopen(url, timeout=None):
+        captured["url"] = url
+        return _FakeResp(json.dumps({"prompt_text": "Atlas persona", "token_count": 805}).encode())
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    prompt = aacs.fetch_persona("atlas")
+    assert prompt == "Atlas persona"
+    assert "/dispatcher/persona" in captured["url"]
+    assert "role=reviewer" in captured["url"]
+    assert "variant=atlas" in captured["url"]
+
+
+def test_fetch_persona_404_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch):
+    """404 → retry; eventually 200 returns prompt. Use short retry config."""
+    import urllib.error
+
+    monkeypatch.setattr(aacs, "_PERSONA_RETRY_MAX_SECONDS", 5)
+    monkeypatch.setattr(aacs, "_PERSONA_RETRY_INTERVAL", 0.01)
+    monkeypatch.setattr("time.sleep", lambda _s: None)
+
+    calls = {"n": 0}
+
+    def fake_urlopen(url, timeout=None):
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise urllib.error.HTTPError(url, 404, "not found", {}, None)
+        return _FakeResp(json.dumps({"prompt_text": "Nova worker"}).encode())
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    prompt = aacs.fetch_persona("nova")
+    assert prompt == "Nova worker"
+    assert calls["n"] == 3
+
+
+def test_fetch_persona_non_404_http_error_returns_none(monkeypatch: pytest.MonkeyPatch):
+    """500 (or any non-404 HTTP) is terminal — return None immediately."""
+    import urllib.error
+
+    def fake_urlopen(url, timeout=None):
+        raise urllib.error.HTTPError(url, 500, "server error", {}, None)
+
+    monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
+    assert aacs.fetch_persona("atlas") is None
+
+
+def test_fetch_persona_unknown_callsign_returns_none():
+    """No mapping → log error + return None (no HTTP call)."""
+    assert aacs.fetch_persona("ghost") is None
+
+
+# ---------------------------------------------------------------------------
+# insert_attribution — fail-open + SQL shape
+# ---------------------------------------------------------------------------
+
+
+def _fake_conn() -> tuple[MagicMock, MagicMock]:
+    cur = MagicMock()
+    conn = MagicMock()
+    conn.cursor.return_value.__enter__.return_value = cur
+    return conn, cur
+
+
+def test_insert_attribution_inserts_all_columns():
+    conn, cur = _fake_conn()
+    aacs.insert_attribution(
+        callsign="aiden",
+        chain_id="c1",
+        task_id="t1",
+        chain_step="aiden_plan",
+        input_tokens=100,
+        output_tokens=200,
+        cost_usd=0.0033,
+        cost_aud=0.005115,
+        latency_ms=1234.5,
+        conn=conn,
+    )
+    sql = cur.execute.call_args[0][0]
+    params = cur.execute.call_args[0][1]
+    assert "INSERT INTO public.keiracom_spawn_attribution" in sql
+    assert "input_tokens" in sql and "output_tokens" in sql
+    assert "cost_usd" in sql and "cost_aud" in sql
+    assert "latency_ms" in sql and "chain_id" in sql and "task_id" in sql
+    # params positional, in column order
+    assert "aiden" in params
+    assert 100 in params and 200 in params
+    assert 0.0033 in params and 0.005115 in params
+
+
+def test_insert_attribution_failopen_on_db_error():
+    """conn.cursor() raising → logged + returns None (does NOT raise)."""
+    conn = MagicMock()
+    conn.cursor.side_effect = RuntimeError("DB down")
+    # No exception bubbled.
+    aacs.insert_attribution(
+        callsign="aiden",
+        chain_id="c1",
+        task_id="t1",
+        chain_step="aiden_plan",
+        input_tokens=0,
+        output_tokens=0,
+        cost_usd=0.0,
+        cost_aud=0.0,
+        latency_ms=0.0,
+        conn=conn,
+    )
+
+
+# ---------------------------------------------------------------------------
+# call_anthropic — passes correct args
+# ---------------------------------------------------------------------------
+
+
+def test_call_anthropic_passes_model_system_brief_and_returns_text_tokens(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """anthropic.Anthropic(api_key=...).messages.create(model, max_tokens, system, messages)."""
+    captured: dict = {}
+
+    class _FakeContent:
+        def __init__(self, text):
+            self.text = text
+
+    class _FakeUsage:
+        input_tokens = 42
+        output_tokens = 137
+
+    class _FakeResponse:
+        content = [_FakeContent("Atlas safety-review verdict: looks OK.")]
+        usage = _FakeUsage()
+
+    class _FakeClient:
+        def __init__(self, *, api_key):
+            captured["api_key"] = api_key
+            self.messages = self
+
+        def create(self, **kwargs):
+            captured["create_kwargs"] = kwargs
+            return _FakeResponse()
+
+    fake_anthropic = types.ModuleType("anthropic")
+    fake_anthropic.Anthropic = _FakeClient
+    monkeypatch.setitem(sys.modules, "anthropic", fake_anthropic)
+
+    text, in_t, out_t = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+
+    assert text == "Atlas safety-review verdict: looks OK."
+    assert in_t == 42 and out_t == 137
+    assert captured["api_key"] == "KEY"
+    kw = captured["create_kwargs"]
+    assert kw["model"] == aacs._MODEL
+    assert kw["max_tokens"] == aacs._MAX_TOKENS
+    assert kw["system"] == "SYS"
+    assert kw["messages"] == [{"role": "user", "content": "BRIEF"}]
+
+
+# ---------------------------------------------------------------------------
+# run() — orchestration paths
+# ---------------------------------------------------------------------------
+
+
+def _seed_env(monkeypatch: pytest.MonkeyPatch, **overrides) -> None:
+    defaults = {
+        "ANTHROPIC_API_KEY": "test-key",
+        "AGENT_CALLSIGN": "atlas",
+        "CHAIN_STEP": "atlas_safety",
+        "AGENT_CHAIN_ID": "chain-1",
+        "AGENT_TASK_ID": "task-1",
+        "AGENT_ATOM_ID": "atom-prior",
+        "AGENT_BRIEF": "do the thing",
+    }
+    defaults.update(overrides)
+    for k, v in defaults.items():
+        monkeypatch.setenv(k, str(v))
+
+
+def test_run_no_api_key_returns_rc_no_agent_env(monkeypatch: pytest.MonkeyPatch):
+    _seed_env(monkeypatch, ANTHROPIC_API_KEY="")
+    assert aacs.run() == aacs.RC_NO_AGENT_ENV
+
+
+def test_run_no_callsign_returns_rc_no_agent_env(monkeypatch: pytest.MonkeyPatch):
+    _seed_env(monkeypatch, AGENT_CALLSIGN="")
+    assert aacs.run() == aacs.RC_NO_AGENT_ENV
+
+
+def test_run_no_brief_returns_rc_no_agent_env(monkeypatch: pytest.MonkeyPatch):
+    _seed_env(monkeypatch, AGENT_BRIEF="")
+    assert aacs.run() == aacs.RC_NO_AGENT_ENV
+
+
+def test_run_persona_failed_returns_rc_persona_failed(monkeypatch: pytest.MonkeyPatch):
+    _seed_env(monkeypatch)
+    monkeypatch.setattr(aacs, "fetch_persona", lambda _c: None)
+    assert aacs.run() == aacs.RC_PERSONA_FAILED
+
+
+def test_run_happy_path_writes_attribution_and_publishes_handoff(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Mock every subsystem; assert insert_attribution + classify_and_save +
+    _publish_handoff all fire with the right args, and exit code is 0."""
+    _seed_env(monkeypatch)
+    monkeypatch.setattr(aacs, "fetch_persona", lambda _c: "ATLAS_PROMPT")
+    monkeypatch.setattr(aacs, "call_anthropic", lambda _k, _s, _b: ("REPLY", 100, 200))
+
+    insert_calls: list[dict] = []
+
+    def fake_insert(**kwargs):
+        insert_calls.append(kwargs)
+
+    monkeypatch.setattr(aacs, "insert_attribution", fake_insert)
+
+    # Mock classify_and_save (lazy import inside run()).
+    async def fake_classify(conversation, customer_id, **_kw):
+        assert customer_id == 1
+        assert conversation[0]["role"] == "user" and conversation[0]["content"] == "do the thing"
+        assert conversation[1]["role"] == "assistant" and conversation[1]["content"] == "REPLY"
+        return types.SimpleNamespace(atom_ids=["atom-A", "atom-B"])
+
+    fake_ec = types.ModuleType("src.keiracom_system.chat.exit_cycle")
+    fake_ec.classify_and_save = fake_classify
+    monkeypatch.setitem(sys.modules, "src.keiracom_system.chat.exit_cycle", fake_ec)
+
+    # Mock _publish_handoff (lazy import inside run()).
+    handoff_calls: list[dict] = []
+
+    def fake_handoff(*, task_id, atom_id, to_callsign=""):
+        handoff_calls.append({"task_id": task_id, "atom_id": atom_id, "to_callsign": to_callsign})
+        return True
+
+    fake_acs_mod = types.ModuleType("src.keiracom_system.vault.agent_cold_start")
+    fake_acs_mod._publish_handoff = fake_handoff
+    fake_acs_mod._connect = lambda: MagicMock()
+    monkeypatch.setitem(sys.modules, "src.keiracom_system.vault.agent_cold_start", fake_acs_mod)
+
+    rc = aacs.run()
+    assert rc == 0
+
+    assert len(insert_calls) == 1
+    row = insert_calls[0]
+    assert row["callsign"] == "atlas"
+    assert row["chain_id"] == "chain-1"
+    assert row["task_id"] == "task-1"
+    assert row["chain_step"] == "atlas_safety"
+    assert row["input_tokens"] == 100 and row["output_tokens"] == 200
+    assert row["cost_usd"] == pytest.approx((100 * 3 + 200 * 15) / 1_000_000)
+    assert row["cost_aud"] == pytest.approx(row["cost_usd"] * 1.55)
+    assert row["latency_ms"] >= 0.0
+
+    # One handoff per atom — both should fire.
+    assert len(handoff_calls) == 2
+    assert {c["atom_id"] for c in handoff_calls} == {"atom-A", "atom-B"}
+    assert all(c["task_id"] == "task-1" for c in handoff_calls)
+
+
+def test_run_no_atoms_still_fires_one_empty_handoff(monkeypatch: pytest.MonkeyPatch):
+    """If classify_and_save produces no atoms, fire ONE handoff with empty
+    atom_id so the chain consumer still advances (no stall)."""
+    _seed_env(monkeypatch)
+    monkeypatch.setattr(aacs, "fetch_persona", lambda _c: "PROMPT")
+    monkeypatch.setattr(aacs, "call_anthropic", lambda _k, _s, _b: ("REPLY", 0, 0))
+    monkeypatch.setattr(aacs, "insert_attribution", lambda **_kw: None)
+
+    async def fake_classify(*_a, **_kw):
+        return types.SimpleNamespace(atom_ids=[])
+
+    fake_ec = types.ModuleType("src.keiracom_system.chat.exit_cycle")
+    fake_ec.classify_and_save = fake_classify
+    monkeypatch.setitem(sys.modules, "src.keiracom_system.chat.exit_cycle", fake_ec)
+
+    handoff_calls: list[dict] = []
+
+    def fake_handoff(*, task_id, atom_id, to_callsign=""):
+        handoff_calls.append({"task_id": task_id, "atom_id": atom_id})
+        return True
+
+    fake_acs_mod = types.ModuleType("src.keiracom_system.vault.agent_cold_start")
+    fake_acs_mod._publish_handoff = fake_handoff
+    fake_acs_mod._connect = lambda: MagicMock()
+    monkeypatch.setitem(sys.modules, "src.keiracom_system.vault.agent_cold_start", fake_acs_mod)
+
+    assert aacs.run() == 0
+    # Exactly one handoff with empty atom_id — chain MUST advance.
+    assert len(handoff_calls) == 1
+    assert handoff_calls[0]["atom_id"] == ""

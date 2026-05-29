@@ -22,6 +22,7 @@ import contextlib
 import dataclasses
 import logging
 import os
+import shlex
 import socket
 from collections.abc import AsyncGenerator
 from typing import Any
@@ -442,6 +443,74 @@ def _container_spawn_kwargs(key: str, sk: dict[str, Any]) -> dict[str, Any]:
     return out
 
 
+# Phase-1 spawn backend is scrubbed-tmux (Agency_OS-87ei): reuse the working tmux
+# spawn but run the agent under `env -i` so it inherits NO .env — only the Vault
+# bootstrap + non-secret operational vars + recall/metadata. resolve_into_env then
+# pulls every credential from Vault KV. (Container is the pre-multi-tenant
+# fast-follow; #1282/#1288 already wire its bootstrap.)
+#
+# env -i clears PATH/HOME too, so the agent command couldn't even start — these
+# NON-SECRET operational vars are re-added. Credentials (DATABASE_URL, *_API_KEY,
+# …) are deliberately NOT whitelisted → scrubbed.
+_TMUX_OPERATIONAL_PASSTHROUGH = ("PATH", "HOME", "LANG", "LC_ALL", "TERM", "USER")
+DEFAULT_AGENT_WORKDIR = os.environ.get(
+    "DISPATCHER_AGENT_WORKDIR", "/home/elliotbot/clawd/Agency_OS"
+)
+# The command run AFTER cold-start cred resolution. Defaults to the cold-start
+# entrypoint (resolve_into_env → exec the agent); referenced by string so this
+# module needs no import of Nova's kv_resolver (the entrypoint lands on #1289).
+DEFAULT_AGENT_COMMAND = os.environ.get(
+    "DISPATCHER_AGENT_COMMAND", "python3 -m src.keiracom_system.vault.agent_cold_start"
+)
+# OFF by default (rollout phase 1, matches every other dispatcher gate). When ON,
+# every tmux spawn is env-i-scrubbed. Goes live at the Phase-1 cutover; off keeps
+# existing (non-ephemeral) tmux spawns unchanged.
+_TMUX_SCRUB_ENABLED_ENV = "DISPATCHER_TMUX_SCRUB_ENABLED"
+tmux_scrub_enabled: bool = os.environ.get(_TMUX_SCRUB_ENABLED_ENV, "").lower() in {
+    "1",
+    "true",
+    "yes",
+}
+
+
+def _tmux_scrubbed_command(agent_command: str, env: dict[str, str]) -> str:
+    """Wrap a command so it runs with a SCRUBBED env (P10).
+
+    ``env -i`` clears all inherited env; only ``env`` (Vault bootstrap +
+    operational passthrough + recall/metadata) is set; ``sh -c`` runs the command
+    without sourcing a profile that could re-introduce env. Credentials not in
+    ``env`` are gone — that is the no-.env-inheritance guarantee.
+    """
+    assignments = " ".join(f"{k}={shlex.quote(str(v))}" for k, v in env.items())
+    return f"env -i {assignments} sh -c {shlex.quote(agent_command)}"
+
+
+def _tmux_spawn_kwargs(key: str, sk: dict[str, Any]) -> dict[str, Any]:
+    """Translate logical spawn_kwargs → scrubbed-tmux spawn_session kwargs (87ei).
+
+    The agent process sees ONLY the Vault bootstrap, the operational passthrough,
+    and any recall/metadata — never the dispatcher's .env credentials.
+    """
+    sk = dict(sk or {})
+    session_name = sk.pop("session_name", None) or f"{TMUX_NAME_PREFIX}{key}"
+    working_dir = sk.pop("working_dir", None) or DEFAULT_AGENT_WORKDIR
+    agent_command = sk.pop("command", None) or DEFAULT_AGENT_COMMAND
+    env = dict(sk.pop("env", None) or {})  # carries the recall PRIOR_CONTEXT if injected
+    for meta_key, meta_val in sk.items():
+        if meta_val is not None:
+            env.setdefault(f"AGENT_{meta_key.upper()}", str(meta_val))
+    # Vault bootstrap (the only inherited credential surface) + non-secret operational env.
+    for passthrough in ("VAULT_ADDR", "VAULT_TOKEN", *_TMUX_OPERATIONAL_PASSTHROUGH):
+        val = os.environ.get(passthrough)
+        if val:
+            env.setdefault(passthrough, val)
+    return {
+        "session_name": session_name,
+        "working_dir": working_dir,
+        "command": _tmux_scrubbed_command(agent_command, env),
+    }
+
+
 def _norm_status(raw: str) -> str:
     """Map a watchdog/reaper status into the {'ok','degraded'} vocabulary.
 
@@ -740,6 +809,10 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
     # work-loop bridge's spawn_kwargs no longer TypeError → 400.
     if backend is Backend.CONTAINER:
         spawn_kwargs_effective = _container_spawn_kwargs(req.key, spawn_kwargs_effective)
+    elif backend is Backend.TMUX and tmux_scrub_enabled:
+        # Phase-1 scrubbed-tmux (Agency_OS-87ei): run the agent under env -i so it
+        # inherits no .env — only the Vault bootstrap; resolve_into_env does the rest.
+        spawn_kwargs_effective = _tmux_spawn_kwargs(req.key, spawn_kwargs_effective)
 
     manager = SessionManager(backend=backend)
     try:

@@ -41,3 +41,21 @@ async def test_unknown_tier_uses_default_ceiling():
 
 async def test_lookup_failure_is_failopen_to_default():
     assert await ceilings.get_ceiling("t", fetch=_raises()) == ceilings.DEFAULT_CEILING
+
+
+# --- operator-uncap (Agency_OS-w667) -----------------------------------
+
+
+async def test_fleet_tenant_is_uncapped_without_db_lookup():
+    # The fleet slug returns FLEET_OPERATOR_CEILING via early return — fetch is
+    # never consulted (a raising fetch would surface if it were called).
+    result = await ceilings.get_ceiling(ceilings.DEFAULT_FLEET_TENANT_ID, fetch=_raises())
+    assert result == ceilings.FLEET_OPERATOR_CEILING
+    assert ceilings.FLEET_OPERATOR_CEILING > 20  # well above the highest tier ceiling
+
+
+async def test_fleet_slug_is_env_overridable(monkeypatch):
+    monkeypatch.setenv("FLEET_TENANT_ID", "fleet-x")
+    assert await ceilings.get_ceiling("fleet-x", fetch=_raises()) == ceilings.FLEET_OPERATOR_CEILING
+    # a non-fleet tenant still goes through the normal lookup
+    assert await ceilings.get_ceiling("some-uuid", fetch=_fetch((6, "pro"))) == 6

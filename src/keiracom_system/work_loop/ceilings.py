@@ -21,6 +21,19 @@ logger = logging.getLogger(__name__)
 TIER_DEFAULTS: dict[str, int] = {"solo": 2, "pro": 6, "scale": 20, "team": 20, "enterprise": 20}
 DEFAULT_CEILING = 2  # cost-safe fallback when tenant/tier is unknown
 
+# Operator-uncap (Agency_OS-w667): the fleet/operator runs under the
+# FLEET_TENANT_ID slug, which has NO keiracom_tenants row (that table is
+# UUID-keyed) — so it would fail-open to DEFAULT_CEILING and gate Dave-as-operator
+# at 2. Treat that slug as effectively uncapped. A real tenant_id is always a
+# UUID, so the slug uniquely identifies the operator (no collision risk).
+DEFAULT_FLEET_TENANT_ID = "default"
+FLEET_OPERATOR_CEILING = 1000
+
+
+def _fleet_tenant_id() -> str:
+    return os.environ.get("FLEET_TENANT_ID") or DEFAULT_FLEET_TENANT_ID
+
+
 TenantRow = tuple[int | None, str | None]  # (max_concurrent_tasks, tier)
 CeilingFetch = Callable[[str], Awaitable[TenantRow | None]]
 
@@ -53,7 +66,13 @@ async def _db_fetch(tenant_id: str) -> TenantRow | None:
 
 
 async def get_ceiling(tenant_id: str, *, fetch: CeilingFetch | None = None) -> int:
-    """Resolve the tenant's concurrent-spawn ceiling. Fail-open to DEFAULT_CEILING."""
+    """Resolve the tenant's concurrent-spawn ceiling. Fail-open to DEFAULT_CEILING.
+
+    The fleet/operator slug returns FLEET_OPERATOR_CEILING so Dave-as-operator is
+    never gated (Agency_OS-w667) — it has no DB row to read a ceiling from.
+    """
+    if tenant_id == _fleet_tenant_id():
+        return FLEET_OPERATOR_CEILING
     try:
         row = await (fetch or _db_fetch)(tenant_id)
     except Exception:  # noqa: BLE001 — never block the loop on a lookup error

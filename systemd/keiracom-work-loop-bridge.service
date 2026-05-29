@@ -19,6 +19,13 @@ StartLimitIntervalSec=300
 [Service]
 Type=simple
 EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+# Bridge-only override: a SESSION-mode DSN (:5432) so asyncpg LISTEN/NOTIFY works.
+# The Supabase TRANSACTION pooler (:6543, the .env default) silently drops LISTEN —
+# Supavisor hands a different backend per txn, so the registration is never pinned.
+# Later EnvironmentFile wins, so SUPABASE_DB_DSN here overrides the .env one for THIS
+# unit only; the global txn pooler stays the default for every other service.
+# Optional (leading '-'): absent file is non-fatal. Holds no secret — only a path.
+EnvironmentFile=-/home/elliotbot/.config/agency-os/work-loop-bridge.env
 WorkingDirectory=/home/elliotbot/clawd/Agency_OS
 ExecStart=/usr/bin/python3 -B -m src.keiracom_system.work_loop.bridge
 

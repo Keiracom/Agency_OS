@@ -615,6 +615,18 @@ async def _lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
         background_tasks.append(rc_task)
         logger.info("work-loop: reconcile background task started")
 
+    # Step 7 — v1_chain consumer (Agency_OS-oevr): subscribes keiracom.agent.handoff
+    # and advances the chain via _advance_step_async on each message. Fail-open;
+    # cancellable. Lazy import keeps dispatcher startup free of chain-module load
+    # errors if the package is absent.
+    from src.keiracom_system.chain.v1_chain_orchestrator import (  # noqa: PLC0415
+        run_consumer as _v1_chain_run_consumer,
+    )
+
+    v1c_task = asyncio.create_task(_v1_chain_run_consumer(), name="v1-chain-consumer")
+    background_tasks.append(v1c_task)
+    logger.info("v1_chain consumer: background task started")
+
     try:
         yield
     finally:

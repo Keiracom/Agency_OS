@@ -197,7 +197,11 @@ def notify_complete(
     atlas_review) suppress to keep Dave from seeing N notifications per directive.
     CHAIN_STEP absent preserves today's behavior (single-step legacy tasks notify).
     """
-    chain_step = os.environ.get("CHAIN_STEP")
+    # Fallback to AGENT_CHAIN_STEP for forward-compat with the dispatcher's
+    # AGENT_*-prefixed auto-injection from spawn_kwargs (Agency_OS-qjl7 /
+    # Scout's finding on src/dispatcher/main.py:441-443+513-515). Either name
+    # resolves so any upstream injector wins.
+    chain_step = os.environ.get("CHAIN_STEP") or os.environ.get("AGENT_CHAIN_STEP")
     if chain_step and chain_step != "complete":
         logger.info(
             "notify_complete: suppressed (intermediate chain_step=%s) task=%s",

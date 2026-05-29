@@ -1050,3 +1050,75 @@ async def dispatcher_task_complete(req: TaskCompleteRequest) -> dict[str, Any]:
         return {"notified": False, "reason": "exception"}
     logger.info("task_complete: notified #ceo task=%s callsign=%s", req.task_id, req.callsign)
     return {"notified": True}
+
+
+# ---------------------------------------------------------------------------
+# /dispatcher/persona — role system-prompt lookup (persona_bank_v1)
+#
+# V1 chain roles (face/deliberator/worker/reviewer) fetch their system prompt
+# at spawn time via this endpoint instead of reading a file. Internal only —
+# no auth (the dispatcher is not exposed outside the host).
+# ---------------------------------------------------------------------------
+
+_PERSONA_DSN_ENV = "SUPABASE_DB_DSN"
+# asyncpg rejects the SQLAlchemy-style "+asyncpg" suffix; strip it before
+# connect (matches spend_tracker / reference_psycopg_supabase_pgbouncer.md).
+_ASYNCPG_DSN_SUFFIX = "+asyncpg"
+
+
+async def _fetch_persona(role: str, tier: str, variant: str | None) -> dict[str, Any] | None:
+    """Fetch one persona row from public.persona_bank.
+
+    variant=None resolves the default row (variant IS NULL). Returns
+    ``{prompt_text, token_count}`` or None on a real miss. Raises on DB
+    connectivity failure so the caller can distinguish 503 from 404.
+    """
+    dsn = os.environ.get(_PERSONA_DSN_ENV)
+    if not dsn:
+        raise RuntimeError(f"{_PERSONA_DSN_ENV} unset")
+    import asyncpg  # noqa: PLC0415 — deferred (optional in some test envs)
+
+    conn = await asyncpg.connect(dsn.replace(_ASYNCPG_DSN_SUFFIX, ""))
+    try:
+        if variant is None:
+            row = await conn.fetchrow(
+                "SELECT prompt_text, token_count FROM public.persona_bank "
+                "WHERE role = $1 AND tier = $2 AND variant IS NULL",
+                role,
+                tier,
+            )
+        else:
+            row = await conn.fetchrow(
+                "SELECT prompt_text, token_count FROM public.persona_bank "
+                "WHERE role = $1 AND tier = $2 AND variant = $3",
+                role,
+                tier,
+                variant,
+            )
+    finally:
+        await conn.close()
+    if row is None:
+        return None
+    return {"prompt_text": row["prompt_text"], "token_count": row["token_count"]}
+
+
+@app.get("/dispatcher/persona")
+async def dispatcher_persona(
+    role: str, tier: str = "standard", variant: str | None = None
+) -> dict[str, Any]:
+    """Look up a role's system prompt at spawn time (persona_bank_v1).
+
+    ``variant`` omitted resolves the default persona for the role+tier. Returns
+    404 when no persona matches and 503 when persona_bank is unreachable.
+    """
+    try:
+        persona = await _fetch_persona(role, tier, variant)
+    except Exception as exc:  # noqa: BLE001 — DB failure is 503, not a 404 miss
+        logger.warning("persona lookup failed role=%s tier=%s: %s", role, tier, exc)
+        raise HTTPException(status_code=503, detail="persona_bank unavailable") from exc
+    if persona is None:
+        raise HTTPException(
+            status_code=404,
+            detail=f"no persona for role={role} tier={tier} variant={variant}",
+        )
+    return persona

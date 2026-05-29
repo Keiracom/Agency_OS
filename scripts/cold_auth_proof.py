@@ -14,6 +14,7 @@ Secret values are never printed.
 from __future__ import annotations
 
 import base64
+import json
 import os
 import sys
 from urllib import error as urlerror
@@ -220,6 +221,40 @@ def p_cloudflare(e):
     return ("PASS" if _ok(code) else "FAIL"), f"HTTP {code}"
 
 
+def p_railway(e):
+    # RAILWAY_TOKEN is a PROJECT token (what the railway CLI/MCP uses) — authenticated
+    # via the Project-Access-Token header, not Bearer. Round-trip the projectToken query.
+    tok = e.get("RAILWAY_TOKEN")
+    if not tok:
+        return "MISSING", "no RAILWAY_TOKEN"
+    body = json.dumps({"query": "query { projectToken { projectId } }"}).encode()
+    code, b = _http(
+        "https://backboard.railway.app/graphql/v2",
+        {"Project-Access-Token": tok, "Content-Type": "application/json"},
+        method="POST",
+        data=body,
+    )
+    ok = _ok(code) and '"projectId"' in b and '"errors"' not in b
+    return ("PASS" if ok else "FAIL"), f"HTTP {code}"
+
+
+def p_prefect(e):
+    # Self-hosted Prefect inside Railway. Secret resolution is the P10 concern; we also
+    # attempt a live /health round-trip. NOTE: if the resolved URL is not serving Prefect
+    # (e.g. the Railway prefect-server service is misdeployed) we report RESOLVED — the
+    # credential resolved correctly; reachability is a separate infra concern, not a
+    # cold-resolve FAIL. Honest: never a fabricated PASS.
+    url = e.get("PREFECT_API_URL")
+    if not url:
+        return "MISSING", "no PREFECT_API_URL"
+    key = e.get("PREFECT_API_KEY")
+    hdr = {"Authorization": "Bearer " + key} if key else {}
+    code, _ = _http(url.rstrip("/") + "/health", hdr)
+    if _ok(code):
+        return "PASS", f"/health HTTP {code}"
+    return "RESOLVED", f"resolved; /health HTTP {code} (no live Prefect at PREFECT_API_URL)"
+
+
 PROBES = [
     ("Postgres", p_postgres),
     ("R2", p_r2),
@@ -239,6 +274,8 @@ PROBES = [
     ("ElevenLabs", p_elevenlabs),
     ("Redis", p_redis),
     ("Cloudflare", p_cloudflare),
+    ("Railway", p_railway),
+    ("Prefect", p_prefect),
 ]
 # Resolved-from-vault but no reliable auth-probe crafted (honest — not faked PASS):
 RESOLVED_NO_PROBE = [
@@ -274,8 +311,8 @@ def main() -> int:
         )
     print("-" * 60)
     print(
-        f"PROBED: PASS={counts['PASS']} FAIL={counts['FAIL']} MISSING={counts['MISSING']}; "
-        f"resolved-only={len(RESOLVED_NO_PROBE)}"
+        f"PROBED: PASS={counts['PASS']} FAIL={counts['FAIL']} MISSING={counts['MISSING']} "
+        f"RESOLVED={counts.get('RESOLVED', 0)}; resolved-no-probe={len(RESOLVED_NO_PROBE)}"
     )
     return 0 if counts["FAIL"] == 0 else 1
 

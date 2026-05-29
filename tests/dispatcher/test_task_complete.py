@@ -118,3 +118,23 @@ def test_task_complete_exception_returns_not_notified(monkeypatch):
     resp = asyncio.run(dispatcher_task_complete(TaskCompleteRequest(task_id="t-4", status="done")))
     assert resp["notified"] is False
     assert resp["reason"] == "exception"
+
+
+def test_task_complete_subprocess_args_use_ceo_channel(monkeypatch):
+    """slack_relay must be called with -c ceo, not -d (which is unimplemented)."""
+    captured: dict = {}
+
+    def fake_run(cmd, **_kw):
+        captured["cmd"] = list(cmd)
+        result = MagicMock()
+        result.returncode = 0
+        result.stderr = ""
+        return result
+
+    monkeypatch.setattr("subprocess.run", fake_run)
+    import asyncio
+
+    asyncio.run(dispatcher_task_complete(TaskCompleteRequest(task_id="t-5", status="done")))
+    assert "-c" in captured["cmd"], "must use -c channel flag, not -d"
+    assert "ceo" in captured["cmd"], "must target the ceo channel"
+    assert "-d" not in captured["cmd"], "-d flag is unimplemented in slack_relay"

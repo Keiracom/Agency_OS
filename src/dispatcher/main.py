@@ -1032,7 +1032,7 @@ async def dispatcher_task_complete(req: TaskCompleteRequest) -> dict[str, Any]:
         import sys as _sys
 
         result = _sp.run(
-            [_sys.executable, _SLACK_RELAY_SCRIPT, "-d", msg],
+            [_sys.executable, _SLACK_RELAY_SCRIPT, "-c", "ceo", msg],
             capture_output=True,
             text=True,
             timeout=15,

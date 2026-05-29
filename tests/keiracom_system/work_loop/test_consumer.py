@@ -49,7 +49,23 @@ def _msg(task_id: str, tenant_id: str = "t1", **spawn_kwargs) -> str:
     )
 
 
+async def _noop_notify(_notice: wl.DeadLetterNotice) -> None:
+    """Default test notify — keeps dead-letter tests off the live Slack relay."""
+    return None
+
+
+class _Notifier:
+    """Records dead-letter notices for assertion."""
+
+    def __init__(self) -> None:
+        self.notices: list[wl.DeadLetterNotice] = []
+
+    async def __call__(self, notice: wl.DeadLetterNotice) -> None:
+        self.notices.append(notice)
+
+
 def _consumer(r, spawner, ceiling: int, **kw) -> WorkLoopConsumer:
+    kw.setdefault("notify_fn", _noop_notify)  # never shell out to slack_relay in tests
     return WorkLoopConsumer(valkey=r, spawn_fn=spawner, ceiling_fn=_ceiling(ceiling), **kw)
 
 
@@ -123,6 +139,49 @@ async def test_malformed_message_dead_letters_without_spawn():
     assert await c.process_task("not-json{") == "deadletter:malformed"
     assert spawner.calls == []
     assert await r.lrange(wl.DEADLETTER_KEY, 0, -1) == ["not-json{"]
+
+
+# --- dead-letter #ceo notification (Agency_OS-gl3v) -------------------
+
+
+async def test_dead_letter_notifies_ceo_with_task_context():
+    """Retry-exhaustion dead-letter fires a notice carrying id, title, attempts, error."""
+    r, spawner = _redis(), _Spawner(result=False)  # every spawn fails
+    notifier = _Notifier()
+    c = _consumer(r, spawner, ceiling=5, notify_fn=notifier)
+    await c.process_task(_msg("flaky", title="Refill domain pool"))
+    assert len(notifier.notices) == 1
+    n = notifier.notices[0]
+    assert n.task_id == "flaky"
+    assert n.title == "Refill domain pool"  # pulled from spawn_kwargs.title
+    assert n.attempts == 3  # exhausted max_attempts
+    assert "3 attempts" in n.error  # final cause carried, ≤200 chars
+
+
+async def test_malformed_dead_letter_notifies_ceo():
+    """A malformed (silently-dropped) task also alerts #ceo — attempts=0."""
+    r, spawner = _redis(), _Spawner()
+    notifier = _Notifier()
+    c = _consumer(r, spawner, ceiling=5, notify_fn=notifier)
+    assert await c.process_task("not-json{") == "deadletter:malformed"
+    assert len(notifier.notices) == 1
+    n = notifier.notices[0]
+    assert n.task_id == "unknown"
+    assert n.attempts == 0
+    assert n.error == "malformed"
+
+
+async def test_dead_letter_notification_is_fail_open():
+    """A notifier that raises must NOT block the dead-letter side effects."""
+
+    async def _boom(_notice: wl.DeadLetterNotice) -> None:
+        raise RuntimeError("slack down")
+
+    r, spawner = _redis(), _Spawner(result=False)
+    c = _consumer(r, spawner, ceiling=5, notify_fn=_boom)
+    await c.process_task(_msg("flaky"))  # must not raise despite notifier blowing up
+    assert await r.lrange(wl.DEADLETTER_KEY, 0, -1) == [_msg("flaky")]  # dead-letter still happened
+    assert await r.get(wl._active_key("t1")) == "0"  # slot still released
 
 
 # --- crash recovery (lease TTL) ---------------------------------------

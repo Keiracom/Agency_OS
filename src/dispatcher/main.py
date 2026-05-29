@@ -36,6 +36,7 @@ from src.dispatcher.bounded_spawn_enforcer import (
     BoundedSpawnEnforcer,
 )
 from src.dispatcher.container_lifecycle import ContainerStartupError, DockerUnavailableError
+from src.dispatcher.cost_breaker import BreakerDecision, CostBreaker
 from src.dispatcher.idempotency import IdempotencyDecision, IdempotencyGate
 from src.dispatcher.interceptor_proxy import router as interceptor_router
 from src.dispatcher.reaper import Reaper
@@ -127,6 +128,18 @@ def _set_budget_gate(gate: BudgetCeilingGate | None) -> None:
     """Test-only setter for the budget ceiling gate (DI through module attr)."""
     global _budget_gate  # noqa: PLW0603
     _budget_gate = gate
+
+
+# Fail-SAFE cost circuit breaker (Agency_OS-wdws). OUTER hard stop on fleet LLM
+# spend — HALTs new spawns + pings #ceo when a daily/monthly $AUD ceiling is
+# crossed. None = no-op until production startup wires one via _set_cost_breaker.
+_cost_breaker: CostBreaker | None = None
+
+
+def _set_cost_breaker(breaker: CostBreaker | None) -> None:
+    """Test-only setter for the cost circuit breaker (DI through module attr)."""
+    global _cost_breaker  # noqa: PLW0603
+    _cost_breaker = breaker
 
 
 # BudgetDecisions that allow the spawn to proceed (overage logged + Dave bypass).
@@ -749,6 +762,39 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
                 "decision": "drop_duplicate",
                 "reason": idem_result.reason,
                 "idempotency_key": idem_result.key,
+            }
+
+    # Pre-spawn cost circuit breaker (Agency_OS-wdws) — OUTER fail-SAFE hard stop.
+    # Runs BEFORE the (fail-open) budget policy gate: a HALT refuses the spawn
+    # outright. Dave-DM / force_override bypass HALT (CEO never blocked) but alert.
+    if _cost_breaker is not None:
+        cb_sk = req.spawn_kwargs or {}
+        cb_source = (
+            SOURCE_DAVE_DM
+            if (
+                str(cb_sk.get("source") or "").strip() == SOURCE_DAVE_DM
+                or str(cb_sk.get("from") or "").lower().strip() == "dave"
+            )
+            else SOURCE_FLEET
+        )
+        cb_force = bool(cb_sk.get("force_override") or cb_sk.get("force_spawn"))
+        breaker_result = await _cost_breaker.check(source=cb_source, force_override=cb_force)
+        if breaker_result.decision == BreakerDecision.HALT:
+            logger.warning(
+                "cost breaker HALT key=%s daily_aud=%.2f monthly_aud=%.2f reason=%s",
+                req.key,
+                breaker_result.daily_spend_aud,
+                breaker_result.monthly_spend_aud,
+                breaker_result.reason,
+            )
+            return {
+                "spawned": False,
+                "key": req.key,
+                "backend": backend.value,
+                "decision": "cost_halt",
+                "daily_spend_aud": breaker_result.daily_spend_aud,
+                "monthly_spend_aud": breaker_result.monthly_spend_aud,
+                "reason": breaker_result.reason,
             }
 
     # Pre-spawn budget ceiling gate (Cat 21 lever 28 / cutover-blocker 2).

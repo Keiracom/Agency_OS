@@ -58,6 +58,37 @@ Agents are Claude Code sessions running under fixed callsigns. Deliberation tier
 
 ---
 
+## Agent loop architecture (V1 chain)
+
+The runtime execution loop — distinct from the callsign org chart above — moves every request through a fixed chain: **Face → Aiden + Max (deliberate) → Worker → Orion + Atlas (review) → done.** The roles run as separate ephemeral spawns and never share in-process state; each exits after its turn and hands off through **AtomV1 pointers** carried over NATS, with the atoms themselves living in Hindsight.
+
+```mermaid
+flowchart LR
+    User([Dave / #ceo]) --> Face[Face<br/>customer-facing]
+    Face --> Aiden[Aiden<br/>deliberate]
+    Aiden --> Max[Max<br/>challenge]
+    Max -->|CONCUR| Worker[Worker<br/>execute]
+    Worker --> Orion[Orion · spec]
+    Worker --> Atlas[Atlas · safety]
+    Orion --> Gate{DUAL CONCUR}
+    Atlas --> Gate
+    Gate -->|done| Slack([Result → Slack])
+    Worker -.->|AtomV1 on exit| H[(Hindsight<br/>fleet_decisions)]
+    H -.->|atom recall at spawn| Worker
+```
+
+**Face** — the customer-facing ephemeral agent. It receives Dave's intent from Slack (a `claude-haiku-4-5` agent spawns per `#ceo` message via Socket Mode, rate-capped at 10 spawns/hour via Valkey), classifies it as *answer / dispatch / clarify*, dispatches build work to Aiden, and reports completion back to Dave. It presents one recommendation, never a pros-and-cons list.
+
+**Deliberators (Aiden + Max)** — two agents that must agree before any work is dispatched. **Aiden** (Deliberator 1, architect) produces a structured KEI work plan and is biased toward action. **Max** (Deliberator 2, challenger) stress-tests that KEI and returns CONCUR or BLOCK with one sentence per gap — he will not rubber-stamp. Both must CONCUR before the Worker is dispatched.
+
+**Worker** — the executor. It receives an atom pointer, fetches the KEI from Hindsight, builds/writes/fixes, writes an AtomV1 atom on exit, and signals the reviewers. Operationally each Worker is an ephemeral spawn off the work-loop: a Postgres `trg_tasks_unblock_dependents` trigger publishes `task_id + callsign + tenant_id` to the Valkey `keiracom:tasks:available` queue; the consumer checks the tenant's tier ceiling and, if under the concurrent-spawn limit, calls `POST /dispatcher/spawn` (overflow is requeued, never dropped; a Valkey lock prevents duplicate spawns). Each spawn is hydrated by a 4-layer context contract — L1 system prompt, L2 Hindsight recall, L3 Valkey spend gate, L4 dispatcher wiring — fail-open at every layer.
+
+**Reviewers (Orion + Atlas)** — dual concur before anything is marked complete. **Orion** (Reviewer 1, spec) verifies the output against the KEI line by line. **Atlas** (Reviewer 2, quality + safety) checks production readiness — regressions, edge cases, data integrity. Each returns CONCUR or REJECT; **both** must CONCUR before merge/completion — neither concurs alone. Runtime and governance PRs ride this same dual-concur gate (the orchestrator-merge-after-NATS-concur pattern) before an admin squash-merge.
+
+**Hand-off via AtomV1 pointers** — roles do not pass state in process. An exiting agent writes its decision as an AtomV1 atom to the Hindsight `fleet_decisions` bank; NATS then carries the `task_id + atom_id` to the next agent, which recalls the atom at spawn (~100–150 tokens, no repeated preamble). Postgres carries operational state and the task-unblock triggers; Hindsight carries all knowledge — there is no intermediate store. All agent invocations run on the Anthropic API, and results return to Slack via the dispatcher `task_complete` endpoint plus `slack_relay.py`. Each role's prompt is served at spawn from the `public.persona_bank` table (5 rows — face/aiden/max/orion/atlas) via `GET /dispatcher/persona`. Post-cutover, `ceo_memory` is an audit log and admin target — not a pipeline step.
+
+---
+
 ## Quickstart
 
 Targets a fresh clone building locally in under 30 minutes.

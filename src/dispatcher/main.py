@@ -421,6 +421,22 @@ def _free_port() -> int:
         return int(sock.getsockname()[1])
 
 
+def _apply_chain_step_env(sk: dict[str, Any], env: dict[str, Any]) -> None:
+    """qjl7 — promote spawn_kwargs['chain_step'] to env['CHAIN_STEP'] (un-prefixed).
+
+    The v1_chain_orchestrator emits envelopes with a ``chain_step`` field (e.g.
+    "aiden_plan"); the consumer hands that through as a top-level spawn_kwargs
+    key. ``agent_cold_start.run()`` reads ``CHAIN_STEP`` (not the AGENT_* form)
+    for its nd3b notify-suppression gate, so the generic metadata loop's
+    AGENT_<KEY> mapping would land it under the wrong name. Pop the key so it
+    is not double-set; ``setdefault`` keeps any caller-supplied CHAIN_STEP
+    override. Fail-open: chain_step absent → no-op; legacy spawns unchanged.
+    """
+    chain_step = sk.pop("chain_step", None)
+    if chain_step is not None:
+        env.setdefault("CHAIN_STEP", str(chain_step))
+
+
 def _container_spawn_kwargs(key: str, sk: dict[str, Any]) -> dict[str, Any]:
     """Translate logical spawn_kwargs → container_lifecycle.spawn_container kwargs.
 
@@ -437,6 +453,7 @@ def _container_spawn_kwargs(key: str, sk: dict[str, Any]) -> dict[str, Any]:
     port = int(sk.pop("port", None) or _free_port())
     health_path = sk.pop("health_path", None)
     extra_args = sk.pop("extra_args", None)
+    _apply_chain_step_env(sk, env)
     for meta_key, meta_val in sk.items():
         if meta_val is not None:
             env.setdefault(f"AGENT_{meta_key.upper()}", str(meta_val))
@@ -510,6 +527,7 @@ def _tmux_spawn_kwargs(key: str, sk: dict[str, Any]) -> dict[str, Any]:
     working_dir = sk.pop("working_dir", None) or DEFAULT_AGENT_WORKDIR
     agent_command = sk.pop("command", None) or DEFAULT_AGENT_COMMAND
     env = dict(sk.pop("env", None) or {})  # carries the recall PRIOR_CONTEXT if injected
+    _apply_chain_step_env(sk, env)
     for meta_key, meta_val in sk.items():
         if meta_val is not None:
             env.setdefault(f"AGENT_{meta_key.upper()}", str(meta_val))

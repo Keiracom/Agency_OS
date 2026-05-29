@@ -67,6 +67,7 @@ def test_run_sets_task_type_from_env(monkeypatch):
         claim=lambda _t, _c: True,
         agent=lambda prompt: seen.update(prompt=prompt) or 0,
         finalize=lambda *a: None,
+        spawn_recall=lambda _t: "",  # zr7e.5: no real Hindsight call
     )
     assert "review" in seen["prompt"]  # AGENT_TASK_TYPE flowed into the prompt
 
@@ -147,6 +148,7 @@ def _run(monkeypatch, *, task_id="t-1", fetch_ret=None, claim_ret=True, agent_rc
         agent=lambda _p: agent_rc,
         finalize=finalize,
         save_atoms=lambda *a, **k: None,
+        spawn_recall=lambda _t: "",  # zr7e.5: no real Hindsight call in unit tests
     )
     return rc, finalize, calls
 
@@ -299,6 +301,7 @@ def test_run_calls_save_atoms_after_finalize_before_notify(monkeypatch):
         finalize=lambda *a: order.append("finalize"),
         save_atoms=lambda *a: (order.append("save"), save_calls.append(a)),
         notify=lambda *a, **kw: order.append("notify"),
+        spawn_recall=lambda _t: "",  # zr7e.5: no real Hindsight call
     )
     assert order == ["finalize", "save", "notify"]
     assert save_calls == [(task, 0, "done")]
@@ -445,3 +448,90 @@ def test_save_exit_atoms_fail_open_when_publish_raises(monkeypatch):
 
     # No exception escapes.
     acs.save_exit_atoms({"id": "t-7", "title": "T", "description": "d"}, 0, "done")
+
+
+# ---- zr7e.5 L2 Hindsight spawn-context recall --------------------------------
+
+
+def test_run_prepends_recall_block_when_present(monkeypatch):
+    """When spawn_recall returns a non-empty block, run() prepends it to the
+    compose_prompt output before passing to the agent — separated by a blank line."""
+    monkeypatch.setenv("AGENT_TASK_ID", "t-r1")
+    monkeypatch.setattr(acs.sys, "argv", ["agent_cold_start"])
+    captured: dict = {}
+    task = {"id": "t-r1", "title": "Wire X", "description": "ship it", "acceptance_criteria": None}
+
+    acs.run(
+        resolve=lambda: None,
+        fetch=lambda _t: task,
+        claim=lambda _t, _c: True,
+        agent=lambda prompt: captured.setdefault("prompt", prompt) or 0,
+        finalize=lambda *a: None,
+        save_atoms=lambda *a, **k: None,
+        spawn_recall=lambda _t: "[PRIOR CONTEXT]\n- atom A\n- atom B",
+    )
+
+    prompt = captured["prompt"]
+    # block is first, then a blank line, then the task-centric prompt
+    assert prompt.startswith("[PRIOR CONTEXT]\n- atom A\n- atom B\n\n")
+    # compose_prompt content still present after the block
+    assert "Task ID: t-r1" in prompt and "ship it" in prompt
+
+
+def test_run_skips_block_when_recall_returns_empty(monkeypatch):
+    """Empty recall block → prompt unchanged (no leading blank lines, no header)."""
+    monkeypatch.setenv("AGENT_TASK_ID", "t-r2")
+    monkeypatch.setattr(acs.sys, "argv", ["agent_cold_start"])
+    captured: dict = {}
+    task = {"id": "t-r2", "title": "T", "description": "d", "acceptance_criteria": None}
+
+    acs.run(
+        resolve=lambda: None,
+        fetch=lambda _t: task,
+        claim=lambda _t, _c: True,
+        agent=lambda prompt: captured.setdefault("prompt", prompt) or 0,
+        finalize=lambda *a: None,
+        save_atoms=lambda *a, **k: None,
+        spawn_recall=lambda _t: "",
+    )
+
+    # First line is the worker preamble (compose_prompt start) — no recall header.
+    assert captured["prompt"].startswith("You are an ephemeral Keiracom worker agent")
+
+
+def test_recall_spawn_context_calls_build_with_task_type_and_brief(monkeypatch):
+    """_recall_spawn_context passes task_type + (description OR title fallback)
+    as task_brief, and returns the build helper's output verbatim."""
+    import src.retrieval.spawn_recall as sr
+
+    captured: dict = {}
+
+    def fake_build(*, task_type, task_brief):
+        captured["task_type"] = task_type
+        captured["task_brief"] = task_brief
+        return "BLOCK"
+
+    monkeypatch.setattr(sr, "build_spawn_context_block", fake_build)
+
+    out = acs._recall_spawn_context(
+        {"id": "t-1", "task_type": "review", "description": "desc text"}
+    )
+    assert out == "BLOCK"
+    assert captured == {"task_type": "review", "task_brief": "desc text"}
+
+    # description missing → falls back to title
+    captured.clear()
+    acs._recall_spawn_context({"id": "t-2", "task_type": "build", "title": "title text"})
+    assert captured["task_brief"] == "title text"
+
+
+def test_recall_spawn_context_fail_open_returns_empty_on_error(monkeypatch):
+    """Any error during recall → returns "", spawn proceeds without context."""
+    import src.retrieval.spawn_recall as sr
+
+    def boom(**_kw):
+        raise RuntimeError("hindsight down")
+
+    monkeypatch.setattr(sr, "build_spawn_context_block", boom)
+
+    assert acs._recall_spawn_context({"id": "t-x", "task_type": "build"}) == ""

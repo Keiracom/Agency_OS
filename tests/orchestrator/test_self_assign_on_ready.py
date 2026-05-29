@@ -276,3 +276,119 @@ def test_cli_main_prints_json_and_exits_zero(capsys, monkeypatch):
     payload = _json.loads(out)
     assert payload["callsign"] == "orion"
     assert payload["claimed"] is False
+
+
+# ─── 12. y2al — skip dispatch + close when linked PR is already merged ──
+
+
+def test_extract_pr_number_from_full_pr_url():
+    item = {"external_ref": "https://github.com/Keiracom/Agency_OS/pull/1318"}
+    assert mod._extract_pr_number(item) == 1318
+
+
+def test_extract_pr_number_from_gh_shortform_in_title():
+    item = {"title": "[NOVA] follow-up to gh-1199 race fix"}
+    assert mod._extract_pr_number(item) == 1199
+
+
+def test_extract_pr_number_none_for_linear_only_external_ref():
+    item = {"external_ref": "https://linear.app/keiracom/issue/KEI-42"}
+    assert mod._extract_pr_number(item) is None
+
+
+def test_skip_closes_merged_pr_then_claims_next():
+    """First candidate's PR is merged → close + skip; claim falls through to next."""
+    items = [
+        {
+            "id": "Agency_OS-stale",
+            "priority": "P0",
+            "title": "stale work",
+            "external_ref": "https://github.com/Keiracom/Agency_OS/pull/100",
+        },
+        {"id": "Agency_OS-fresh", "priority": "P1", "title": "live work"},
+    ]
+    closed: list[tuple] = []
+    claimed: list[str] = []
+    result = mod.run(
+        callsign="nova",
+        ready_fn=lambda: items,
+        claim_fn=lambda iid: (claimed.append(iid) or True),
+        pr_merged_fn=lambda pr_n: pr_n == 100,  # only #100 is merged
+        close_fn=lambda iid, reason: (closed.append((iid, reason)) or True),
+    )
+    assert result["claimed"] is True
+    assert result["issue_id"] == "Agency_OS-fresh"
+    assert result["skipped_pr_merged"] == ["Agency_OS-stale"]
+    assert claimed == ["Agency_OS-fresh"]
+    assert closed[0][0] == "Agency_OS-stale"
+    assert "PR #100" in closed[0][1] and "y2al" in closed[0][1]
+
+
+def test_all_candidates_pr_merged_returns_all_pr_merged_no_claim():
+    """Every candidate's PR is merged → all closed, no brief, reason=all_pr_merged."""
+    items = [
+        {
+            "id": f"Agency_OS-{i}",
+            "priority": "P1",
+            "external_ref": f"https://github.com/Keiracom/Agency_OS/pull/{i + 10}",
+        }
+        for i in range(3)
+    ]
+    closed: list[str] = []
+    claim_calls: list[str] = []
+    result = mod.run(
+        callsign="nova",
+        ready_fn=lambda: items,
+        claim_fn=lambda iid: (claim_calls.append(iid) or True),
+        pr_merged_fn=lambda _pr: True,  # everything is merged
+        close_fn=lambda iid, _r: (closed.append(iid) or True),
+    )
+    assert result["claimed"] is False
+    assert result["reason"] == "all_pr_merged"
+    assert result["attempted"] == []  # no claim attempts spent
+    assert set(result["skipped_pr_merged"]) == {f"Agency_OS-{i}" for i in range(3)}
+    assert claim_calls == []  # claim_fn never invoked
+    assert len(closed) == 3
+
+
+def test_merged_skips_do_not_consume_max_attempts_budget():
+    """3 merged + 2 race-lost should still try the 2 non-merged within max_attempts=2."""
+    items = [
+        {
+            "id": f"Agency_OS-merged-{i}",
+            "priority": "P0",
+            "created": f"2026-05-12T10:0{i}:00Z",
+            "external_ref": f"https://github.com/Keiracom/Agency_OS/pull/{200 + i}",
+        }
+        for i in range(3)
+    ] + [
+        {
+            "id": f"Agency_OS-race-{i}",
+            "priority": "P0",
+            "created": f"2026-05-12T10:1{i}:00Z",
+        }
+        for i in range(2)
+    ]
+    result = mod.run(
+        callsign="nova",
+        ready_fn=lambda: items,
+        claim_fn=lambda _iid: False,  # always race-lost
+        pr_merged_fn=lambda pr_n: 200 <= pr_n <= 202,
+        close_fn=lambda _iid, _r: True,
+        max_attempts=2,
+    )
+    assert result["claimed"] is False
+    assert result["reason"] == "race_lost_all"
+    assert len(result["skipped_pr_merged"]) == 3
+    assert len(result["attempted"]) == 2  # both race candidates tried (budget honoured)
+
+
+def test_pr_merged_fn_default_fail_closed_when_gh_missing(monkeypatch):
+    """Default merged-check returns False on FileNotFoundError (gh absent) — fail-closed."""
+    import subprocess as _sp
+
+    def _boom(*_a, **_kw):
+        raise FileNotFoundError("gh")
+
+    monkeypatch.setattr(_sp, "run", _boom)
+    assert mod._gh_pr_merged_on_main(1234) is False  # fail-closed → keep dispatch open

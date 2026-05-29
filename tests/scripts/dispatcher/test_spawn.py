@@ -227,3 +227,106 @@ def test_spawn_mode_handles_proc_without_stdin(tmp_path: Path):
     )
     assert result["mode"] == MODE_SPAWN
     assert result["pid"] == 9999
+
+
+# ─── envelope → AGENT_* env auto-injection (Agency_OS-0bgt) ────────────────────
+
+
+def test_spawn_mode_injects_envelope_keys_as_AGENT_env(tmp_path: Path):
+    """envelope fields → env[f'AGENT_<KEY>']=str(val); None values skipped."""
+    db = _FakeDB()
+    _seed_db_for_compose(db)
+    popen_calls: list[Any] = []
+
+    def fake_popen(cmd: list[str], **kwargs: Any) -> _FakeProc:
+        popen_calls.append((cmd, kwargs))
+        return _FakeProc()
+
+    handle_envelope(
+        callsign="nova",
+        db=db,
+        repo_root=_make_repo_root(tmp_path),
+        inbox_root=_make_inbox_root_with_one_msg(tmp_path, "nova"),
+        mode=MODE_SPAWN,
+        claude_bin="/usr/local/bin/claude",
+        envelope={
+            "chain_step": "aiden_plan",
+            "task_id": "t-42",
+            "atom_id": "atom-abc",
+            "atom_id_missing": None,  # None → skipped
+        },
+        popen=fake_popen,
+        clock=_FakeClock(),
+    )
+    _cmd, kwargs = popen_calls[0]
+    env = kwargs["env"]
+    assert env["AGENT_CHAIN_STEP"] == "aiden_plan"
+    assert env["AGENT_TASK_ID"] == "t-42"
+    assert env["AGENT_ATOM_ID"] == "atom-abc"
+    assert "AGENT_ATOM_ID_MISSING" not in env
+
+
+def test_spawn_mode_without_envelope_passes_parent_env(tmp_path: Path, monkeypatch):
+    """No envelope: env=os.environ.copy() — parent env passes through."""
+    monkeypatch.setenv("_BGT_SENTINEL_", "preserved")
+    db = _FakeDB()
+    _seed_db_for_compose(db)
+    popen_calls: list[Any] = []
+
+    def fake_popen(cmd: list[str], **kwargs: Any) -> _FakeProc:
+        popen_calls.append((cmd, kwargs))
+        return _FakeProc()
+
+    handle_envelope(
+        callsign="nova",
+        db=db,
+        repo_root=_make_repo_root(tmp_path),
+        inbox_root=_make_inbox_root_with_one_msg(tmp_path, "nova"),
+        mode=MODE_SPAWN,
+        claude_bin="/usr/local/bin/claude",
+        # envelope omitted
+        popen=fake_popen,
+        clock=_FakeClock(),
+    )
+    env = popen_calls[0][1]["env"]
+    assert env.get("_BGT_SENTINEL_") == "preserved"
+    # No AGENT_* injected from absent envelope.
+    assert not any(k.startswith("AGENT_") and k not in os_environ_AGENT_keys() for k in env)
+
+
+def os_environ_AGENT_keys() -> set[str]:
+    """Capture pre-existing AGENT_* env (so the negative assertion above only
+    excludes injection-introduced keys, not the test runner's own AGENT_* if any).
+    """
+    import os
+
+    return {k for k in os.environ if k.startswith("AGENT_")}
+
+
+def test_spawn_mode_envelope_setdefault_preserves_parent_AGENT_override(
+    tmp_path: Path, monkeypatch
+):
+    """setdefault semantics: a pre-set AGENT_* in parent env wins over envelope.
+    Idempotent / caller-override-respecting (mirrors src/dispatcher/main.py)."""
+    monkeypatch.setenv("AGENT_CHAIN_STEP", "operator_override")
+    db = _FakeDB()
+    _seed_db_for_compose(db)
+    popen_calls: list[Any] = []
+
+    def fake_popen(cmd: list[str], **kwargs: Any) -> _FakeProc:
+        popen_calls.append((cmd, kwargs))
+        return _FakeProc()
+
+    handle_envelope(
+        callsign="nova",
+        db=db,
+        repo_root=_make_repo_root(tmp_path),
+        inbox_root=_make_inbox_root_with_one_msg(tmp_path, "nova"),
+        mode=MODE_SPAWN,
+        claude_bin="/usr/local/bin/claude",
+        envelope={"chain_step": "aiden_plan"},
+        popen=fake_popen,
+        clock=_FakeClock(),
+    )
+    env = popen_calls[0][1]["env"]
+    assert env["AGENT_CHAIN_STEP"] == "operator_override"  # parent env wins

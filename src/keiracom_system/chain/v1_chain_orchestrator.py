@@ -361,6 +361,32 @@ def advance_step(
     return dispatched
 
 
+async def _advance_step_async(
+    chain_id: str,
+    completed_step: str,
+    atom_id: str,
+    *,
+    clock: Callable[[], float] = time.time,
+) -> list[dict]:
+    """Async entrypoint for the V1 consumer loop (Atlas oevr) — Aiden HOLD fix.
+
+    Delegates to the sync advance_step via asyncio.to_thread so the completion
+    branch ALWAYS fires _post_chain_complete via the exact same code path the
+    sync caller uses. Parity-by-delegation eliminates the parallel-implementation
+    divergence bug class Aiden caught on PR #1340 — there can never be a "the
+    sync path calls _post_chain_complete but the async path forgot" failure,
+    because there is only one path.
+
+    State I/O (state file read/write) and the urllib POST in _post_chain_complete
+    are I/O-bound, so running them on a worker thread is the correct shape:
+    advance_step returns when the dispatch + state-save + chain-complete-post
+    are all done, and the event loop is not blocked during the urllib POST.
+    """
+    return await asyncio.to_thread(
+        advance_step, chain_id, completed_step, atom_id, clock=clock
+    )
+
+
 # ---------------------------------------------------------------------------
 # Script entry point (manual smoke)
 # ---------------------------------------------------------------------------

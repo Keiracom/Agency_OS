@@ -539,3 +539,54 @@ def test_advance_step_final_post_failure_does_not_break_completion(
     assert envelopes == []  # no further dispatch on complete
     state = json.loads(state_file.read_text())
     assert state[chain_id]["current_step"] == "complete"  # state still saved
+
+
+def test_advance_step_async_consumer_path_fires_post_chain_complete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Aiden HOLD: the consumer-loop async path MUST also fire _post_chain_complete.
+
+    Asserts the async _advance_step_async delegates through to the sync code
+    path so the chain-complete post is guaranteed to fire — eliminates the
+    parallel-implementation divergence bug class Aiden caught.
+    """
+    import asyncio
+
+    fake_nats = _fake_nats_module()
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+
+    posts: list = []
+    monkeypatch.setattr(
+        orch, "_post_chain_complete", lambda entry, chain_id: posts.append((entry, chain_id))
+    )
+
+    chain_id = "chain-async-complete"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": "t-async",
+            "brief": "async complete",
+            "started_ts": 0.0,
+            "current_step": "atlas_safety",
+            "steps_done": ["aiden_plan", "max_challenge", "nova_build", "orion_spec"],
+            "atom_ids": {
+                "aiden_plan": "a1",
+                "max_challenge": "a2",
+                "nova_build": "a3",
+                "orion_spec": "a4",
+            },
+            "pending": ["atlas_safety"],
+        },
+    )
+
+    with patch.dict("sys.modules", {"nats": fake_nats}):
+        asyncio.run(orch._advance_step_async(chain_id, "atlas_safety", "atom-atlas"))
+
+    assert len(posts) == 1  # consumer-loop path fired the chain-complete post
+    entry, posted_chain_id = posts[0]
+    assert posted_chain_id == chain_id
+    assert entry["task_id"] == "t-async"
+    assert entry["current_step"] == "complete"

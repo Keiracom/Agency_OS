@@ -152,6 +152,7 @@ Detailed vendor list, costs, and tier rules in [ARCHITECTURE.md §SECTION 4](ARC
 | [CLAUDE.md](CLAUDE.md) | Instructions for Claude Code agents |
 | [PROJECT_BLUEPRINT.md](PROJECT_BLUEPRINT.md) | Phase plan + import hierarchy |
 | [docs/governance/CONSOLIDATED_RULES.md](docs/governance/CONSOLIDATED_RULES.md) | The 7 ratified governance rules |
+| [docs/ephemeral_boundary.md](docs/ephemeral_boundary.md) | What survives vs dies between agent spawns + write discipline |
 | [docs/phases/](docs/phases/) | Per-phase specifications |
 | [docs/runbooks/](docs/runbooks/) | Operational procedures |
 

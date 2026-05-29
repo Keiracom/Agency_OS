@@ -10,6 +10,7 @@ Intended to run via systemd timer on Fridays at 18:00 AEST (08:00 UTC).
 
 import json
 import os
+import shutil
 import subprocess
 import sys
 from collections import defaultdict
@@ -124,7 +125,14 @@ def send_slack_summary(summary: dict) -> None:
         f"save ${save_cost:.4f} | query-expansion ${qe_cost:.4f} "
         f"({calls} total calls)"
     )
-    subprocess.run(["tg", "-g", msg], check=False)
+    # tg lives at ~/.local/bin/tg, which is NOT on the systemd --user PATH.
+    # Resolve it explicitly and fail open: a notification failure must never
+    # crash the cost rollup (check=False does NOT catch a missing binary).
+    tg_bin = shutil.which("tg") or os.path.expanduser("~/.local/bin/tg")
+    try:
+        subprocess.run([tg_bin, "-g", msg], check=False)
+    except OSError as exc:
+        print(f"warning: tg notify skipped ({exc})", file=sys.stderr)
 
 
 def main() -> None:

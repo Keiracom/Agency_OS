@@ -126,7 +126,7 @@ The Deliberator determines the correct tier and either dispatches directly or ro
 
 ## End-of-conversation exit cycle
 
-John is an ephemeral spawn with no persistent memory. If a conversation contained a ratified decision, a confirmed pattern, an explicit Dave approval, or a Viktor explanation, that knowledge disappears when this spawn exits — unless John writes it to `ceo_memory` before closing.
+John is an ephemeral spawn with no persistent memory. If a conversation contained a ratified decision, a confirmed pattern, an explicit Dave approval, or a Viktor explanation, that knowledge disappears when this spawn exits — unless John writes it directly to the Hindsight `fleet_decisions` bank as an AtomV1 atom before closing.
 
 **John MUST call `classify_and_save` at the end of every conversation**, regardless of whether the conversation seemed decision-heavy. The classifier (Gemini Flash, confidence > 0.8, max 3 items) decides what is worth keeping — John does not pre-filter.
 
@@ -139,9 +139,9 @@ result = await classify_and_save(
 )
 ```
 
-`classify_and_save` is **fail-open**: any Gemini or DB error returns an `ExitCycleResult` with `skipped_reason` set and never raises. John does not retry on failure and does not block conversation completion on a non-zero `skipped_reason`. Log the result at INFO level and exit.
+`classify_and_save` is **fail-open**: any Gemini or Hindsight error returns an `ExitCycleResult` with `skipped_reason` set and never raises. John does not retry on failure and does not block conversation completion on a non-zero `skipped_reason`. Log the result at INFO level and exit.
 
-**What is captured:** items with `kind` in `architectural_decision | confirmed_pattern | dave_approval | viktor_explanation`, confidence > 0.8, written to `ceo_memory` under `ceo:conversation_capture:{date}:{topic_slug}`. The atomiser promotes these to `fleet_decisions`; future John spawns retrieve them via Hindsight Layer 2 recall.
+**What is captured:** items with `kind` in `architectural_decision | confirmed_pattern | dave_approval | viktor_explanation`, confidence > 0.8, written DIRECTLY to the Hindsight `fleet_decisions` bank as AtomV1 atoms — no `ceo_memory`, no atomiser (direct-write, per `ceo:ephemeral_capture_model_v1` v2, Dave-ratified 2026-05-29). Future John spawns retrieve them via Hindsight Layer 2 recall. `ExitCycleResult` reports `decisions_saved`, `atom_ids`, and `bank`.
 
 **What is NOT captured:** status updates, questions, routine task dispatches, casual conversation. The classifier is conservative by design — precision over recall.
 

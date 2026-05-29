@@ -18,10 +18,23 @@
 set -euo pipefail
 
 BASE_REF="${BASE_REF:-main}"
-git fetch --no-tags --depth=1 origin "$BASE_REF" >/dev/null 2>&1 || true
+# Non-shallow fetch: a `--depth=1` fetch left origin/${BASE_REF} with no merge-base
+# vs HEAD, so `git diff origin/${BASE_REF}...HEAD` errored "no merge base" → emitted
+# zero files → the gate exited 0 vacuously (KEI-108 false-pass Aiden caught).
+git fetch --no-tags origin "$BASE_REF" >/dev/null 2>&1 || true
+
+# FAIL CLOSED on any git error. Compute the merge-base explicitly: if it can't be
+# found (the failure mode above), the gate ERRORS — it must NEVER pass vacuously
+# on a git problem, only on a verified-clean diff.
+if ! MERGE_BASE="$(git merge-base "origin/${BASE_REF}" HEAD 2>/dev/null)"; then
+  echo "::error::KEI-108 gate cannot compute a merge-base for origin/${BASE_REF}...HEAD — failing CLOSED. The gate must never exit 0 on a git error (this was the vacuous-pass bug)." >&2
+  exit 1
+fi
 
 added_files() {
-  git diff --name-only --diff-filter=A "origin/${BASE_REF}...HEAD" -- "$@"
+  # Two-dot against the verified merge-base — equivalent to the three-dot form but
+  # guaranteed to have a base (we exited above if not).
+  git diff --name-only --diff-filter=A "${MERGE_BASE}" HEAD -- "$@"
 }
 
 fail() {

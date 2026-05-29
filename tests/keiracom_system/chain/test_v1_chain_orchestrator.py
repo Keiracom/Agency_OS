@@ -590,3 +590,104 @@ def test_advance_step_async_consumer_path_fires_post_chain_complete(
     assert posted_chain_id == chain_id
     assert entry["task_id"] == "t-async"
     assert entry["current_step"] == "complete"
+
+
+# ─── Consumer loop additions (Agency_OS-oevr) ─────────────────────────────────
+
+
+def test_from_to_step_covers_all_chain_workers():
+    """FROM_TO_STEP must map every callsign that completes a chain step."""
+    assert set(orch.FROM_TO_STEP.values()) == {
+        "aiden_plan",
+        "max_challenge",
+        "nova_build",
+        "orion_spec",
+        "atlas_safety",
+    }
+
+
+def test_dispatch_chain_id_defaults_to_task_id_when_present(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """When task carries an id and no chain_id is passed, chain_id == task['id']
+    so consumer's advance_step(chain_id=msg.task_id) resolves."""
+    fake_nats = _fake_nats_module()
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+    with patch.dict("sys.modules", {"nats": fake_nats}):
+        cid = orch.dispatch({"id": "task-abc-123", "brief": "x"})
+    assert cid == "task-abc-123"
+    state = json.loads(state_file.read_text())
+    assert "task-abc-123" in state
+
+
+async def test_consumer_handle_envelope_async_advances_aiden_to_max(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Async helper (Max HOLD shape): pass a dict, get back the list of
+    dispatched envelopes. Aiden handoff → dispatch to keiracom.dispatch.max."""
+    fake_nats = _fake_nats_module()
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+    chain_id = "task-cons-1"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": chain_id,
+            "brief": "plan it",
+            "started_ts": 0.0,
+            "current_step": "aiden_plan",
+            "steps_done": [],
+            "atom_ids": {},
+            "pending": [],
+        },
+    )
+    envelope = {"task_id": chain_id, "atom_id": "atom-aiden", "from_callsign": "aiden"}
+    with patch.dict("sys.modules", {"nats": fake_nats}):
+        dispatched = await orch._consumer_handle_envelope_async(envelope)
+    assert len(dispatched) == 1
+    assert dispatched[0]["chain_step"] == "max_challenge"
+    assert dispatched[0]["atom_id"] == "atom-aiden"
+    assert len(fake_nats.published) == 1
+    subject, _payload = fake_nats.published[0]
+    assert subject == "keiracom.dispatch.max"
+
+
+async def test_consumer_handle_envelope_async_unknown_callsign_skips(
+    caplog: pytest.LogCaptureFixture,
+):
+    """Unknown from_callsign: returns [], logs warning, no dispatch."""
+    import logging
+
+    envelope = {"task_id": "t-x", "atom_id": "a", "from_callsign": "facehugger"}
+    with caplog.at_level(logging.WARNING):
+        dispatched = await orch._consumer_handle_envelope_async(envelope)
+    assert dispatched == []
+    assert "unknown from_callsign=facehugger" in caplog.text
+
+
+async def test_consumer_handle_envelope_async_missing_fields_skips(
+    caplog: pytest.LogCaptureFixture,
+):
+    """Missing task_id or from_callsign: returns [], logs warning."""
+    import logging
+
+    envelope = {"atom_id": "a"}
+    with caplog.at_level(logging.WARNING):
+        dispatched = await orch._consumer_handle_envelope_async(envelope)
+    assert dispatched == []
+    assert "missing task_id/from_callsign" in caplog.text
+
+
+async def test_consumer_handle_envelope_async_failopen_on_bad_envelope(
+    caplog: pytest.LogCaptureFixture,
+):
+    """Non-dict envelope (e.g. None): returns [], logs warning, never raises."""
+    import logging
+
+    with caplog.at_level(logging.WARNING):
+        dispatched = await orch._consumer_handle_envelope_async(None)  # type: ignore[arg-type]
+    assert dispatched == []
+    assert "handler error" in caplog.text

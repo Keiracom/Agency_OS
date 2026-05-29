@@ -67,6 +67,19 @@ PARALLEL_AFTER_STEP: dict[str, list[str]] = {
     "nova_build": ["orion_spec", "atlas_safety"],
 }
 
+# Consumer-loop contract (Agency_OS-oevr): subscribes to the subject Orion's
+# zr7e.9 (PR #1330) publishes on. Envelope expected: {task_id, atom_id,
+# from_callsign}. `chain_id == task_id` per Elliot's spec — dispatch() defaults
+# chain_id to task["id"] so state lookups by task_id resolve.
+CONSUMER_SUBJECT = "keiracom.agent.handoff"
+FROM_TO_STEP: dict[str, str] = {
+    "aiden": "aiden_plan",
+    "max": "max_challenge",
+    "nova": "nova_build",
+    "orion": "orion_spec",
+    "atlas": "atlas_safety",
+}
+
 log = logging.getLogger(__name__)
 
 # Agency_OS-zqni — final-result #ceo path. Architecture (Scout / Elliot ratified):
@@ -119,9 +132,7 @@ def _post_chain_complete(
             "chain_complete notify: dispatcher unreachable for chain=%s", chain_id, exc_info=True
         )
     except Exception:  # noqa: BLE001 — must not break advance_step
-        log.warning(
-            "chain_complete notify: unexpected error for chain=%s", chain_id, exc_info=True
-        )
+        log.warning("chain_complete notify: unexpected error for chain=%s", chain_id, exc_info=True)
 
 
 def _load_state() -> dict:
@@ -228,7 +239,11 @@ def dispatch(
     Fail-open: NATS publish errors are logged but never raised — the chain_id
     and persisted state are returned even when NATS is unavailable.
     """
-    cid = chain_id or uuid.uuid4().hex
+    # chain_id defaults to task["id"] when present (Elliot's `chain_id==task_id`
+    # convention, Agency_OS-oevr) so the consumer can `advance_step(chain_id=
+    # msg.task_id)` and find the right state entry. Falls back to a fresh uuid
+    # only when task has no id (ad-hoc / smoke invocations).
+    cid = chain_id or task.get("id") or uuid.uuid4().hex
     task_id = task.get("id") or cid
     brief = task.get("brief") or task.get("description") or ""
 
@@ -382,14 +397,98 @@ async def _advance_step_async(
     advance_step returns when the dispatch + state-save + chain-complete-post
     are all done, and the event loop is not blocked during the urllib POST.
     """
-    return await asyncio.to_thread(
-        advance_step, chain_id, completed_step, atom_id, clock=clock
-    )
+    return await asyncio.to_thread(advance_step, chain_id, completed_step, atom_id, clock=clock)
 
 
 # ---------------------------------------------------------------------------
 # Script entry point (manual smoke)
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Consumer loop — bridges Orion's zr7e.9 handoff publish to advance_step
+# (Agency_OS-oevr). Wired into the dispatcher lifespan as a background task.
+# Delegates to the sync advance_step via _advance_step_async (Nova #1340's
+# to_thread wrapper), so the final-#ceo-post / _post_chain_complete branch
+# always fires through the canonical sync path — no parallel-implementation
+# divergence (Aiden HOLD class).
+# ---------------------------------------------------------------------------
+
+
+async def _consumer_handle_envelope_async(envelope: dict) -> list[dict]:
+    """Per-message async helper for the consumer (Max HOLD on PR #1339).
+
+    Takes an already-parsed dict — fully unit-testable without a NATS msg
+    object. Maps envelope.from_callsign → completed step via FROM_TO_STEP, then
+    awaits _advance_step_async (sync advance_step under the hood, fully wired
+    to _post_chain_complete). Fail-open per message.
+    """
+    try:
+        task_id = envelope.get("task_id")
+        atom_id = envelope.get("atom_id") or ""
+        from_callsign = (envelope.get("from_callsign") or "").lower()
+        if not task_id or not from_callsign:
+            log.warning(
+                "v1_chain consumer: missing task_id/from_callsign — skip (envelope=%r)",
+                envelope,
+            )
+            return []
+        step = FROM_TO_STEP.get(from_callsign)
+        if step is None:
+            log.warning("v1_chain consumer: unknown from_callsign=%s — skip", from_callsign)
+            return []
+        envelopes = await _advance_step_async(
+            chain_id=task_id, completed_step=step, atom_id=atom_id
+        )
+        log.info(
+            "v1_chain consumer: chain=%s step=%s -> %d dispatch(es)",
+            task_id,
+            step,
+            len(envelopes),
+        )
+        return envelopes
+    except Exception as exc:  # noqa: BLE001 — fail-open per message
+        log.warning("v1_chain consumer: handler error: %s", exc)
+        return []
+
+
+async def run_consumer(nats_url: str | None = None) -> None:
+    """Subscribe to CONSUMER_SUBJECT and advance the chain on each handoff.
+
+    Long-running; cancellable via task.cancel() — closes the NATS connection.
+    Mirrors peer_event_ceo_relay.main() loop pattern.
+    """
+    try:
+        import nats  # lazy — keeps module collectable on hosts without nats-py
+    except ImportError as exc:
+        log.error("v1_chain consumer: nats-py not installed; loop exits (%s)", exc)
+        return
+    url = nats_url or NATS_URL
+    try:
+        nc = await nats.connect(url, connect_timeout=5)
+    except Exception as exc:  # noqa: BLE001
+        log.error("v1_chain consumer: NATS connect failed url=%s: %s", url, exc)
+        return
+
+    async def _handler(msg) -> None:
+        # Thin delegate (Max HOLD): bytes → dict → delegate to the async helper.
+        try:
+            payload = json.loads(msg.data.decode("utf-8"))
+        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+            log.warning("v1_chain consumer: malformed payload: %s", exc)
+            return
+        await _consumer_handle_envelope_async(payload)
+
+    try:
+        await nc.subscribe(CONSUMER_SUBJECT, cb=_handler)
+        log.info("v1_chain consumer: subscribed %s on %s", CONSUMER_SUBJECT, url)
+        while True:
+            await asyncio.sleep(60)
+    finally:
+        try:
+            await nc.close()
+        except Exception as exc:  # noqa: BLE001
+            log.warning("v1_chain consumer: NATS close error: %s", exc)
+
 
 if __name__ == "__main__":  # pragma: no cover
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")

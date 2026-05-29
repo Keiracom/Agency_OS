@@ -1,0 +1,16 @@
+[Unit]
+Description=Hourly Postgres dump to Cloudflare R2 (KEI-243)
+Documentation=https://linear.app/keiracom/issue/KEI-243
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+ExecStart=/home/elliotbot/clawd/venv/bin/python3 -m src.keiracom_system.backup.postgres_dump
+StandardOutput=append:/home/elliotbot/clawd/logs/postgres-dump-r2.log
+StandardError=append:/home/elliotbot/clawd/logs/postgres-dump-r2.log
+
+[Install]
+WantedBy=default.target

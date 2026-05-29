@@ -1,18 +1,21 @@
-"""exit_cycle.py — John's end-of-conversation decision capture.
+"""exit_cycle.py — John's end-of-conversation decision capture (direct-write).
 
 An ephemeral John spawn has no persistent memory. If a conversation contained a
 ratified decision (Viktor explained an architecture, Dave confirmed a
 direction, a pattern was established), the only way that knowledge survives to
-the next spawn is to write it to ceo_memory before this spawn exits. The
-atomiser then promotes it to fleet_decisions; future spawns retrieve it via
-Hindsight Layer 2.
+the next spawn is to write it before this spawn exits.
 
-`classify_and_save` scans a finished conversation with Gemini Flash, keeps items
-with confidence > 0.8 (max 3), and upserts each to ceo_memory under
-`ceo:conversation_capture:{date}:{topic_slug}` via the canonical KEI-87 writer.
+DIRECT-WRITE model (Path 1, Dave-ratified 2026-05-29, ceo:ephemeral_capture_model_v1
+v2): `classify_and_save` scans a finished conversation with Gemini Flash, keeps
+items with confidence > 0.8 (max 3), builds an AtomV1 decision atom from each,
+and writes it DIRECTLY to the Hindsight `fleet_decisions` bank. The old two-step
+(exit_cycle -> ceo_memory -> atomiser -> fleet_decisions) is decommissioned —
+nothing is written to ceo_memory. Future spawns retrieve atoms via Hindsight
+Layer 2 recall. Serialization is the shared one-source seam in
+`atomization.hindsight_writer` (format-matched with the historical backfill).
 
-Fail-open by contract: any Gemini or DB error skips gracefully and never blocks
-conversation completion.
+Fail-open by contract: any Gemini or Hindsight error skips gracefully and never
+blocks conversation completion.
 """
 
 from __future__ import annotations
@@ -20,16 +23,31 @@ from __future__ import annotations
 import asyncio
 import logging
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
+from uuid import UUID, uuid4
+
+from src.keiracom_system.atomization.decision_sources import decision_composition_tags
+from src.keiracom_system.atomization.hindsight_writer import (
+    DEFAULT_BANK,
+    IngestFn,
+    atom_to_hindsight_item,
+    default_hindsight_ingest,
+)
+from src.keiracom_system.atomization.schema import AtomV1
 
 logger = logging.getLogger(__name__)
 
 CONFIDENCE_THRESHOLD = 0.8
 MAX_WRITES = 3
 CALLSIGN = "john"
+LIVE_SOURCE = "live_spawn_exit"
+# Fleet/system tenant — fleet_decisions is a fleet-level bank (Dave = tenant 1).
+# Mirrors SYSTEM_PIPELINE_CLIENT_ID; recall addresses the bank by the "default"
+# slug (orchestrator.FLEET_TENANT_SLUG), so this UUID is provenance metadata.
+FLEET_TENANT_UUID = UUID("00000000-0000-0000-0000-000000000001")
 _VALID_KINDS = {
     "architectural_decision",
     "confirmed_pattern",
@@ -76,11 +94,9 @@ RESPONSE_SCHEMA: dict[str, Any] = {
 @dataclass
 class ExitCycleResult:
     decisions_saved: int = 0
-    keys_written: list[str] = field(default_factory=list)
+    atom_ids: list[str] = field(default_factory=list)
+    bank: str = DEFAULT_BANK
     skipped_reason: str | None = None
-
-
-WriterFn = Callable[[str, str, dict[str, Any]], None]
 
 
 def _topic_slug(text: str) -> str:
@@ -90,12 +106,6 @@ def _topic_slug(text: str) -> str:
 
 def _render(conversation: Sequence[dict[str, Any]]) -> str:
     return "\n".join(f"{m.get('role', '?')}: {m.get('content', '')}" for m in conversation)
-
-
-def _default_writer(callsign: str, key: str, value: dict[str, Any]) -> None:
-    from src.governance.ceo_memory_writer import upsert_ceo_memory_key
-
-    upsert_ceo_memory_key(callsign, key, value)
 
 
 async def _classify(gemini_client: Any, conversation_text: str) -> list[dict[str, Any]]:
@@ -135,15 +145,30 @@ def _select_qualifying(items: list[dict[str, Any]]) -> list[dict[str, Any]]:
     return qualifying[:MAX_WRITES]
 
 
-def _build_value(item: dict[str, Any], customer_id: int, captured_at: str) -> dict[str, Any]:
-    return {
-        "decision": item["decision_text"],
-        "kind": item["kind"],
-        "confidence": float(item["confidence"]),
-        "customer_id": customer_id,
-        "captured_by": "john_exit_cycle",
-        "captured_at": captured_at,
-    }
+def _build_atom(item: dict[str, Any], customer_id: int, captured_at: datetime) -> AtomV1:
+    """Map a classified decision item to a fleet decision AtomV1."""
+    date = captured_at.strftime("%Y-%m-%d")
+    return AtomV1(
+        atom_id=uuid4(),
+        tenant_id=FLEET_TENANT_UUID,
+        trigger_condition={
+            "kind": "context_predicate",
+            "params": {
+                "topic": _topic_slug(item.get("topic_slug") or item["decision_text"]),
+                "decision_kind": item["kind"],
+            },
+        },
+        content=item["decision_text"],
+        anti_pattern=None,
+        example=None,
+        provenance={
+            "source": f"{LIVE_SOURCE}:john:customer_{customer_id}",
+            "freshness": date,
+            "confidence": float(item["confidence"]),
+            "last_validated": date,
+        },
+        composition_tags=decision_composition_tags(),
+    )
 
 
 async def classify_and_save(
@@ -151,12 +176,13 @@ async def classify_and_save(
     customer_id: int,
     *,
     gemini_client: Any | None = None,
-    writer: WriterFn | None = None,
+    ingest_fn: IngestFn | None = None,
 ) -> ExitCycleResult:
-    """Detect ratified decisions in `conversation` and persist them to ceo_memory.
+    """Detect ratified decisions in `conversation` and write them as AtomV1 atoms
+    directly to the Hindsight `fleet_decisions` bank.
 
     Fail-open: returns a result with `skipped_reason` set rather than raising on
-    any classification or write failure. `gemini_client` and `writer` are
+    any classification or ingest failure. `gemini_client` and `ingest_fn` are
     injectable for testing.
     """
     if not conversation:
@@ -184,27 +210,32 @@ async def classify_and_save(
         logger.info("exit_cycle: nothing to save (%s; %d raw items)", reason, len(items))
         return ExitCycleResult(skipped_reason=reason)
 
-    write = writer or _default_writer
     now = datetime.now(UTC)
-    date = now.strftime("%Y-%m-%d")
-    saved: list[str] = []
+    hindsight_items: list[dict[str, Any]] = []
+    atom_ids: list[str] = []
     for item in qualifying:
-        key = f"ceo:conversation_capture:{date}:{_topic_slug(item.get('topic_slug') or item['decision_text'])}"
-        value = _build_value(item, customer_id, now.isoformat())
         try:
-            await asyncio.to_thread(write, CALLSIGN, key, value)
-        except Exception as exc:  # noqa: BLE001 — fail-open per write
-            logger.warning("exit_cycle: ceo_memory write failed for %s (skip): %s", key, exc)
+            atom = _build_atom(item, customer_id, now)
+        except (ValueError, KeyError) as exc:
+            logger.warning("exit_cycle: atom build failed (skip item): %s", exc)
             continue
-        saved.append(key)
-        logger.info(
-            "exit_cycle: saved %s (kind=%s conf=%.2f): %s",
-            key,
-            item["kind"],
-            float(item["confidence"]),
-            item["decision_text"][:140],
-        )
+        hindsight_items.append(atom_to_hindsight_item(atom, source=LIVE_SOURCE))
+        atom_ids.append(str(atom.atom_id))
 
-    if not saved:
-        return ExitCycleResult(skipped_reason="all_writes_failed")
-    return ExitCycleResult(decisions_saved=len(saved), keys_written=saved)
+    if not hindsight_items:
+        return ExitCycleResult(skipped_reason="all_atoms_invalid")
+
+    ingest = ingest_fn or default_hindsight_ingest
+    try:
+        await asyncio.to_thread(ingest, DEFAULT_BANK, hindsight_items)
+    except Exception as exc:  # noqa: BLE001 — fail-open; never block completion
+        logger.warning("exit_cycle: fleet_decisions ingest failed (skip): %s", exc)
+        return ExitCycleResult(skipped_reason=f"ingest_failed: {exc}")
+
+    logger.info(
+        "exit_cycle: wrote %d atom(s) to %s (kinds=%s)",
+        len(atom_ids),
+        DEFAULT_BANK,
+        [q["kind"] for q in qualifying],
+    )
+    return ExitCycleResult(decisions_saved=len(atom_ids), atom_ids=atom_ids, bank=DEFAULT_BANK)

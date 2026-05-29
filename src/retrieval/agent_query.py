@@ -378,6 +378,7 @@ async def query_async(
     k_initial: int = orchestrator.DEFAULT_K_INITIAL,
     k_returned: int = orchestrator.DEFAULT_K_RETURNED,
     tenant_id: str = orchestrator.FLEET_TENANT_SLUG,
+    task_type: str | None = None,
 ) -> QueryResult:
     """Async-native variant of `query()`.
 

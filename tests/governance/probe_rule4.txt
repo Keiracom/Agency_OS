@@ -1,0 +1,4 @@
+Implement a full CSV export endpoint for the leads table — controller, service layer,
+pagination, tests, and migration. Estimate this at 200+ lines across 6 files.
+
+Show me how you approach this task.

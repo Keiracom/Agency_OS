@@ -29,6 +29,7 @@ Dedup: by SHA1(envelope.summary[:300] + envelope.from) within 5 minutes.
 
 Fail-open per message: any error logged + skip; service stays up.
 """
+
 from __future__ import annotations
 
 import asyncio
@@ -41,7 +42,12 @@ import subprocess
 import time
 from pathlib import Path
 
-import nats
+# `nats` is imported lazily inside main() (the only runtime caller). Keeping it
+# off the module-level imports means tests can `import peer_event_ceo_relay`
+# without nats-py installed — Agency_OS-014w (#1319 introduced the test, but the
+# orchestrator/* path was never on the test-deps include list). The annotation
+# `nats.aio.msg.Msg` on the nested `handler` below is a string under
+# `from __future__ import annotations` and is never evaluated at runtime.
 
 NATS_URL = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
 OPS_FAILURE_SUBJECT = "keiracom.ops.failure"
@@ -84,17 +90,21 @@ def _load_state() -> None:
 
 def _save_state() -> None:
     try:
-        STATE_PATH.write_text(json.dumps({
-            "pr_state": {
-                pr: {
-                    "approvers": sorted(s["approvers"]),
-                    "holders": sorted(s["holders"]),
-                    "posted_merge_ready": s["posted_merge_ready"],
-                    "last_event_ts": s["last_event_ts"],
+        STATE_PATH.write_text(
+            json.dumps(
+                {
+                    "pr_state": {
+                        pr: {
+                            "approvers": sorted(s["approvers"]),
+                            "holders": sorted(s["holders"]),
+                            "posted_merge_ready": s["posted_merge_ready"],
+                            "last_event_ts": s["last_event_ts"],
+                        }
+                        for pr, s in PR_STATE.items()
+                    }
                 }
-                for pr, s in PR_STATE.items()
-            }
-        }))
+            )
+        )
     except OSError as e:
         log.warning("state save fail: %s", e)
 
@@ -157,7 +167,11 @@ def _post_ceo(category: str, body: str) -> None:
     try:
         r = subprocess.run(
             [PYTHON, RELAY, "-c", "ceo", msg],
-            capture_output=True, text=True, timeout=15, env=env, check=False,
+            capture_output=True,
+            text=True,
+            timeout=15,
+            env=env,
+            check=False,
         )
         if r.returncode != 0:
             log.warning("slack post failed rc=%d stderr=%s", r.returncode, r.stderr[:200])
@@ -173,7 +187,7 @@ def _summary_to_bullets(summary: str, max_bullets: int = 5) -> str:
         return "- (no detail)"
     lines = [s.strip() for s in summary.split("\n") if s.strip()]
     bullets: list[str] = []
-    for ln in lines[:max_bullets * 3]:
+    for ln in lines[: max_bullets * 3]:
         ln = re.sub(r"^[#*\-•]+\s*", "", ln).strip()
         if not ln:
             continue
@@ -227,10 +241,15 @@ def _handle_envelope(subject: str, envelope: dict) -> None:
         verdict, reviewer = _extract_review_verdict(summary)
         if not verdict or not reviewer:
             return
-        s = PR_STATE.setdefault(pr, {
-            "approvers": set(), "holders": set(),
-            "posted_merge_ready": False, "last_event_ts": 0,
-        })
+        s = PR_STATE.setdefault(
+            pr,
+            {
+                "approvers": set(),
+                "holders": set(),
+                "posted_merge_ready": False,
+                "last_event_ts": 0,
+            },
+        )
         s["last_event_ts"] = time.time()
         if verdict == "approve":
             s["approvers"].add(reviewer)
@@ -293,6 +312,8 @@ def _pr_from_subject(subject: str) -> str | None:
 
 
 async def main() -> None:
+    import nats  # noqa: PLC0415 — lazy: only the runtime entrypoint needs nats (Agency_OS-014w)
+
     _load_state()
     nc = await nats.connect(NATS_URL)
     log.info("connected to NATS %s", NATS_URL)
@@ -315,7 +336,9 @@ async def main() -> None:
                 "kind": "review" if msg.subject.startswith("keiracom.review.") else "status",
             }
             # Try to extract sender from "[REVIEW:...:<callsign>]" tag
-            m = re.search(r"\[REVIEW:(?:approve|HOLD)[:\s]+([a-z]+)\]|\[CONCUR:([a-z]+)\]", raw, re.I)
+            m = re.search(
+                r"\[REVIEW:(?:approve|HOLD)[:\s]+([a-z]+)\]|\[CONCUR:([a-z]+)\]", raw, re.I
+            )
             if m:
                 envelope["from"] = (m.group(1) or m.group(2) or "unknown").lower()
         try:

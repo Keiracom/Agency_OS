@@ -187,11 +187,60 @@ async def _publish_async(envelope: dict, role: str) -> bool:
 
 
 def _publish_envelope(envelope: dict, role: str) -> bool:
-    """Drive async publish via asyncio.run. Return True on success, False on any failure."""
+    """Dispatch a chain hop by POSTing to /dispatcher/spawn (HTTP).
+
+    Was a NATS publish to keiracom.dispatch.<role>. Switched to /spawn
+    (architectural Option B, Elliot 2026-05-29) so each chain hop spawns a
+    fresh ephemeral agent_cold_start process:
+        spawn → agent_cold_start.run() → save_exit_atoms publishes
+        keiracom.agent.handoff → consumer's run_consumer fires advance_step
+        → next hop dispatched.
+    Closes the "persistent claude session has no handoff publisher" gap
+    (the rehearsal-blocker found via research-task pre-build).
+
+    spawn_kwargs are forwarded verbatim to SessionManager.spawn; the dispatcher
+    auto-injects each non-None key as AGENT_<KEY> (src/dispatcher/main.py
+    441-443/513-515) and pops `chain_step` first to land it as CHAIN_STEP
+    un-prefixed (qjl7's _apply_chain_step_env at 421-435), which is what
+    agent_cold_start's nd3b suppression reads.
+
+    Fail-open: any error (transport, non-2xx) logged + False returned. The
+    pure-NATS _publish_async (above) is kept for any remaining NATS-only
+    subscribers / future use.
+    """
+    import urllib.error  # noqa: PLC0415 — lazy; only the hop-dispatch path needs it
+    import urllib.request  # noqa: PLC0415
+
+    body = {
+        "backend": "tmux",  # Phase 1 scrubbed-tmux backend (Agency_OS-87ei)
+        "key": f"chain-{envelope.get('chain_id', '?')}-{envelope.get('chain_step', '?')}",
+        "spawn_kwargs": {
+            "role": role,
+            "callsign": role,  # bounded_spawn enforcer + supervisor attribution
+            "tier": "standard",
+            "variant": role,
+            "brief": envelope.get("brief", ""),
+            "chain_step": envelope.get("chain_step", ""),
+            "chain_id": envelope.get("chain_id", ""),
+            "task_id": envelope.get("task_id", ""),
+            "atom_id": envelope.get("atom_id"),
+        },
+    }
+    payload = json.dumps(body).encode()
+    url = f"{_DISPATCHER_URL.rstrip('/')}/dispatcher/spawn"
     try:
-        return asyncio.run(_publish_async(envelope, role))
+        req = urllib.request.Request(
+            url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 — fixed loopback host
+            status = resp.status
+        log.info("v1_chain: /dispatcher/spawn role=%s key=%s status=%d", role, body["key"], status)
+        return 200 <= status < 300
+    except (urllib.error.URLError, OSError) as exc:
+        log.error("v1_chain: /dispatcher/spawn failed role=%s: %s", role, exc)
+        return False
     except Exception as exc:  # noqa: BLE001
-        log.error("v1_chain: asyncio.run publish failed role=%s: %s", role, exc)
+        log.error("v1_chain: unexpected /spawn error role=%s: %s", role, exc)
         return False
 
 

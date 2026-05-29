@@ -6,7 +6,9 @@ Two modes:
   --watch : inotify-watch the governance dirs and ingest individual files on modify
 
 Uses the Cognee HTTP API via cognee_http_client to avoid the SDK lock conflict.
-Fail-open per file; logs successes + failures to stderr.
+Fail-open per file; logs successes + failures to stderr. --once is fail-CLOSED
+on infra: if Cognee health is down it ingests nothing and exits non-zero, so
+drift/cron callers see a real failure instead of a silent green no-op.
 """
 
 from __future__ import annotations
@@ -235,7 +237,13 @@ def main() -> int:
     )
     args = p.parse_args()
     if args.once:
-        run_once(batch_size=args.batch_size, settle=args.settle)
+        stats = run_once(batch_size=args.batch_size, settle=args.settle)
+        # Fail-closed: a health-down run ingested nothing, so a silent 0 would
+        # let drift alerts "self-heal" green while the facts stay stale
+        # (Agency_OS-8egh). Non-zero surfaces the infra failure to callers.
+        if stats.get("skipped_unhealthy"):
+            log.error("once aborted: cognee health down — nothing ingested")
+            return 1
         return 0
     if args.watch:
         watch_loop()

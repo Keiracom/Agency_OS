@@ -18,7 +18,7 @@ Until that loop proves stable **unattended for 48–72 hours**, the old always-o
 | --- | --- | --- |
 | **Dispatch** | task row → trigger → bridge → Valkey → consumer → `/dispatcher/spawn` (ephemeral) | Elliot manual dispatch into persistent tmux panes |
 | **Agents** | spawned on demand, exit when done | 7 always-on tmux sessions (supervised by systemd) |
-| **Loop units** | `keiracom-workloop-bridge` + `keiracom-workloop-consumer` (systemd --user) | left **UNENABLED** during the warm window |
+| **Loop units** | `keiracom-work-loop-bridge` + `keiracom-work-loop-consumer` (systemd --user) | left **UNENABLED** during the warm window |
 
 > The persistent tmux fleet is **not decommissioned** at cutover. It is the live fallback. Tearing it down is the point of no cheap return (§4).
 
@@ -43,7 +43,7 @@ Roll back if **any one** fires and cannot be fixed-forward inside the same opera
 **Step A — Halt new spawns (the one move).** Disable the two loop units so nothing new is admitted or published:
 
 ```bash
-systemctl --user disable --now keiracom-workloop-consumer keiracom-workloop-bridge
+systemctl --user disable --now keiracom-work-loop-consumer keiracom-work-loop-bridge
 ```
 
 During the warm window these units are the *only* thing turned on for the loop — flipping them off stops the self-driving behaviour immediately.

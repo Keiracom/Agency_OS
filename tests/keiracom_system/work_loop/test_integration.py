@@ -90,6 +90,24 @@ async def test_reconcile_loop_is_failopen():
     await integ.reconcile_loop(interval_s=0, iterations=1)  # must not raise
 
 
+async def test_reconcile_loop_startup_reclaims_pre_existing_expired_lease():
+    """One-shot startup reconcile reclaims slots that lapsed before loop started."""
+    spawner = _Spawner()
+    c = _fakeredis_consumer(spawner)
+    integ.set_consumer(c)
+    # Spawn a task and then simulate it crashing before reconcile_loop starts
+    await c.process_task(_msg("pre-existing"))
+    await c._r.delete(wl._lease_key("tnt", "pre-existing"))
+    # Stub notify helper to avoid HTTP
+    async def _noop(_task_id: str) -> None:
+        pass
+
+    c._notify_crash_retry = _noop
+    # Even with iterations=1 the startup reconcile runs BEFORE the loop body
+    await integ.reconcile_loop(interval_s=0, iterations=0)
+    assert await c._r.get(wl._active_key("tnt")) == "0"  # slot reclaimed in startup sweep
+
+
 async def test_reconcile_all_scans_multiple_tenants():
     spawner = _Spawner()
     c = WorkLoopConsumer(

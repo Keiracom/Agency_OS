@@ -60,10 +60,24 @@ async def reconcile_loop(
 ) -> None:
     """Periodically reclaim crashed-agent slots until cancelled.
 
+    Runs a one-shot startup reconcile first to reclaim any slots that lapsed
+    while the dispatcher was down (no exit hook is called on dispatcher restart).
+
     ``iterations`` bounds the loop for tests (None = run forever until the task
     is cancelled by the dispatcher lifespan). Errors are swallowed so a single
     bad sweep never kills the loop.
     """
+    # One-shot startup reconcile — reclaim any slots that lapsed while
+    # dispatcher was down so we don't inherit stale active-spawn counters.
+    try:
+        reclaimed = await get_consumer().reconcile_all()
+        if reclaimed:
+            logger.info(
+                "work-loop reconcile startup: reclaimed %d crashed-agent slot(s)", reclaimed
+            )
+    except Exception:  # noqa: BLE001
+        logger.warning("work-loop reconcile startup sweep failed", exc_info=True)
+
     n = 0
     while iterations is None or n < iterations:
         try:

@@ -81,11 +81,15 @@ def test_run_agent_spawns_headless_claude():
     assert captured["cwd"] == acs.AGENT_WORKDIR
 
 
-def test_finalize_done_without_acceptance_only_updates():
+def test_finalize_done_without_acceptance_inserts_generic_verification():
+    # require_verification_before_done fires on EVERY done transition regardless of
+    # acceptance_criteria — a verification row must always be inserted (Aiden catch).
     conn, cur = _fake_conn()
     acs.finalize_task("t-1", 0, None, conn=conn)
     sqls = [c[0][0] for c in cur.execute.call_args_list]
-    assert len(sqls) == 1 and "status=%s" in sqls[0]
+    assert "task_verifications" in sqls[0]  # evidence inserted even with no acceptance_criteria
+    assert "UPDATE public.tasks SET status=%s" in sqls[1]
+    assert "no acceptance criteria" in cur.execute.call_args_list[0][0][1][3]  # generic test_output
     assert cur.execute.call_args[0][1] == ("done", "t-1")
 
 

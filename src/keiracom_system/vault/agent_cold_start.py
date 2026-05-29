@@ -20,8 +20,9 @@ Design decisions (Elliot-confirmed D1–D4, 2026-05-29):
   D2  headless ``claude -p <prompt> --dangerously-skip-permissions`` subprocess.
   D3  this entrypoint owns the public.tasks lifecycle (the consumer admits via a
       Valkey counter only and never touches status). rc 0 → 'done'.
-  D4  a verification row is inserted before 'done' iff the task has
-      acceptance_criteria (else enforce_verification_before_done blocks the update).
+  D4  a task_verifications row is ALWAYS inserted before 'done' — the
+      require_verification_before_done trigger fires on every done transition and
+      raises unless evidence exists, regardless of acceptance_criteria (Aiden catch).
 
 NB: tasks_status_check has no 'failed' value, so a non-zero agent rc maps to
 'blocked' (valid, needs-attention, not auto-retried) rather than 'failed'.
@@ -131,23 +132,29 @@ def run_agent(prompt: str, *, popen: Callable[..., Any] = subprocess.Popen) -> i
 def finalize_task(
     task_id: str, rc: int, acceptance_criteria: str | None, *, conn: Any = None
 ) -> None:
-    """rc 0 → 'done' (with a verification row first iff acceptance_criteria, D4);
-    rc != 0 → 'blocked' (no 'failed' in tasks_status_check)."""
+    """rc 0 → 'done'; rc != 0 → 'blocked' (no 'failed' in tasks_status_check).
+
+    On 'done', ALWAYS insert a task_verifications row first: the
+    require_verification_before_done trigger fires on every done transition and
+    raises unless evidence exists — acceptance_criteria NULL/empty does NOT bypass
+    the gate (Aiden catch). Without this, a NULL-acceptance task crashes on the
+    UPDATE and stays stuck 'active'.
+    """
     own = conn is None
     conn = conn or _connect()
     status = "done" if rc == 0 else "blocked"
     try:
         with conn.cursor() as cur:
-            if status == "done" and acceptance_criteria:
+            if status == "done":
+                test_output = (
+                    f"claude rc=0 (acceptance: {acceptance_criteria[:300]})"
+                    if acceptance_criteria
+                    else "claude rc=0 (task ran to completion; no acceptance criteria)"
+                )
                 cur.execute(
                     "INSERT INTO public.task_verifications "
                     "(task_id, verified_by, behavioral_test, test_output) VALUES (%s,%s,%s,%s)",
-                    (
-                        task_id,
-                        "agent_cold_start",
-                        "ephemeral agent ran to completion",
-                        f"claude rc=0 (acceptance: {acceptance_criteria[:300]})",
-                    ),
+                    (task_id, "agent_cold_start", "ephemeral agent ran to completion", test_output),
                 )
             cur.execute("UPDATE public.tasks SET status=%s WHERE id=%s", (status, task_id))
     finally:

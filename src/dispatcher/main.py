@@ -22,6 +22,7 @@ import contextlib
 import dataclasses
 import logging
 import os
+import socket
 from collections.abc import AsyncGenerator
 from typing import Any
 
@@ -377,6 +378,60 @@ _REAPER_SWEEP_INTERVAL_S = 60.0
 TMUX_NAME_PREFIX = os.environ.get("DISPATCHER_TMUX_PREFIX", "disp-")
 CONTAINER_NAME_PREFIX = os.environ.get("DISPATCHER_CONTAINER_PREFIX", "disp-")
 
+# Container spawn defaults (Agency_OS-g9xx). The work-loop bridge sends LOGICAL
+# spawn_kwargs (callsign/task_id/brief/...) that container_lifecycle.spawn_container's
+# strict signature (image/name/port/env) would TypeError on → /dispatcher/spawn 400.
+# _container_spawn_kwargs translates: image from config, name from key, port
+# allocated, all other metadata → container env (AGENT_*), alongside any recall
+# block spawn_recall.inject_block already placed in env.
+#
+# NOTE: DISPATCHER_CONTAINER_IMAGE must point at an image present on the spawn
+# host. No Claude-agent container image was found in-repo (Dockerfile.worker is a
+# Prefect worker, not an agent), and docker wasn't available to verify a built
+# tag — so the default below is a placeholder the operator MUST override/build
+# before a real container spawn succeeds (else docker run → ContainerStartupError).
+_CONTAINER_IMAGE_ENV = "DISPATCHER_CONTAINER_IMAGE"
+DEFAULT_CONTAINER_IMAGE = "keiracom-agent:latest"
+_CONTAINER_PASSTHROUGH = frozenset({"image", "name", "port", "env", "health_path", "extra_args"})
+
+
+def _container_image() -> str:
+    return os.environ.get(_CONTAINER_IMAGE_ENV) or DEFAULT_CONTAINER_IMAGE
+
+
+def _free_port() -> int:
+    """Allocate an OS-assigned free localhost port for the container's published port."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.bind(("127.0.0.1", 0))
+        return int(sock.getsockname()[1])
+
+
+def _container_spawn_kwargs(key: str, sk: dict[str, Any]) -> dict[str, Any]:
+    """Translate logical spawn_kwargs → container_lifecycle.spawn_container kwargs.
+
+    image/name/port are defaulted (config / key / allocated) unless the caller
+    supplied them; every other key (task metadata) is routed into the container
+    env as an AGENT_* var, merged with any env already present (e.g. the recall
+    block from spawn_recall.inject_block). A caller that already passes a valid
+    {image, name, port[, env]} set passes through unchanged.
+    """
+    sk = dict(sk or {})
+    env = dict(sk.pop("env", None) or {})
+    image = sk.pop("image", None) or _container_image()
+    name = sk.pop("name", None) or f"{CONTAINER_NAME_PREFIX}{key}"
+    port = int(sk.pop("port", None) or _free_port())
+    health_path = sk.pop("health_path", None)
+    extra_args = sk.pop("extra_args", None)
+    for meta_key, meta_val in sk.items():
+        if meta_val is not None:
+            env.setdefault(f"AGENT_{meta_key.upper()}", str(meta_val))
+    out: dict[str, Any] = {"image": image, "name": name, "port": port, "env": env}
+    if health_path is not None:
+        out["health_path"] = health_path
+    if extra_args is not None:
+        out["extra_args"] = extra_args
+    return out
+
 
 def _norm_status(raw: str) -> str:
     """Map a watchdog/reaper status into the {'ok','degraded'} vocabulary.
@@ -670,6 +725,12 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
             task_brief=_spawn_kwargs_brief(sk),
         )
         spawn_kwargs_effective = spawn_recall.inject_block(sk, block)
+
+    # Container-defaults injection (Agency_OS-g9xx): translate logical task
+    # metadata → spawn_container's strict image/name/port/env signature so the
+    # work-loop bridge's spawn_kwargs no longer TypeError → 400.
+    if backend is Backend.CONTAINER:
+        spawn_kwargs_effective = _container_spawn_kwargs(req.key, spawn_kwargs_effective)
 
     manager = SessionManager(backend=backend)
     try:

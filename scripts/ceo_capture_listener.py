@@ -41,7 +41,7 @@ DISPATCHER_URL = os.environ.get("DISPATCHER_URL", "http://127.0.0.1:4001").rstri
 # Tier-2 listener-agent model — claude-haiku-4-5 per Dave directive 2026-05-28.
 CAPTURE_MODEL = os.environ.get("CEO_CAPTURE_MODEL", "claude-haiku-4-5")
 CAPTURE_WORKING_DIR = os.environ.get(
-    "CEO_CAPTURE_WORKING_DIR", "/home/elliotbot/clawd/Agency_OS-john"
+    "CEO_CAPTURE_WORKING_DIR", "/home/elliotbot/clawd/Agency_OS-face"
 )
 SPAWN_BACKEND = os.environ.get("CEO_CAPTURE_SPAWN_BACKEND", "tmux")
 CAPTURE_BRIEF = (
@@ -94,14 +94,14 @@ def build_spawn_request(text: str) -> dict:
         "key": key,
         "spawn_kwargs": {
             "session_name": key,
-            "callsign": "john",
+            "callsign": "face",
             "task_type": "capture",
             "model": CAPTURE_MODEL,
             "working_dir": CAPTURE_WORKING_DIR,
             "command": CAPTURE_COMMAND,
             "brief": CAPTURE_BRIEF,
             "env": {
-                "CALLSIGN": "john",
+                "CALLSIGN": "face",
                 "CEO_CAPTURE_MODEL": CAPTURE_MODEL,
                 "CEO_CAPTURE_BRIEF": CAPTURE_BRIEF,
                 "CEO_CAPTURE_MESSAGE": text,

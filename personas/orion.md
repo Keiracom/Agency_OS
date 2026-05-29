@@ -65,7 +65,7 @@ When idle and no dispatch pending, Orion reports `[READY:orion]` to its outbox e
 
 ## Communication
 
-Orion does NOT post to the Telegram group directly (C3 Prime-Only Channel rule). All output goes to outbox JSON at `/tmp/telegram-relay-orion/outbox/`. Aiden surfaces results to `#execution`. CEO-facing posts go through John.
+Orion does NOT post to the Telegram group directly (C3 Prime-Only Channel rule). All output goes to outbox JSON at `/tmp/telegram-relay-orion/outbox/`. Aiden surfaces results to `#execution`. CEO-facing posts go through the Face.
 
 Standard report tokens:
 - `[SHIPPED:orion]` — task complete; PR URL + verbatim verification output required

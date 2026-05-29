@@ -69,7 +69,7 @@ def test_spawn_request_uses_haiku_model():
     assert p["spawn_kwargs"]["env"]["CEO_CAPTURE_MODEL"] == "claude-haiku-4-5"
     assert p["backend"] == m.SPAWN_BACKEND
     assert p["key"].startswith("ceo-capture-")
-    assert p["spawn_kwargs"]["callsign"] == "john"
+    assert p["spawn_kwargs"]["callsign"] == "face"
 
 
 def test_spawn_request_carries_message_in_env_not_command():

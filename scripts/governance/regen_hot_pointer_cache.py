@@ -274,11 +274,11 @@ PERSONAS: list[tuple[str, str, str, str, str]] = [
         "persona-max",
     ),
     (
-        "PERSONA john",
-        "John",
+        "PERSONA face",
+        "Face",
         "face layer — Dave-facing communicator; never executes/reviews",
         "Dave-facing summary translation, single-voice presentation",
-        "persona-john",
+        "persona-face",
     ),
     (
         "PERSONA orion",

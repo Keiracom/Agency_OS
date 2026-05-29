@@ -1,6 +1,6 @@
-"""exit_cycle.py — John's end-of-conversation decision capture (direct-write).
+"""exit_cycle.py — the Face's end-of-conversation decision capture (direct-write).
 
-An ephemeral John spawn has no persistent memory. If a conversation contained a
+An ephemeral Face spawn has no persistent memory. If a conversation contained a
 ratified decision (Viktor explained an architecture, Dave confirmed a
 direction, a pattern was established), the only way that knowledge survives to
 the next spawn is to write it before this spawn exits.
@@ -42,7 +42,7 @@ logger = logging.getLogger(__name__)
 
 CONFIDENCE_THRESHOLD = 0.8
 MAX_WRITES = 3
-CALLSIGN = "john"
+CALLSIGN = "face"
 LIVE_SOURCE = "live_spawn_exit"
 # Fleet/system tenant — fleet_decisions is a fleet-level bank (Dave = tenant 1).
 # Mirrors SYSTEM_PIPELINE_CLIENT_ID; recall addresses the bank by the "default"
@@ -162,7 +162,7 @@ def _build_atom(item: dict[str, Any], customer_id: int, captured_at: datetime) -
         anti_pattern=None,
         example=None,
         provenance={
-            "source": f"{LIVE_SOURCE}:john:customer_{customer_id}",
+            "source": f"{LIVE_SOURCE}:{CALLSIGN}:customer_{customer_id}",
             "freshness": date,
             "confidence": float(item["confidence"]),
             "last_validated": date,

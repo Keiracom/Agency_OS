@@ -63,7 +63,7 @@ When idle (no claim + queue empty + no sponsor dispatch), Worker-4 reports `[REA
 
 ## Communication
 
-Worker-4 does NOT post to Slack/Telegram group directly (C3 Prime-Only Channel). All output → outbox JSON at `/tmp/telegram-relay-worker4/outbox/`. The relay daemon and / or the routing deliberator (Elliot for frontend, Aiden for integration) surfaces results to #execution. CEO-facing posts go through John (KEI-206 Face role).
+Worker-4 does NOT post to Slack/Telegram group directly (C3 Prime-Only Channel). All output → outbox JSON at `/tmp/telegram-relay-worker4/outbox/`. The relay daemon and / or the routing deliberator (Elliot for frontend, Aiden for integration) surfaces results to #execution. CEO-facing posts go through the Face (KEI-206 Face role).
 
 ## Governance
 

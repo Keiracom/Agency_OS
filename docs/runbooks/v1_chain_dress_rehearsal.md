@@ -280,7 +280,7 @@ jq "del(.\"$CHAIN_ID\")" /tmp/v1_chain_state.json > /tmp/v1_chain_state.json.new
   && mv /tmp/v1_chain_state.json.new /tmp/v1_chain_state.json
 
 # 2. Mark the task complete in public.tasks so the work-loop does not re-enqueue
-psql "$DATABASE_URL" -c "UPDATE public.tasks SET status='aborted' WHERE id = '<task_id>';"
+psql "$DATABASE_URL" -c "UPDATE public.tasks SET status='dismissed' WHERE id = '<task_id>';"
 
 # 3. Drain any per-callsign tmux pane that is sitting on a stuck dispatch
 for cs in aiden max nova orion atlas; do

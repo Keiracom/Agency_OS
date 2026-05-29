@@ -17,6 +17,10 @@
 # Exempt paths inside scope:
 #   - src/keiracom_system/memory/        (MAL — canonical owner per layer matrix)
 #   - src/keiracom_system/control_plane/ (supabase-layer interface, to be built)
+#   - src/keiracom_system/vault/agent_cold_start.py (bootstrap entrypoint: runs
+#     in a scrubbed env BEFORE the MAL is available; psycopg is the only path
+#     to the task row before Vault credentials are resolved. Tracked under
+#     Agency_OS-zr7e.5 for future migration to control_plane once built.)
 #
 # Pattern: `import asyncpg` / `from asyncpg` / `import psycopg` / `from psycopg`
 # at start-of-line.
@@ -40,6 +44,7 @@ raw=$(grep -rnE --include='*.py' "$PATTERN" "$SCOPE" 2>/dev/null || true)
 hits=$(printf '%s\n' "$raw" \
   | grep -v -E '^src/keiracom_system/memory/' \
   | grep -v -E '^src/keiracom_system/control_plane/' \
+  | grep -v -E '^src/keiracom_system/vault/agent_cold_start\.py' \
   | grep -v -E '^[[:space:]]*$' || true)
 
 if [ -n "$hits" ]; then

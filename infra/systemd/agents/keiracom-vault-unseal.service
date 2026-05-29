@@ -1,0 +1,20 @@
+[Unit]
+Description=Auto-unseal the persistent Keiracom Vault on boot (P10 / bd lmce)
+Documentation=file:///home/elliotbot/clawd/Agency_OS/docs/runbooks/vault_persistence.md
+After=docker.service network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+Environment=VAULT_ADDR=http://127.0.0.1:8200
+ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/vault_auto_unseal.sh
+# Retry a few times in case the vault container is slow to come up post-boot.
+Restart=on-failure
+RestartSec=10
+StartLimitIntervalSec=300
+StandardOutput=append:/home/elliotbot/clawd/logs/vault-unseal.log
+StandardError=append:/home/elliotbot/clawd/logs/vault-unseal.log
+
+[Install]
+WantedBy=default.target

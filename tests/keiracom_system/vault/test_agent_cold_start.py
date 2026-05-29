@@ -239,6 +239,82 @@ def test_notify_complete_fail_open_on_network_error(monkeypatch):
     # no exception = pass
 
 
+# ---- chain-step suppression (Agency_OS-nd3b) -------------------------------
+
+
+def test_notify_complete_suppressed_when_chain_step_is_intermediate(monkeypatch, caplog):
+    """CHAIN_STEP set to an intermediate step → no POST (urlopen never called)."""
+    import logging
+    import urllib.request as urlreq
+
+    called: list = []
+
+    def boom_urlopen(_req, timeout):
+        called.append(True)
+        raise AssertionError("urlopen MUST NOT be called for intermediate chain steps")
+
+    monkeypatch.setenv("CHAIN_STEP", "aiden_plan")
+    monkeypatch.setattr(urlreq, "urlopen", boom_urlopen)
+    with caplog.at_level(logging.INFO, logger="src.keiracom_system.vault.agent_cold_start"):
+        acs.notify_complete("t-int", "aiden", "Plan KEI-1", "done", 0)
+    assert called == []  # urlopen never invoked
+    assert any("suppressed" in rec.message and "aiden_plan" in rec.message for rec in caplog.records)
+
+
+def test_notify_complete_posts_when_chain_step_is_complete(monkeypatch):
+    """CHAIN_STEP='complete' (final step) → posts as normal."""
+    import urllib.request as urlreq
+
+    captured: dict = {}
+
+    class _FakeResp:
+        def read(self):
+            return b'{"notified":true}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+    def fake_urlopen(req, timeout):
+        captured["url"] = req.full_url
+        captured["body"] = json.loads(req.data)
+        return _FakeResp()
+
+    monkeypatch.setenv("CHAIN_STEP", "complete")
+    monkeypatch.setattr(urlreq, "urlopen", fake_urlopen)
+    acs.notify_complete("t-fin", "atlas", "review done", "done", 0, dispatcher_url="http://h:4001")
+    assert captured["body"]["task_id"] == "t-fin"
+    assert captured["body"]["status"] == "done"
+
+
+def test_notify_complete_posts_when_chain_step_absent(monkeypatch):
+    """CHAIN_STEP unset → posts as today (backward-compat with single-step legacy tasks)."""
+    import urllib.request as urlreq
+
+    captured: dict = {}
+
+    class _FakeResp:
+        def read(self):
+            return b'{"notified":true}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+    def fake_urlopen(req, timeout):
+        captured["url"] = req.full_url
+        return _FakeResp()
+
+    monkeypatch.delenv("CHAIN_STEP", raising=False)
+    monkeypatch.setattr(urlreq, "urlopen", fake_urlopen)
+    acs.notify_complete("t-legacy", "atlas", "legacy", "done", 0, dispatcher_url="http://h:4001")
+    assert captured["url"] == "http://h:4001/dispatcher/task_complete"
+
+
 def test_run_calls_notify_after_finalize(monkeypatch):
     """run() calls notify with the correct status derived from agent rc."""
     monkeypatch.setenv("AGENT_TASK_ID", "t-1")

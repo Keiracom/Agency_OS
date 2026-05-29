@@ -189,7 +189,22 @@ def notify_complete(
 
     Fail-open: any error (network, dispatcher down, Slack failure) is logged
     and swallowed — a notification failure must never block the task lifecycle.
+
+    Chain-step suppression (Agency_OS-nd3b): the v1_chain_orchestrator dispatch
+    envelope carries `chain_step` and the dispatcher injects it as the CHAIN_STEP
+    env var at spawn. Only the FINAL step (CHAIN_STEP=='complete') posts to #ceo
+    — intermediate hops (aiden_plan / max_challenge / nova_build / orion_review /
+    atlas_review) suppress to keep Dave from seeing N notifications per directive.
+    CHAIN_STEP absent preserves today's behavior (single-step legacy tasks notify).
     """
+    chain_step = os.environ.get("CHAIN_STEP")
+    if chain_step and chain_step != "complete":
+        logger.info(
+            "notify_complete: suppressed (intermediate chain_step=%s) task=%s",
+            chain_step,
+            task_id,
+        )
+        return
     payload = json.dumps(
         {"task_id": task_id, "callsign": callsign, "title": title, "status": status, "rc": rc}
     ).encode()

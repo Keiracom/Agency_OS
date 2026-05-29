@@ -46,7 +46,9 @@ logger = logging.getLogger(__name__)
 
 AGENT_WORKDIR = os.environ.get("DISPATCHER_AGENT_WORKDIR", "/home/elliotbot/clawd/Agency_OS")
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
-_TASK_COLS = ("id", "title", "description", "task_type", "priority", "acceptance_criteria")
+# NB: public.tasks has NO task_type column — task_type is derived from tags and
+# reaches the agent via the AGENT_TASK_TYPE env var (injected by the dispatcher).
+_TASK_COLS = ("id", "title", "description", "priority", "acceptance_criteria")
 
 # Exit codes (distinct from a claude rc so the loop can tell apart cold-start
 # failures from agent failures): 0 ok / claim-lost; 2 no task id; 3 task absent.
@@ -76,7 +78,7 @@ def fetch_task(task_id: str, *, conn: Any = None) -> dict | None:
     try:
         with conn.cursor() as cur:
             cur.execute(
-                "SELECT id, title, description, task_type, priority, acceptance_criteria "
+                "SELECT id, title, description, priority, acceptance_criteria "
                 "FROM public.tasks WHERE id = %s",
                 (task_id,),
             )
@@ -181,6 +183,7 @@ def run(
     if task is None:
         logger.error("agent_cold_start: task %s not found", task_id)
         return RC_TASK_ABSENT
+    task["task_type"] = os.environ.get("AGENT_TASK_TYPE", "build")  # not a tasks column
     if not claim(task_id, os.environ.get("AGENT_CALLSIGN")):
         logger.warning(
             "agent_cold_start: task %s not claimable (already taken) — exiting clean", task_id

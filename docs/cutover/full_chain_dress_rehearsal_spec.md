@@ -31,7 +31,11 @@ The work-loop entry point (hops 2→merge) is the consumer subscribing to `keira
 
 ## §2 — Real KEI selection (NOT synthetic)
 
-The KEI under test MUST be a genuine backlog item, never a test fixture. The harness picks the highest-priority `bd ready` issue, **excluding** synthetic markers: ids matching `KEI-TEST`, `*-test*`, `*smoke*`, or titles containing `smoke`/`test`/`scaffold`/`dress-rehearsal`. If only synthetic candidates exist, the gate **cannot run** (reported, not faked).
+The KEI under test MUST be a genuine backlog item, never a test fixture — the gate proves the system does **real work** end-to-end (governance + merge included), not a toy (Viktor; Elliot ratified 2026-05-29).
+
+**First-run safety (Elliot 2026-05-29):** `select_gate_kei` picks a deliberately **LOW-STAKES real KEI** (docs / trivial / P3-P4 scope) so the real PR + auto-merge is safe to land. Synthetic markers excluded: ids matching `KEI-TEST` / `*-test*` / `test001`, or titles containing `smoke`/`scaffold`/`dress-rehearsal`/`bd claim`. Note: bare `test` is **not** a synthetic title marker — a real "add tests for X" KEI is a valid low-stakes subject.
+
+**Fallback:** if no low-stakes real KEI is ready, the harness falls back to a synthetic `rehearsal task` (`rehearsal-1`) — it will **never** auto-merge a high-stakes real PR on the first run.
 
 ---
 

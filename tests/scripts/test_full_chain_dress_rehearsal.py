@@ -105,6 +105,50 @@ def test_select_real_kei_none_when_all_synthetic():
     assert m.select_real_kei([{"id": "KEI-TEST", "title": "smoke"}]) is None
 
 
+def test_real_test_writing_kei_is_not_synthetic():
+    # bare "test" in a title must NOT flag a real KEI as synthetic (Elliot fix)
+    assert m.is_synthetic("Agency_OS-w1re", "Add unit tests for the reranker client") is False
+
+
+# ─── §2 first-run low-stakes selection (Elliot 2026-05-29) ────────────────────
+
+
+def test_is_low_stakes_by_title_and_priority():
+    assert m.is_low_stakes("Agency_OS-a", "Fix typo in README") is True
+    assert m.is_low_stakes("Agency_OS-b", "docs: clarify cutover plan") is True
+    assert m.is_low_stakes("Agency_OS-c", "Rewrite billing engine", "P1") is False
+    assert m.is_low_stakes("Agency_OS-d", "Refactor dispatcher", "P4") is True  # low priority
+
+
+def test_select_gate_kei_prefers_low_stakes_real():
+    cands = [
+        {"id": "KEI-TEST", "title": "smoke"},  # synthetic
+        {
+            "id": "Agency_OS-hi",
+            "title": "Rewrite the scoring engine",
+            "priority": "P1",
+        },  # real, high-stakes
+        {
+            "id": "Agency_OS-lo",
+            "title": "docs: fix typo in ARCHITECTURE",
+            "priority": "P3",
+        },  # real, low-stakes
+    ]
+    assert m.select_gate_kei(cands)["id"] == "Agency_OS-lo"
+
+
+def test_select_gate_kei_falls_back_to_rehearsal_when_no_low_stakes_real():
+    # real KEIs exist but all high-stakes → fall back to synthetic rehearsal (never auto-merge high-stakes)
+    cands = [{"id": "Agency_OS-hi", "title": "Rewrite the scoring engine", "priority": "P1"}]
+    out = m.select_gate_kei(cands)
+    assert out["id"] == "rehearsal-1" and out.get("synthetic_fallback") is True
+
+
+def test_select_gate_kei_falls_back_when_all_synthetic():
+    out = m.select_gate_kei([{"id": "KEI-TEST", "title": "smoke"}])
+    assert out["id"] == "rehearsal-1" and out.get("synthetic_fallback") is True
+
+
 # ─── §3/§5-S5 memory gap ──────────────────────────────────────────────────────
 
 

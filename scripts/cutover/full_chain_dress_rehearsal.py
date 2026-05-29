@@ -27,8 +27,32 @@ from dataclasses import dataclass, field
 TASKS_CHANNEL = "keiracom:tasks:available"
 HOP_AGENTS_DEFAULT = ("chat", "deliberator", "worker", "reviewer")
 # Synthetic markers — a KEI matching any of these is NOT a real backlog item.
+# Note: bare "test" is NOT a title marker — a real "add tests for X" KEI is a
+# valid low-stakes gate subject. Fixtures are caught by id (test001/kei-test) or
+# the placeholder title phrases below.
 SYNTHETIC_ID_MARKERS = ("kei-test", "-test", "test001")
-SYNTHETIC_TITLE_MARKERS = ("smoke", "test", "scaffold", "dress-rehearsal", "dress rehearsal")
+SYNTHETIC_TITLE_MARKERS = ("smoke", "scaffold", "dress-rehearsal", "dress rehearsal", "bd claim")
+
+# Low-stakes markers — the FIRST rehearsal run must pick a real KEI whose scope is
+# safe to auto-merge (docs / trivial). Elliot 2026-05-29.
+LOW_STAKES_TITLE_MARKERS = (
+    "docs",
+    "documentation",
+    "doc:",
+    "readme",
+    "typo",
+    "comment",
+    "rename",
+    "trivial",
+    "cleanup",
+    "lint",
+    "format",
+    "spelling",
+)
+LOW_STAKES_PRIORITIES = ("p3", "p4")
+
+# Synthetic fallback — used ONLY when no low-stakes real KEI is ready.
+REHEARSAL_FALLBACK = {"id": "rehearsal-1", "title": "rehearsal task", "synthetic_fallback": True}
 
 # Recall toggle (Atlas grounding 2026-05-29): NOT a per-task flag. The recall arm
 # sets DISPATCHER_SPAWN_RECALL_ENABLED=true and restarts the dispatcher; the cold
@@ -104,6 +128,27 @@ def select_real_kei(candidates: list[dict]) -> dict | None:
         if not is_synthetic(c.get("id", ""), c.get("title", "")):
             return c
     return None
+
+
+def is_low_stakes(kei_id: str, title: str, priority: str | None = None) -> bool:  # noqa: ARG001
+    """A real KEI whose scope is safe to auto-merge on the first rehearsal run —
+    docs/trivial by title, or low priority (P3/P4)."""
+    low_title = (title or "").lower()
+    if any(mark in low_title for mark in LOW_STAKES_TITLE_MARKERS):
+        return True
+    return str(priority or "").lower() in LOW_STAKES_PRIORITIES
+
+
+def select_gate_kei(candidates: list[dict]) -> dict:
+    """FIRST-run gate subject (Elliot 2026-05-29): prefer a LOW-STAKES real KEI
+    (docs/trivial scope) so the real PR + auto-merge is safe. Fall back to the
+    synthetic rehearsal task ONLY if no low-stakes real KEI is ready — never
+    auto-merge a high-stakes real PR on the first run."""
+    real = [c for c in candidates if not is_synthetic(c.get("id", ""), c.get("title", ""))]
+    for c in real:
+        if is_low_stakes(c.get("id", ""), c.get("title", ""), c.get("priority")):
+            return c
+    return dict(REHEARSAL_FALLBACK)
 
 
 # ─── §3/§5-S5 memory gap ──────────────────────────────────────────────────────

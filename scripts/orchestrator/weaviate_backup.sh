@@ -35,7 +35,7 @@
 #   0  snapshot + prune succeeded
 #   2  data dir missing or unreadable
 #   3  backup dir creation failed
-#   4  tar exit non-zero
+#   4  tar fatal error (rc>=2) or archive missing/empty after tar
 
 set -euo pipefail
 
@@ -71,8 +71,21 @@ if ! mkdir -p "$BACKUP_DIR"; then
 fi
 
 # Snapshot (tar from data dir parent so paths are relative to the dir itself).
-tar -czf "$ARCHIVE" -C "$(dirname "$WEAVIATE_DATA_DIR")" "$(basename "$WEAVIATE_DATA_DIR")" \
-    || { echo "ERROR: tar failed (rc=$?)" >&2; exit 4; }
+# Live Weaviate compacts its LSM segments mid-backup, so tar may exit rc=1
+# ("file changed as we read it") while still writing a valid archive. Treat
+# rc<=1 with a non-empty archive as success; only a fatal tar error (rc>=2)
+# or a missing/empty archive is a real failure.
+set +e
+tar -czf "$ARCHIVE" -C "$(dirname "$WEAVIATE_DATA_DIR")" "$(basename "$WEAVIATE_DATA_DIR")"
+TAR_RC=$?
+set -e
+if [[ "$TAR_RC" -gt 1 ]] || [[ ! -s "$ARCHIVE" ]]; then
+    echo "ERROR: tar failed (rc=$TAR_RC) — fatal error or archive missing/empty" >&2
+    exit 4
+fi
+if [[ "$TAR_RC" -eq 1 ]]; then
+    echo "WARNING: tar rc=1 (files changed during live backup); archive produced, treating as success" >&2
+fi
 
 # Prune archives older than RETENTION_DAYS days (best-effort).
 find "$BACKUP_DIR" -name "weaviate-*.tar.gz" -type f \

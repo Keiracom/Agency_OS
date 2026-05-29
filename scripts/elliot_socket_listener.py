@@ -14,6 +14,11 @@ Filter chain (all must pass):
   - Keep non-bot messages (Dave/human posts) — these are inboxed unconditionally
   - Channel allowlist: #execution + #ceo
 
+Special-case (Agency_OS-evbn): a human `TASK:`-prefixed message in #ceo is
+routed to ceo_capture_listener.create_task_from_message() — it inserts one
+public.tasks row (drives the kei45 work-loop, skips Linear) and is NOT inboxed
+(it is a command, not a message for Elliot).
+
 Latency: ~50-500ms (WebSocket push) vs 0.5-8s (poll). Zero polling pressure.
 
 Env:
@@ -39,6 +44,12 @@ from slack_sdk.socket_mode import SocketModeClient
 from slack_sdk.socket_mode.request import SocketModeRequest
 from slack_sdk.socket_mode.response import SocketModeResponse
 from slack_sdk.web import WebClient
+
+# Sibling module in scripts/ — provides the #ceo direct task-creator
+# (Agency_OS-evbn). Importing it has no heavy deps (slack_sdk is lazy-imported
+# only inside its main(); psycopg only inside create_task_from_message).
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import ceo_capture_listener  # noqa: E402
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger("elliot-socket-listener")
@@ -102,6 +113,19 @@ def process_event(event: dict) -> None:
     if not text:
         return
     has_bot = bool(event.get("bot_id"))
+    # Direct Slack->task creator (Agency_OS-evbn): a human 'TASK:' message in
+    # #ceo inserts one public.tasks row (drives the kei45 work-loop, skips
+    # Linear). Terminal like ceo_capture_listener.handle_event — it is a command,
+    # so it is NOT also inboxed to Elliot (avoids double-handling). Fail-open:
+    # create_task_from_message never raises.
+    if (
+        channel == ceo_capture_listener.CEO_CHANNEL
+        and not has_bot
+        and ceo_capture_listener.is_task_command(text)
+    ):
+        task_id = ceo_capture_listener.create_task_from_message(text)
+        logger.info("ceo TASK: -> task=%s", task_id or "FAILED")
+        return
     if not should_keep(text, has_bot):
         return
     write_inbox(text, sender_from(event))

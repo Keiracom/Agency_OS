@@ -287,6 +287,55 @@ def test_terminate_removes_session_from_supervisors(
 # ---------------------------------------------------------------------------
 
 
+# ---------------------------------------------------------------------------
+# Test N — work-loop reconcile gate (Agency_OS-28ai regression guard)
+#
+# Root cause: reconcile_loop was started unconditionally in the lifespan,
+# connecting to an absent Valkey in CI TestClient tests → 27-min hang.
+# Gate: DISPATCHER_WORK_LOOP_RECONCILE_ENABLED=off by default.
+# This test verifies the gate holds: 'work-loop-reconcile' task must NOT
+# be created when the env var is absent.
+# ---------------------------------------------------------------------------
+
+
+def test_reconcile_loop_not_started_by_default(monkeypatch: pytest.MonkeyPatch) -> None:
+    """reconcile_loop must NOT start when DISPATCHER_WORK_LOOP_RECONCILE_ENABLED is unset.
+
+    Regression guard for Agency_OS-28ai: the loop blocked on an absent Valkey
+    in CI, causing a 27-minute pytest hang. The gate must be off-by-default.
+    """
+    import importlib
+
+    monkeypatch.setenv("DISPATCHER_JWT_SECRET", "test-secret")
+    monkeypatch.setenv("SUPABASE_DB_DSN", "postgresql://fake/db")
+    monkeypatch.delenv("DISPATCHER_WORK_LOOP_RECONCILE_ENABLED", raising=False)
+
+    task_names: list[str] = []
+    _orig_create_task = asyncio.create_task
+
+    def _spy_create_task(coro, *, name=None):
+        if name:
+            task_names.append(name)
+        return _orig_create_task(coro, name=name)
+
+    with (
+        patch("src.dispatcher.main.get_spend", new=AsyncMock(return_value=0)),
+        patch("asyncio.create_task", side_effect=_spy_create_task),
+    ):
+        import src.dispatcher.main as main_mod
+
+        importlib.reload(main_mod)
+        with TestClient(main_mod.app):
+            pass
+
+    assert "work-loop-reconcile" not in task_names, (
+        "reconcile_loop must not start by default — it connects to Valkey "
+        "and hangs in CI when Valkey is absent (Agency_OS-28ai)"
+    )
+    assert "dispatcher-watchdog" in task_names  # control: watchdog DOES start
+    assert "dispatcher-reaper" in task_names    # control: reaper DOES start
+
+
 def test_spawn_unknown_backend_returns_400(monkeypatch: pytest.MonkeyPatch) -> None:
     """An unknown backend value must be a clean 400, not a 500."""
     import importlib

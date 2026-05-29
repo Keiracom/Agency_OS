@@ -39,6 +39,7 @@ from src.dispatcher.container_lifecycle import ContainerStartupError, DockerUnav
 from src.dispatcher.cost_breaker import BreakerDecision, CostBreaker
 from src.dispatcher.idempotency import IdempotencyDecision, IdempotencyGate
 from src.dispatcher.interceptor_proxy import router as interceptor_router
+from src.dispatcher.physical_ceiling import check_physical_ceiling
 from src.dispatcher.reaper import Reaper
 from src.dispatcher.session_manager import Backend, SessionManager
 from src.dispatcher.spend_tracker import get_spend
@@ -859,6 +860,16 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
         # Phase-1 scrubbed-tmux (Agency_OS-87ei): run the agent under env -i so it
         # inherits no .env — only the Vault bootstrap; resolve_into_env does the rest.
         spawn_kwargs_effective = _tmux_spawn_kwargs(req.key, spawn_kwargs_effective)
+
+    # Physical RAM ceiling (Agency_OS-cuit): hard box-level guard separate from the
+    # tenant tier ceiling. Applies even to the uncapped operator — the box can OOM
+    # regardless of tenant policy. Re-reads available RAM on every call so it adapts
+    # to live memory pressure. Fail-safe: if RAM is unreadable, falls back to the
+    # conservative DEFAULT_PHYSICAL_CEILING (never fails open to "unlimited").
+    can_spawn, ceiling_reason = check_physical_ceiling(len(_spawned))
+    if not can_spawn:
+        logger.warning("physical ceiling: refusing spawn key=%s — %s", req.key, ceiling_reason)
+        raise HTTPException(status_code=503, detail=ceiling_reason)
 
     manager = SessionManager(backend=backend)
     try:

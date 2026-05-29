@@ -314,7 +314,8 @@ def test_save_exit_atoms_builds_conversation_and_calls_classify(monkeypatch):
     async def fake_classify(conversation, customer_id, **kw):
         captured["conversation"] = conversation
         captured["customer_id"] = customer_id
-        return MagicMock(skipped_reason=None)
+        # atom_ids=[] so save_exit_atoms' zr7e.9 publish loop has nothing to send.
+        return MagicMock(skipped_reason=None, atom_ids=[])
 
     monkeypatch.setattr(ec, "classify_and_save", fake_classify)
     monkeypatch.setenv("AGENT_CUSTOMER_ID", "7")
@@ -335,3 +336,112 @@ def test_save_exit_atoms_fail_open_on_classify_error(monkeypatch):
     monkeypatch.setattr(ec, "classify_and_save", boom)
     # no exception = pass
     acs.save_exit_atoms({"id": "t-1", "title": "T", "description": "d"}, 1, "blocked")
+
+
+# ---- zr7e.9 NATS handoff publish on save_exit_atoms -------------------------
+
+
+def test_publish_handoff_publishes_correct_envelope(monkeypatch):
+    """_publish_handoff publishes to keiracom.agent.handoff with the full payload
+    and reads from_callsign from AGENT_CALLSIGN env."""
+    captured: dict = {}
+
+    class _FakeNC:
+        async def connect(self, url, connect_timeout=2):  # noqa: ARG002
+            captured["url"] = url
+
+        async def publish(self, subject, payload):
+            captured["subject"] = subject
+            captured["payload"] = payload
+
+        async def flush(self):
+            captured["flushed"] = True
+
+        async def close(self):
+            captured["closed"] = True
+
+    monkeypatch.setattr("nats.aio.client.Client", lambda: _FakeNC())
+    monkeypatch.setenv("AGENT_CALLSIGN", "worker-3")
+
+    ok = acs._publish_handoff(task_id="t-42", atom_id="atom-99")
+
+    assert ok is True
+    assert captured["subject"] == acs.HANDOFF_SUBJECT == "keiracom.agent.handoff"
+    assert captured["url"] == acs.NATS_URL
+    assert captured["flushed"] is True and captured["closed"] is True
+    body = json.loads(captured["payload"].decode())
+    assert body["task_id"] == "t-42"
+    assert body["atom_id"] == "atom-99"
+    assert body["from_callsign"] == "worker-3"
+    assert body["to_callsign"] == ""  # V1 default — subscribers self-route
+    assert isinstance(body["ts"], int)
+
+
+def test_publish_handoff_fail_open_on_nats_error(monkeypatch):
+    """NATS connect failure → False, no exception escapes."""
+
+    class _BoomNC:
+        async def connect(self, url, connect_timeout=2):  # noqa: ARG002
+            raise OSError("nats unreachable")
+
+        async def publish(self, *a, **kw): ...
+        async def flush(self): ...
+        async def close(self): ...
+
+    monkeypatch.setattr("nats.aio.client.Client", lambda: _BoomNC())
+
+    assert acs._publish_handoff(task_id="t-x", atom_id="a-x") is False
+
+
+def test_save_exit_atoms_publishes_one_per_atom_id(monkeypatch):
+    """save_exit_atoms iterates result.atom_ids and calls _publish_handoff once
+    per atom, with the task_id stringified."""
+    import src.keiracom_system.chat.exit_cycle as ec
+
+    async def fake_classify(conversation, customer_id, **kw):  # noqa: ARG001
+        return MagicMock(skipped_reason=None, atom_ids=["a-1", "a-2", "a-3"])
+
+    monkeypatch.setattr(ec, "classify_and_save", fake_classify)
+
+    calls: list[dict] = []
+    monkeypatch.setattr(acs, "_publish_handoff", lambda **kw: (calls.append(kw), True)[1])
+
+    acs.save_exit_atoms({"id": "t-5", "title": "T", "description": "d"}, 0, "done")
+
+    assert [c["atom_id"] for c in calls] == ["a-1", "a-2", "a-3"]
+    assert all(c["task_id"] == "t-5" for c in calls)
+
+
+def test_save_exit_atoms_no_publish_when_no_atoms(monkeypatch):
+    """Empty atom_ids → zero publishes (no atom = no V1 handoff signal)."""
+    import src.keiracom_system.chat.exit_cycle as ec
+
+    async def fake_classify(conversation, customer_id, **kw):  # noqa: ARG001
+        return MagicMock(skipped_reason="no_decisions", atom_ids=[])
+
+    monkeypatch.setattr(ec, "classify_and_save", fake_classify)
+
+    calls: list[dict] = []
+    monkeypatch.setattr(acs, "_publish_handoff", lambda **kw: (calls.append(kw), True)[1])
+
+    acs.save_exit_atoms({"id": "t-6", "title": "T", "description": "d"}, 0, "done")
+
+    assert calls == []
+
+
+def test_save_exit_atoms_fail_open_when_publish_raises(monkeypatch):
+    """Even if _publish_handoff raises (contract says it shouldn't, but defence in
+    depth), save_exit_atoms must not propagate — outer try/except swallows it."""
+    import src.keiracom_system.chat.exit_cycle as ec
+
+    async def fake_classify(conversation, customer_id, **kw):  # noqa: ARG001
+        return MagicMock(skipped_reason=None, atom_ids=["a-1"])
+
+    def boom_publish(**_kw):
+        raise RuntimeError("publish exploded")
+
+    monkeypatch.setattr(ec, "classify_and_save", fake_classify)
+    monkeypatch.setattr(acs, "_publish_handoff", boom_publish)
+
+    # No exception escapes.
+    acs.save_exit_atoms({"id": "t-7", "title": "T", "description": "d"}, 0, "done")

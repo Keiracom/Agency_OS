@@ -38,6 +38,7 @@ import logging
 import os
 import subprocess
 import sys
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable
@@ -58,6 +59,13 @@ _TASK_COLS = ("id", "title", "description", "priority", "acceptance_criteria")
 # failures from agent failures): 0 ok / claim-lost; 2 no task id; 3 task absent.
 RC_NO_TASK_ID = 2
 RC_TASK_ABSENT = 3
+
+# zr7e.9 — V1 chain AtomV1 handoff transport. After classify_and_save writes
+# atoms to Hindsight fleet_decisions on exit, publish each (task_id, atom_id)
+# to NATS so the next agent in the chain can recall the atom at spawn. Single
+# subject; subscribers self-route by role until chain-progression wiring lands.
+NATS_URL = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
+HANDOFF_SUBJECT = "keiracom.agent.handoff"
 
 
 def _dsn() -> str:
@@ -201,21 +209,79 @@ def notify_complete(
         logger.exception("notify_complete: unexpected error for task=%s", task_id)
 
 
+def _publish_handoff(*, task_id: str, atom_id: str, to_callsign: str = "") -> bool:
+    """zr7e.9 — publish an AtomV1 handoff pointer to NATS keiracom.agent.handoff.
+
+    Mirrors scripts/fleet_supervisor._nats_publish_state: lazy nats-py import,
+    asyncio.run(connect/publish/flush/close), fail-open warn on failure. Returns
+    True on success, False on any failure — never raises.
+
+    Payload: {task_id, atom_id, from_callsign, to_callsign, ts}. from_callsign
+    comes from AGENT_CALLSIGN (set by the dispatcher at spawn). to_callsign
+    defaults to "" — subscribers on the single keiracom.agent.handoff subject
+    self-route by their chain role until chain-progression wiring lands.
+    """
+    payload = json.dumps(
+        {
+            "task_id": task_id,
+            "atom_id": atom_id,
+            "from_callsign": os.environ.get("AGENT_CALLSIGN", ""),
+            "to_callsign": to_callsign,
+            "ts": int(time.time()),
+        }
+    ).encode()
+    try:
+        import asyncio  # noqa: PLC0415 — lazy, mirrors save_exit_atoms / fleet_supervisor
+
+        import nats.aio.client as nats_client  # noqa: PLC0415 — optional dep
+
+        async def _publish() -> None:
+            nc = nats_client.Client()
+            await nc.connect(NATS_URL, connect_timeout=2)
+            try:
+                await nc.publish(HANDOFF_SUBJECT, payload)
+                await nc.flush()
+            finally:
+                await nc.close()
+
+        asyncio.run(_publish())
+        logger.info(
+            "agent_cold_start: NATS PUBLISH %s → task_id=%s atom_id=%s",
+            HANDOFF_SUBJECT,
+            task_id,
+            atom_id,
+        )
+        return True
+    except Exception as exc:  # noqa: BLE001 — fail-open: handoff must never block agent exit
+        logger.warning(
+            "agent_cold_start: NATS handoff failed (non-fatal) task_id=%s: %s",
+            task_id,
+            exc,
+        )
+        return False
+
+
 def save_exit_atoms(task: dict, rc: int, status: str) -> None:
-    """Capture the completed task as AtomV1 atoms in Hindsight (Agency_OS-zr7e.4).
+    """Capture the completed task as AtomV1 atoms in Hindsight (Agency_OS-zr7e.4),
+    then publish per-atom handoff pointers to NATS keiracom.agent.handoff (zr7e.9).
 
     Mirrors face.py's exit-cycle: feed the task brief + completion stamp to
     ``classify_and_save``, which writes an atom per ratified decision it detects
     above the confidence threshold (most build tasks detect none — that is fine).
+    For each atom_id returned, publishes (task_id, atom_id) to NATS so the next
+    agent in the V1 chain can recall the atom at spawn (L2 Hindsight recall).
 
-    Fail-open: ``classify_and_save`` is already internally fail-open, but the
-    import, ``asyncio.run`` and any unexpected error are also swallowed here —
-    memory capture must NEVER block the task lifecycle.
+    Fail-open: ``classify_and_save`` is already internally fail-open; the outer
+    try/except also swallows import / asyncio.run / unexpected errors here, and
+    ``_publish_handoff`` itself returns False rather than raising on NATS errors.
+    Memory capture + handoff must NEVER block the task lifecycle.
     """
     try:
-        import asyncio
+        import asyncio  # noqa: PLC0415 — lazy
 
-        from src.keiracom_system.chat.exit_cycle import classify_and_save
+        from src.keiracom_system.chat.exit_cycle import (  # noqa: PLC0415
+            classify_and_save,
+        )
 
         brief = task.get("description") or task.get("title") or ""
         conversation = [
@@ -230,6 +296,9 @@ def save_exit_atoms(task: dict, rc: int, status: str) -> None:
         ]
         customer_id = int(os.environ.get("AGENT_CUSTOMER_ID", "1"))  # fleet tenant 1 = Dave
         result = asyncio.run(classify_and_save(conversation, customer_id))
+        # zr7e.9 handoff publish — one NATS message per atom_id.
+        for atom_id in getattr(result, "atom_ids", None) or []:
+            _publish_handoff(task_id=str(task["id"]), atom_id=atom_id)
         logger.info("save_exit_atoms: %s", getattr(result, "skipped_reason", None) or "atoms saved")
     except Exception:  # noqa: BLE001 — never block completion on memory capture
         logger.exception("save_exit_atoms: unexpected error for task=%s", task.get("id"))

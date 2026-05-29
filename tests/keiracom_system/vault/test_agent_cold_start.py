@@ -3,6 +3,7 @@ no Vault, no DB, no real ``claude``."""
 
 from __future__ import annotations
 
+import json
 from unittest.mock import MagicMock
 
 from src.keiracom_system.vault import agent_cold_start as acs
@@ -186,3 +187,91 @@ def test_run_agent_failure_finalizes_with_nonzero_rc(monkeypatch):
     rc, finalize, _ = _run(monkeypatch, agent_rc=1)
     assert rc == 1
     finalize.assert_called_once_with("t-1", 1, "ac")
+
+
+# ---- notify_complete -------------------------------------------------------
+
+
+def test_notify_complete_calls_dispatcher_endpoint(monkeypatch):
+    """notify_complete POSTs to /dispatcher/task_complete and swallows errors."""
+    import urllib.request as urlreq
+
+    captured = {}
+
+    class _FakeResp:
+        def read(self):
+            return b'{"notified":true}'
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_):
+            pass
+
+    def fake_urlopen(req, timeout):
+        captured["url"] = req.full_url
+        captured["body"] = json.loads(req.data)
+        return _FakeResp()
+
+    monkeypatch.setattr(urlreq, "urlopen", fake_urlopen)
+    acs.notify_complete("t-1", "atlas", "Build X", "done", 0, dispatcher_url="http://testhost:4001")
+    assert captured["url"] == "http://testhost:4001/dispatcher/task_complete"
+    assert captured["body"] == {
+        "task_id": "t-1",
+        "callsign": "atlas",
+        "title": "Build X",
+        "status": "done",
+        "rc": 0,
+    }
+
+
+def test_notify_complete_fail_open_on_network_error(monkeypatch):
+    """A network error must be swallowed — never raises."""
+    import urllib.request as urlreq
+
+    monkeypatch.setattr(
+        urlreq, "urlopen", lambda *a, **kw: (_ for _ in ()).throw(OSError("refused"))
+    )
+    acs.notify_complete("t-2", "scout", "", "blocked", 1, dispatcher_url="http://127.0.0.1:4001")
+    # no exception = pass
+
+
+def test_run_calls_notify_after_finalize(monkeypatch):
+    """run() calls notify with the correct status derived from agent rc."""
+    monkeypatch.setenv("AGENT_TASK_ID", "t-1")
+    monkeypatch.setenv("AGENT_CALLSIGN", "orion")
+    monkeypatch.setattr(acs.sys, "argv", ["agent_cold_start"])
+    notify_calls = []
+    acs.run(
+        resolve=lambda: None,
+        fetch=lambda _t: {"id": "t-1", "title": "My Task", "acceptance_criteria": None},
+        claim=lambda _t, _c: True,
+        agent=lambda _p: 0,
+        finalize=lambda *a: None,
+        notify=lambda *a, **kw: notify_calls.append((a, kw)),
+    )
+    assert len(notify_calls) == 1
+    args, _ = notify_calls[0]
+    assert args[0] == "t-1"  # task_id
+    assert args[1] == "orion"  # callsign from env
+    assert args[2] == "My Task"  # title
+    assert args[3] == "done"  # status (rc=0)
+    assert args[4] == 0  # rc
+
+
+def test_run_notify_blocked_on_agent_failure(monkeypatch):
+    """rc != 0 → notify receives status='blocked'."""
+    monkeypatch.setenv("AGENT_TASK_ID", "t-1")
+    monkeypatch.delenv("AGENT_CALLSIGN", raising=False)
+    monkeypatch.setattr(acs.sys, "argv", ["agent_cold_start"])
+    notify_calls = []
+    acs.run(
+        resolve=lambda: None,
+        fetch=lambda _t: {"id": "t-1", "title": "", "acceptance_criteria": None},
+        claim=lambda _t, _c: True,
+        agent=lambda _p: 2,
+        finalize=lambda *a: None,
+        notify=lambda *a, **kw: notify_calls.append(a),
+    )
+    assert notify_calls[0][3] == "blocked"
+    assert notify_calls[0][4] == 2

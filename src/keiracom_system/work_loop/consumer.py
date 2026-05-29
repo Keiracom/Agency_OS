@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any
@@ -38,6 +39,17 @@ LOCK_TTL_S = 300  # dup-spawn lock; renewed alongside the lease
 ATTEMPTS_TTL_S = 3600
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_ALERT_THRESHOLD = 0.70  # node-level capacity alert
+
+# Dead-letter #ceo notification (Agency_OS-gl3v). A dropped task that no human
+# sees destroys solo-operation trust, so every dead-letter posts to #ceo via
+# Elliot's relay. Path mirrors the dispatcher's task_complete hook; spawned
+# agents can't post to Slack (scrubbed env), so the relay runs CALLSIGN=elliot.
+_SLACK_RELAY_SCRIPT = os.path.join(
+    os.environ.get("DISPATCHER_AGENT_WORKDIR", "/home/elliotbot/clawd/Agency_OS"),
+    "scripts",
+    "slack_relay.py",
+)
+_NOTIFY_TIMEOUT_S = 15
 
 # Atomic admission: INCR the counter iff below ceiling, take the slot lease +
 # membership in one round-trip. Returns the new count, or -1 when at ceiling.
@@ -67,6 +79,17 @@ class Task:
     tenant_id: str
     backend: str
     spawn_kwargs: dict[str, Any]
+    raw: str
+
+
+@dataclass(frozen=True)
+class DeadLetterNotice:
+    """What a dead-lettered task carries into the #ceo alert (Agency_OS-gl3v)."""
+
+    task_id: str
+    title: str
+    attempts: int
+    error: str  # cause / final error, already truncated to 200 chars
     raw: str
 
 
@@ -111,8 +134,26 @@ def _parse(raw: str) -> Task | None:
         return None
 
 
+def _extract_id_title(raw: str) -> tuple[str, str]:
+    """Best-effort task_id + title from a (possibly malformed) message.
+
+    Title lives in spawn_kwargs.title (bridge.task_event_to_message). Falls back
+    to a top-level title, then to placeholders — never raises, so a malformed
+    message still produces a human-readable notice.
+    """
+    try:
+        d = json.loads(raw)
+        task_id = str(d.get("task_id") or "unknown")
+        spawn_kwargs = d.get("spawn_kwargs") if isinstance(d.get("spawn_kwargs"), dict) else {}
+        title = str(spawn_kwargs.get("title") or d.get("title") or "(no title in message)")
+        return task_id, title
+    except (json.JSONDecodeError, TypeError, ValueError, AttributeError):
+        return "unknown", "(unparseable task message)"
+
+
 SpawnFn = Callable[[Task], Awaitable[bool]]
 CeilingFn = Callable[[str], Awaitable[int]]
+NotifyFn = Callable[[DeadLetterNotice], Awaitable[None]]
 
 
 class WorkLoopConsumer:
@@ -124,6 +165,7 @@ class WorkLoopConsumer:
         valkey: Any = None,
         spawn_fn: SpawnFn | None = None,
         ceiling_fn: CeilingFn | None = None,
+        notify_fn: NotifyFn | None = None,
         dispatcher_url: str = DEFAULT_DISPATCHER_URL,
         lease_ttl_s: int = DEFAULT_LEASE_TTL_S,
         max_attempts: int = DEFAULT_MAX_ATTEMPTS,
@@ -132,6 +174,7 @@ class WorkLoopConsumer:
         self._r = valkey or get_valkey_client()
         self._spawn_fn = spawn_fn or self._default_spawn
         self._ceiling_fn = ceiling_fn
+        self._notify_fn = notify_fn or self._default_notify
         self._dispatcher_url = dispatcher_url.rstrip("/")
         self._lease_ttl_s = lease_ttl_s
         self._max_attempts = max_attempts
@@ -190,9 +233,57 @@ class WorkLoopConsumer:
                 100 * self._alert_threshold,
             )
 
-    async def _dead_letter(self, raw: str, reason: str) -> None:
+    async def _dead_letter(self, raw: str, reason: str, *, attempts: int = 0) -> None:
         logger.error("work-loop: dead-lettering task (%s): %s", reason, raw[:200])
         await self._r.rpush(DEADLETTER_KEY, raw)
+        # Agency_OS-gl3v: alert #ceo so a dropped task is never silent. Fail-open
+        # — the dead-letter itself must complete even if notification raises.
+        task_id, title = _extract_id_title(raw)
+        notice = DeadLetterNotice(
+            task_id=task_id, title=title, attempts=attempts, error=reason[:200], raw=raw
+        )
+        try:
+            await self._notify_fn(notice)
+        except Exception:  # noqa: BLE001 — a notification failure must NEVER block dead-letter
+            logger.warning(
+                "work-loop: dead-letter notification raised for task=%s", task_id, exc_info=True
+            )
+
+    async def _default_notify(self, notice: DeadLetterNotice) -> None:
+        """Post a dead-letter alert to #ceo via slack_relay.py (CALLSIGN=elliot).
+
+        Fail-open: a non-zero relay exit or any exception is logged, never
+        raised. `-c ceo` targets #ceo explicitly (not the env default channel,
+        which #execution-drops). Mirrors the dispatcher task_complete hook.
+        """
+        msg = (
+            f"🪦 [WORK-LOOP] Task dead-lettered after {notice.attempts} attempt(s) — "
+            f"ID: {notice.task_id} · what: {notice.title} · error: {notice.error}"
+        )
+        try:
+            import subprocess
+            import sys
+
+            result = subprocess.run(
+                [sys.executable, _SLACK_RELAY_SCRIPT, "-c", "ceo", msg],
+                capture_output=True,
+                text=True,
+                timeout=_NOTIFY_TIMEOUT_S,
+                env={**os.environ, "CALLSIGN": "elliot"},
+                check=False,
+            )
+            if result.returncode != 0:
+                logger.warning(
+                    "work-loop: dead-letter slack_relay rc=%d stderr=%r",
+                    result.returncode,
+                    result.stderr[:200],
+                )
+        except Exception:  # noqa: BLE001 — notification must never block dead-letter
+            logger.warning(
+                "work-loop: dead-letter slack_relay raised for task=%s",
+                notice.task_id,
+                exc_info=True,
+            )
 
     async def process_task(self, raw: str) -> str:
         """Process one task message. Returns a status string for observability."""
@@ -223,7 +314,11 @@ class WorkLoopConsumer:
             await self._r.delete(_attempts_key(task.task_id))
             return True
         if attempts >= self._max_attempts:
-            await self._dead_letter(task.raw, f"max_attempts={attempts}")
+            await self._dead_letter(
+                task.raw,
+                f"spawn failed after {attempts} attempts (max={self._max_attempts})",
+                attempts=attempts,
+            )
             await self._r.delete(_attempts_key(task.task_id))
         else:
             await self._r.rpush(_overflow_key(task.tenant_id), task.raw)  # requeue, never drop

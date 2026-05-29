@@ -229,6 +229,21 @@ workflow_recall_enabled: bool = os.environ.get(_WORKFLOW_RECALL_ENABLED_ENV, "")
 }
 _workflow_recall = WorkflowRecallContext()
 
+# Work-loop reconcile background task (Agency_OS-innu). OFF by default — matches
+# every other dispatcher gate in rollout phase 1, and keeps the loop dormant
+# until the budget-gate go-live. CRITICAL: when ON, the lifespan starts a forever
+# loop that connects to Valkey via get_consumer(); leaving it unconditionally-on
+# made the 8 TestClient dispatcher tests await an absent Valkey in CI (hang →
+# 27-min kill), since no pytest timeout is configured (Agency_OS-28ai root cause).
+_WORK_LOOP_RECONCILE_ENABLED_ENV = "DISPATCHER_WORK_LOOP_RECONCILE_ENABLED"
+work_loop_reconcile_enabled: bool = os.environ.get(
+    _WORK_LOOP_RECONCILE_ENABLED_ENV, ""
+).lower() in {
+    "1",
+    "true",
+    "yes",
+}
+
 
 def _spawn_kwargs_source_type(sk: dict) -> str:
     """Derive source_type from spawn_kwargs per PR #1207 SOURCE_TYPES taxonomy."""
@@ -445,16 +460,21 @@ async def _lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
 
     # Step 6 — work-loop reconcile (Agency_OS-innu): reclaim crashed-agent slots
     # whose lease TTL lapsed (the exit hook only covers clean terminations).
-    rc_task = asyncio.create_task(work_loop.reconcile_loop(), name="work-loop-reconcile")
-    logger.info("work-loop: reconcile background task started")
+    # Gated OFF by default — only runs once the loop goes live (post budget-gate);
+    # otherwise it would connect to an absent Valkey (e.g. CI) and hang (28ai).
+    background_tasks = [wd_task, rp_task]
+    if work_loop_reconcile_enabled:
+        rc_task = asyncio.create_task(work_loop.reconcile_loop(), name="work-loop-reconcile")
+        background_tasks.append(rc_task)
+        logger.info("work-loop: reconcile background task started")
 
     try:
         yield
     finally:
         # Graceful shutdown — cancel tasks and wait for clean exit
-        for task in (wd_task, rp_task, rc_task):
+        for task in background_tasks:
             task.cancel()
-        await asyncio.gather(wd_task, rp_task, rc_task, return_exceptions=True)
+        await asyncio.gather(*background_tasks, return_exceptions=True)
         logger.info("KEI-213 dispatcher: background tasks cancelled cleanly")
 
 

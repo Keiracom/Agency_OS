@@ -17,10 +17,12 @@ from __future__ import annotations
 import argparse
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 
 from src.keiracom_system.backup.alerting import write_backup_alert
 from src.keiracom_system.backup.pipeline import timestamp, upload_and_prune
@@ -45,14 +47,34 @@ def _resolve_dsn() -> str:
     return dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
 
 
+def _redact_dsn(text: str) -> str:
+    """Strip any postgres connection string (with embedded password) from a
+    message before it is logged or written to a ceo:backup_alert row."""
+    return re.sub(r"postgres(?:ql)?(?:\+\w+)?://[^\s'\"]+", "postgresql://[REDACTED]", text)
+
+
 def _pg_dump(dsn: str, dest: str) -> None:
     if shutil.which("pg_dump") is None:
         raise RuntimeError("pg_dump not installed on host (need postgresql-client)")
+    # Pass connection via libpq env vars, NOT in argv — keeps the DB password out
+    # of the command line / process listing / CalledProcessError. A DSN in argv
+    # leaked into both the log and the ceo:backup_alert row on the first failure
+    # (server-version mismatch, 2026-05-29).
+    p = urllib.parse.urlparse(dsn)
+    env = {
+        **os.environ,
+        "PGHOST": p.hostname or "",
+        "PGPORT": str(p.port or 5432),
+        "PGUSER": urllib.parse.unquote(p.username or ""),
+        "PGPASSWORD": urllib.parse.unquote(p.password or ""),
+        "PGDATABASE": (p.path or "/postgres").lstrip("/") or "postgres",
+    }
     # -Fc custom format (compressed, parallel-restore); --no-owner/--no-acl so it
     # restores into a fresh DB without role-permission errors.
     subprocess.run(
-        ["pg_dump", "-Fc", "--no-owner", "--no-acl", "--file", dest, dsn],
+        ["pg_dump", "-Fc", "--no-owner", "--no-acl", "--file", dest],
         check=True,
+        env=env,
     )
 
 
@@ -81,8 +103,9 @@ def main() -> int:
     try:
         key = run(dry_run=args.dry_run)
     except Exception as exc:  # noqa: BLE001 — any failure → alert + non-zero exit
-        write_backup_alert("postgres_dump", str(exc))
-        logger.exception("postgres dump failed")
+        # Redact any DSN before it reaches the alert row or the log.
+        write_backup_alert("postgres_dump", _redact_dsn(str(exc)))
+        logger.error("postgres dump failed: %s", _redact_dsn(str(exc)))
         return 1
     logger.info("postgres dump complete: %s", key)
     return 0

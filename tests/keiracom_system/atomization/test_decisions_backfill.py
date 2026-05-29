@@ -8,8 +8,11 @@ from src.keiracom_system.atomization.decision_sources import DecisionSource
 from src.keiracom_system.atomization.decisions_backfill import (
     DecisionsBackfill,
     atom_to_hindsight_item,
+    build_atom_from_source,
+    run_direct,
     sample_atom,
 )
+from src.keiracom_system.chat.exit_cycle import FLEET_TENANT_UUID
 
 
 def _src(ref: str, kind: str) -> DecisionSource:
@@ -118,3 +121,71 @@ def test_execute_skips_missing_atoms():
     assert result.atoms_produced == 1  # only the resolvable atom
     assert result.atoms_ingested == 1
     assert len(calls[0][1]) == 1
+
+
+# ---------- direct-write path (Agency_OS-c66k — no LLM/TEI) ----------
+
+
+def test_build_atom_from_source_deterministic_and_fleet_tenant():
+    s = _src("ceo_memory:ceo:v1_chain_architecture", "governance_doc")
+    a1 = build_atom_from_source(s, today="2026-05-29")
+    a2 = build_atom_from_source(s, today="2026-05-29")
+    assert a1.atom_id == a2.atom_id  # deterministic in source_ref → re-run idempotency anchor
+    assert a1.tenant_id == FLEET_TENANT_UUID  # shares the live writer's partition (blocker A)
+    assert a1.content == "ratified text"
+    assert a1.provenance["source"] == s.source_ref
+    assert a1.provenance["confidence"] == 1.0
+    assert a1.trigger_condition["kind"] == "context_predicate"
+
+
+def test_run_direct_dry_run_builds_but_does_not_ingest():
+    sources = [_src("s1", "governance_doc"), _src("s2", "manual")]
+    ingest, calls = _recorder()
+    result = run_direct(sources, ingest_fn=ingest, today="2026-05-29", dry_run=True)
+    assert result.dry_run is True
+    assert result.sources_seen == 2
+    assert result.atoms_produced == 2  # built + schema-validated, not written
+    assert result.atoms_ingested == 0
+    assert calls == []
+
+
+def test_run_direct_execute_ingests_and_records_ledger():
+    sources = [_src("s1", "governance_doc"), _src("s2", "manual")]
+    ingest, calls = _recorder()
+    recorded: list[tuple] = []
+    result = run_direct(
+        sources,
+        ingest_fn=ingest,
+        bank="fleet_decisions_staging",
+        today="2026-05-29",
+        record=lambda ref, kind, aid: recorded.append((ref, kind, aid)),
+        dry_run=False,
+    )
+    assert result.atoms_ingested == 2
+    assert len(calls) == 2 and calls[0][0] == "fleet_decisions_staging"
+    assert calls[0][1][0]["metadata"]["source"] == "decisions_backfill"  # shared seam tag
+    assert {r[0] for r in recorded} == {"s1", "s2"}  # ledger recorded both
+
+
+def test_run_direct_skips_already_backfilled():
+    sources = [_src("s1", "governance_doc"), _src("s2", "manual")]
+    ingest, calls = _recorder()
+    result = run_direct(
+        sources,
+        ingest_fn=ingest,
+        today="2026-05-29",
+        is_backfilled=lambda ref: ref == "s1",  # s1 already done → skip
+        dry_run=False,
+    )
+    assert result.skipped == 1
+    assert result.atoms_ingested == 1
+    assert len(calls) == 1
+
+
+def test_run_direct_skips_empty_source_text():
+    s = DecisionSource(source_ref="empty", source_kind="manual", source_text="   ")
+    ingest, calls = _recorder()
+    result = run_direct([s], ingest_fn=ingest, today="2026-05-29", dry_run=False)
+    assert result.sources_seen == 1
+    assert result.atoms_produced == 0
+    assert calls == []

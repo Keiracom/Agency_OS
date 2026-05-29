@@ -20,16 +20,18 @@ operator go-ahead before a real prod backfill run.
 from __future__ import annotations
 
 import argparse
-import json
 import logging
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
+from uuid import NAMESPACE_URL, uuid4, uuid5
 
 from src.keiracom_system.atomization.decision_sources import (
     DecisionSource,
+    decision_composition_tags,
     iter_all_decision_sources,
 )
 
@@ -47,6 +49,12 @@ from src.keiracom_system.atomization.hindsight_writer import (
 )
 from src.keiracom_system.atomization.schema import AtomV1
 
+# Reuse the live writer's fleet tenant sentinel (Agency_OS-c66k blocker A, Orion
+# lane-owner confirm 2026-05-29): backfilled atoms MUST share the live writer's
+# tenant partition (0…01) or L2 recall splits across two tenants. Direct import
+# (not a redefined literal) so it can never drift from exit_cycle.
+from src.keiracom_system.chat.exit_cycle import FLEET_TENANT_UUID
+
 logger = logging.getLogger(__name__)
 
 IngestFn = Callable[[str, list[dict[str, Any]]], None]
@@ -57,6 +65,7 @@ class BackfillResult:
     sources_seen: int = 0
     atoms_produced: int = 0
     atoms_ingested: int = 0
+    skipped: int = 0  # already-backfilled sources (idempotency ledger hit)
     by_source_kind: dict[str, int] = field(default_factory=dict)
     bank: str = DEFAULT_BANK
     dry_run: bool = True
@@ -143,40 +152,229 @@ def sample_atom() -> AtomV1:
     )
 
 
-def _dry_run_plan(repo_root: Path) -> BackfillResult:
-    """Enumerate sources + validate the serializer on a sample — no prod I/O."""
-    sources = enumerate_sources(db=None, repo_root=repo_root)  # docs-only (no DB) for safety
-    backfill = DecisionsBackfill(atomizer=None, store=None)
-    result = backfill.run(sources, dry_run=True)
+# ───────────────────────────────────────────────────────────────────────
+# Direct-write backfill (Agency_OS-c66k blocker B — Elliot ratified path:
+# direct Hindsight-bank write, NO LLM atomizer / AtomStore / TEI / pgvector).
+# Builds an AtomV1 verbatim from each DecisionSource and ingests it straight to
+# the bank via the same one-source seam the live writer uses. Deterministic
+# atom_id + a keiracom_atomizer_jobs.source_ref ledger give re-run idempotency
+# (blocker C); FLEET_TENANT_UUID stamps the correct partition (blocker A).
+# ───────────────────────────────────────────────────────────────────────
+
+# (source_ref) -> bool : has this source already been backfilled?
+IsBackfilledFn = Callable[[str], bool]
+# (source_ref, source_kind, atom_id) -> None : record a completed backfill.
+RecordFn = Callable[[str, str, str], None]
+
+
+def build_atom_from_source(source: DecisionSource, *, today: str) -> AtomV1:
+    """Map a DecisionSource verbatim to a fleet decision AtomV1 — no LLM.
+
+    Mirrors exit_cycle._build_atom field shape so direct-write backfill atoms
+    are indistinguishable from live ones (only provenance.source differs).
+    atom_id is deterministic in source_ref so a re-run produces the same id.
+    """
+    return AtomV1(
+        atom_id=uuid5(NAMESPACE_URL, f"keiracom:c66k:{source.source_ref}"),
+        tenant_id=FLEET_TENANT_UUID,
+        trigger_condition={
+            "kind": "context_predicate",
+            "params": {"source": source.source_ref, "source_kind": source.source_kind},
+        },
+        content=source.source_text,
+        anti_pattern=None,
+        example=None,
+        provenance={
+            "source": source.source_ref,
+            "freshness": today,
+            "confidence": 1.0,  # ratified historical items are ground truth
+            "last_validated": today,
+        },
+        composition_tags=decision_composition_tags(),
+    )
+
+
+def make_db_ledger(db: Any) -> tuple[IsBackfilledFn, RecordFn]:
+    """Idempotency ledger over keiracom_atomizer_jobs.source_ref (blocker C).
+
+    `db` is a psycopg-style cursor — execute(query, params_seq) + fetchone().
+    is_backfilled() short-circuits a source that already has a completed job
+    row; record() writes one after ingest.
+    """
+
+    def is_backfilled(source_ref: str) -> bool:
+        db.execute(
+            "SELECT 1 FROM keiracom_atomizer_jobs "
+            "WHERE source_ref = %s AND status = 'atomizer_done' LIMIT 1",
+            (source_ref,),
+        )
+        return db.fetchone() is not None
+
+    def record(source_ref: str, source_kind: str, atom_id: str) -> None:
+        db.execute(
+            "INSERT INTO keiracom_atomizer_jobs ("
+            "job_id, tenant_id, source_ref, source_kind, atomizer_model, "
+            "atomizer_temp, atoms_produced, status"
+            ") VALUES (%s, %s, %s, %s, 'direct_backfill', 0, 1, 'atomizer_done')",
+            (str(uuid4()), str(FLEET_TENANT_UUID), source_ref, source_kind),
+        )
+
+    return is_backfilled, record
+
+
+def run_direct(
+    sources: Sequence[DecisionSource],
+    *,
+    ingest_fn: IngestFn = default_hindsight_ingest,
+    bank: str = DEFAULT_BANK,
+    today: str | None = None,
+    is_backfilled: IsBackfilledFn | None = None,
+    record: RecordFn | None = None,
+    dry_run: bool = True,
+) -> BackfillResult:
+    """Direct-write each source to the Hindsight bank. Idempotent + dry-run-safe.
+
+    dry_run still runs the idempotency read + builds every atom (so schema
+    errors surface pre-prod) but performs no ingest and writes no ledger row.
+    """
+    day = today or datetime.now(UTC).strftime("%Y-%m-%d")
+    result = BackfillResult(bank=bank, dry_run=dry_run)
+    for source in sources:
+        result.sources_seen += 1
+        result.by_source_kind[source.source_kind] = (
+            result.by_source_kind.get(source.source_kind, 0) + 1
+        )
+        if not (source.source_text or "").strip():
+            logger.warning("skip empty source_text: %s", source.source_ref)
+            continue
+        if is_backfilled is not None and is_backfilled(source.source_ref):
+            result.skipped += 1
+            continue
+        try:
+            atom = build_atom_from_source(source, today=day)
+        except ValueError as exc:  # schema-invalid content — log + skip, never abort the run
+            logger.warning("skip schema-invalid source %s: %s", source.source_ref, exc)
+            continue
+        item = atom_to_hindsight_item(atom)
+        result.atoms_produced += 1
+        if dry_run:
+            continue
+        self_ingest = ingest_fn  # local alias keeps the call line short
+        self_ingest(bank, [item])
+        result.atoms_ingested += 1
+        if record is not None:
+            record(source.source_ref, source.source_kind, str(atom.atom_id))
     logger.info(
-        "serializer self-check item:\n%s",
-        json.dumps(atom_to_hindsight_item(sample_atom()), indent=2),
+        "decisions_backfill DIRECT %s: sources=%d by_kind=%s built=%d ingested=%d "
+        "skipped=%d bank=%s",
+        "PLAN" if dry_run else "RUN",
+        result.sources_seen,
+        result.by_source_kind,
+        result.atoms_produced,
+        result.atoms_ingested,
+        result.skipped,
+        result.bank,
     )
     return result
+
+
+STAGING_BANK = "fleet_decisions_staging"
+
+
+def _connect_cursor() -> tuple[Any | None, Any | None]:
+    """Open a psycopg connection+cursor from DATABASE_URL (CLI-local).
+
+    psycopg is imported here, not at module top, so the library stays free of a
+    direct DB driver import (atomization/ is not BMV1-exempt; AtomStore uses DI).
+    Returns (None, None) when no DSN is set — caller falls back to docs-only.
+    """
+    import os
+
+    raw = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL")
+    if not raw:
+        return None, None
+    import psycopg
+
+    dsn = raw.replace("postgresql+asyncpg://", "postgresql://", 1)
+    conn = psycopg.connect(dsn, autocommit=True, prepare_threshold=None)
+    return conn, conn.cursor()
 
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     parser = argparse.ArgumentParser()
-    parser.add_argument("--execute", action="store_true", help="run live (default: dry-run)")
+    parser.add_argument("--execute", action="store_true", help="run live (default: dry-run plan)")
     parser.add_argument(
         "--confirmed-atom-format",
         action="store_true",
-        help="operator ack that atom_to_hindsight_item matches Orion's live d0kh format",
+        help="operator/Orion ack the atom format matches the live writer (Agency_OS-d0kh)",
+    )
+    parser.add_argument(
+        "--bank",
+        default=STAGING_BANK,
+        help=f"Hindsight bank (default {STAGING_BANK}; staging-first per c66k criterion d)",
+    )
+    parser.add_argument(
+        "--i-understand-prod",
+        action="store_true",
+        help=f"required to target the live {DEFAULT_BANK} bank (else staging only)",
     )
     parser.add_argument("--repo-root", default=".")
     args = parser.parse_args()
-    if not args.execute:
-        _dry_run_plan(Path(args.repo_root))
-        return 0
-    if not args.confirmed_atom_format:
+
+    # Prod-bank guard (Orion criterion d — staging-first): never write the live
+    # bank without the explicit ack.
+    if args.bank == DEFAULT_BANK and not args.i_understand_prod:
         logger.error(
-            "refusing --execute: pass --confirmed-atom-format only AFTER Orion's "
-            "Agency_OS-d0kh live-format confirm. Backfill not run."
+            "refusing bank=%s without --i-understand-prod (default is staging %s). "
+            "Run staging first, review atom output with Orion, then re-run with the ack.",
+            DEFAULT_BANK,
+            STAGING_BANK,
         )
         return 2
-    logger.error("live --execute path requires atomizer+store wiring from env — not auto-run here")
-    return 3
+
+    conn, cur = _connect_cursor()
+    try:
+        sources = list(iter_all_decision_sources(db=cur, repo_root=Path(args.repo_root)))
+        is_backfilled = record = None
+        if cur is not None:
+            is_backfilled, record = make_db_ledger(cur)
+
+        if not args.execute:
+            result = run_direct(sources, bank=args.bank, is_backfilled=is_backfilled, dry_run=True)
+            logger.info(
+                "DRY-RUN PLAN: %d sources, %d atoms would be written, %d already "
+                "backfilled (skipped). LLM spend: $0 AUD (direct-write, no atomizer). "
+                "bank=%s. Pass --execute --confirmed-atom-format to run.",
+                result.sources_seen,
+                result.atoms_produced,
+                result.skipped,
+                args.bank,
+            )
+            return 0
+
+        if not args.confirmed_atom_format:
+            logger.error("refusing --execute without --confirmed-atom-format (Orion d0kh gate).")
+            return 2
+
+        result = run_direct(
+            sources,
+            bank=args.bank,
+            is_backfilled=is_backfilled,
+            record=record,
+            dry_run=False,
+        )
+        logger.info(
+            "EXECUTE complete: %d sources processed, %d atoms ingested, %d skipped. bank=%s",
+            result.sources_seen,
+            result.atoms_ingested,
+            result.skipped,
+            args.bank,
+        )
+        return 0
+    finally:
+        if conn is not None:
+            conn.close()
 
 
 if __name__ == "__main__":

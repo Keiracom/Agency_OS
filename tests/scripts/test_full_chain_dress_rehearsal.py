@@ -218,6 +218,23 @@ def test_build_seed_sql_is_parameterised():
     assert "public.tasks" in sql and "id, title, status" in sql
 
 
+# ─── Slack-origin leg (Run-A Step-1, Agency_OS-evbn) ──────────────────────────
+
+
+def test_task_row_present_pure_check():
+    assert m.task_row_present(["ceo-task-1", "ceo-task-2"], "ceo-task-2") is True
+    assert m.task_row_present(["ceo-task-1"], "ceo-task-9") is False
+    assert m.task_row_present([], "x") is False
+
+
+def test_verify_task_row_created_false_without_dsn(monkeypatch):
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    monkeypatch.delenv("RETRIEVAL_EVENTS_DSN", raising=False)
+    assert (
+        m.verify_task_row_created("ceo-task-1", timeout_s=0.0) is False
+    )  # no DSN → reported, not raised
+
+
 # ─── recall-atom assert (THE memory assert) ───────────────────────────────────
 
 

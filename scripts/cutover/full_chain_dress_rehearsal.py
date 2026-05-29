@@ -12,11 +12,12 @@ and produces P1-P11 evidence; **Dave's pass/fail table is the sign-off**. Cost:
 per-loop is a FLOOR; the binding number is the 48-72h soak run-rate vs A$350.
 
 The live run is GATED on the work-loop consumer running (Agency_OS-f5yt), the
-dispatcher container-defaults fix (g9xx), and Nova #1268. The Slack-origin step
-is HELD pending Atlas's shared-interface note (single wire — no parallel path).
-Without `--live` AND a reachable loop, the harness SELF-SKIPS (exit 0) — it is
-built + CI-green now. The pure logic (KEI selection, gap, cost/soak, P1-P11
-evidence) is unit-tested without the live loop.
+dispatcher container-defaults fix (g9xx), and Nova #1268. The Slack-origin leg is
+the direct Slack→task creator (Agency_OS-evbn, #1291): a `TASK:` #ceo message →
+public.tasks row → kei45 trigger → loop; Run-A Step-1 is verified by
+`verify_task_row_created`. Without `--live` AND a reachable loop, the harness
+SELF-SKIPS (exit 0) — it is built + CI-green now. The pure logic (KEI selection,
+gap, cost/soak, P1-P11 evidence) is unit-tested without the live loop.
 
 Stdlib only. Heavy/optional deps (redis, psycopg) are lazy-imported on the live
 path so the logic layer imports cleanly in hermetic CI.
@@ -274,6 +275,42 @@ def assert_recall_returned_atom(run: RunResult) -> tuple[bool, int]:
     scored citation. Returns (passed, count)."""
     n = len(_useful_hops(run))
     return (n >= 1, n)
+
+
+def task_row_present(task_ids: list[str], expected_id: str) -> bool:
+    """Pure check: did the expected task id appear among the polled rows?"""
+    return expected_id in (task_ids or [])
+
+
+def verify_task_row_created(
+    task_id: str, *, dsn: str | None = None, timeout_s: float = 10.0
+) -> bool:
+    """Run-A Step-1 (Slack-origin leg, Agency_OS-evbn): after Dave types a `TASK:`
+    #ceo message, assert the row landed in public.tasks within `timeout_s` (~10s).
+    The direct Slack→task creator does the INSERT; this just witnesses it. Returns
+    False on timeout / no DSN (the rehearsal reports it; never raises)."""
+    dsn = dsn or os.environ.get("DATABASE_URL") or os.environ.get("RETRIEVAL_EVENTS_DSN")
+    if not dsn:
+        return False
+    import time as _t
+
+    import psycopg
+
+    clean = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    deadline = _t.monotonic() + timeout_s
+    while _t.monotonic() < deadline:
+        try:
+            with (
+                psycopg.connect(clean, prepare_threshold=None, autocommit=True) as conn,
+                conn.cursor() as cur,
+            ):
+                cur.execute("SELECT id FROM public.tasks WHERE id = %s", (task_id,))
+                if task_row_present([r[0] for r in cur.fetchall()], task_id):
+                    return True
+        except Exception:  # noqa: BLE001 — witness poll never raises
+            pass
+        _t.sleep(1.0)
+    return False
 
 
 def classify_spawn_failure(status_code: int, body: str = "") -> str | None:  # noqa: ARG001

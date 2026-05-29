@@ -229,9 +229,10 @@ class WorkLoopConsumer:
             )
         )
         if result >= 0:
-            # Store the task message for crash-recovery re-queue.
-            # No TTL — it must survive a lease expiry so reconcile can re-queue.
-            await self._r.set(_task_raw_key(task.tenant_id, task.task_id), task.raw)
+            # TTL matches CRASH_ATTEMPTS_TTL_S — safety net against leaked keys on permanent failure.
+            await self._r.set(
+                _task_raw_key(task.tenant_id, task.task_id), task.raw, ex=CRASH_ATTEMPTS_TTL_S
+            )
         return result
 
     async def _maybe_alert(self, tenant_id: str, count: int, ceiling: int) -> None:

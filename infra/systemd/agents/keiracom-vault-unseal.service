@@ -1,18 +1,26 @@
 [Unit]
 Description=Auto-unseal the persistent Keiracom Vault on boot (P10 / bd lmce)
 Documentation=file:///home/elliotbot/clawd/Agency_OS/docs/runbooks/vault_persistence.md
-After=docker.service network-online.target
+# NB: docker.service is a SYSTEM unit and invisible to this --user manager, so we
+# do NOT order against it (it would be silently dropped). The boot race against the
+# container is handled instead by the seal-status poll loop inside the ExecStart
+# script + Restart=on-failure below.
+After=network-online.target
 Wants=network-online.target
+StartLimitIntervalSec=300
 
 [Service]
 Type=oneshot
 RemainAfterExit=yes
 Environment=VAULT_ADDR=http://127.0.0.1:8200
-ExecStart=/home/elliotbot/clawd/Agency_OS/scripts/vault_auto_unseal.sh
+# Stable installed copy — deliberately NOT a git-worktree path. /home/elliotbot/clawd/
+# Agency_OS is shared by Elliot/Atlas and is frequently checked out onto feature
+# branches that don't contain this script, which would make a boot unseal fail.
+# install_vault_persistence.sh copies the canonical scripts/vault_auto_unseal.sh here.
+ExecStart=/home/elliotbot/.config/agency-os/vault_auto_unseal.sh
 # Retry a few times in case the vault container is slow to come up post-boot.
 Restart=on-failure
 RestartSec=10
-StartLimitIntervalSec=300
 StandardOutput=append:/home/elliotbot/clawd/logs/vault-unseal.log
 StandardError=append:/home/elliotbot/clawd/logs/vault-unseal.log
 

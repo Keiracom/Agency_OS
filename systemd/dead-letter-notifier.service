@@ -1,0 +1,22 @@
+[Unit]
+# Dead-letter → #ceo notifier (Agency_OS-gl3v). Surfaces every work-loop task
+# that dead-letters (3 failed attempts) to Dave within 60s. No pane / send-keys.
+Description=Dead-letter → #ceo notifier (work-loop)
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+# Main-worktree paths — all fleet services run from there on latest main.
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS/scripts/dead_letter_notifier.py
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+Restart=on-failure
+RestartSec=10
+StandardOutput=append:/home/elliotbot/clawd/logs/dead-letter-notifier.log
+StandardError=append:/home/elliotbot/clawd/logs/dead-letter-notifier.log
+
+[Install]
+WantedBy=default.target

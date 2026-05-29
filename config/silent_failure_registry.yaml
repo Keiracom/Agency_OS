@@ -1,0 +1,235 @@
+# Silent failure registry — canonical list of all critical background services.
+# Loaded by scripts/orchestrator/silent_failure_probe.py (Agency_OS-52wu).
+#
+# Two prior silent failures found by audit not alerting:
+#   - keiracom-temporal-worker dual-publish path dead for 5 days
+#   - migration-apply-watcher schema check failing silently
+# This registry + probe closes the gap: every critical service either has a
+# systemd active-state check, a timer-last-run age check, or a heartbeat key
+# check. Misses ping #ceo directly.
+#
+# Fields per entry:
+#   name:               systemd unit name (without .service/.timer suffix)
+#   check:              "systemd" | "timer" | "heartbeat"
+#                       systemd  → is-active check (persistent services)
+#                       timer    → last trigger age check (oneshot+timer pairs)
+#                       heartbeat → ceo_memory heartbeat:<name> key age
+#   criticality:        "P0" → alert #ceo | "P1" → alert #execution
+#   description:        one-line human-readable purpose
+#   stale_minutes:      (heartbeat only) minutes before alert, default 10
+#   timer_window_hours: (timer only) hours without trigger before alert, default 1.0
+
+services:
+
+  # ── Inbox watchers ─────────────────────────────────────────────────────────
+  # Message delivery to each agent. A dead watcher = silent dispatch queue.
+  - name: aiden-inbox-watcher
+    check: systemd
+    criticality: P0
+    description: "AIDEN inbox watcher — file dispatch delivery to aiden tmux"
+
+  - name: atlas-inbox-watcher
+    check: systemd
+    criticality: P0
+    description: "ATLAS inbox watcher — file dispatch delivery to atlas tmux"
+
+  - name: elliot-inbox-watcher
+    check: systemd
+    criticality: P0
+    description: "ELLIOT inbox watcher — Slack #ceo messages to elliot tmux"
+
+  - name: max-inbox-watcher
+    check: systemd
+    criticality: P0
+    description: "MAX inbox watcher — file dispatch delivery to max tmux"
+
+  - name: nova-inbox-watcher
+    check: systemd
+    criticality: P0
+    description: "NOVA inbox watcher — file dispatch delivery to nova tmux"
+
+  - name: orion-inbox-watcher
+    check: systemd
+    criticality: P0
+    description: "ORION inbox watcher — file dispatch delivery to orion tmux"
+
+  - name: scout-inbox-watcher
+    check: systemd
+    criticality: P0
+    description: "SCOUT inbox watcher — file dispatch delivery to scout tmux"
+
+  # ── NATS dispatch bridges ───────────────────────────────────────────────────
+  # NATS → tmux injection for each agent. Dead bridge = dispatch silently dropped.
+  - name: aiden-nats-review-bridge
+    check: systemd
+    criticality: P0
+    description: "AIDEN NATS review/deliberation → tmux inbox bridge"
+
+  - name: atlas-nats-dispatch-bridge
+    check: systemd
+    criticality: P0
+    description: "ATLAS NATS keiracom.dispatch.atlas → tmux inbox bridge"
+
+  - name: elliot-nats-inbox-bridge
+    check: systemd
+    criticality: P0
+    description: "ELLIOT NATS keiracom.elliot.inbox → tmux inbox bridge"
+
+  - name: max-nats-review-bridge
+    check: systemd
+    criticality: P0
+    description: "MAX NATS review/deliberation → tmux inbox bridge"
+
+  - name: nova-nats-dispatch-bridge
+    check: systemd
+    criticality: P0
+    description: "NOVA NATS keiracom.dispatch.nova → tmux inbox bridge"
+
+  - name: orion-nats-dispatch-bridge
+    check: systemd
+    criticality: P0
+    description: "ORION NATS keiracom.dispatch.orion → tmux inbox bridge"
+
+  - name: scout-nats-dispatch-bridge
+    check: systemd
+    criticality: P0
+    description: "SCOUT NATS keiracom.dispatch.scout → tmux inbox bridge"
+
+  # ── Core infrastructure ─────────────────────────────────────────────────────
+  - name: nats-server
+    check: systemd
+    criticality: P0
+    description: "NATS JetStream server — messaging backbone for all agent comms"
+
+  - name: weaviate
+    check: systemd
+    criticality: P0
+    description: "Weaviate vector DB — collective intelligence + memory recall"
+
+  - name: litellm
+    check: systemd
+    criticality: P0
+    description: "LiteLLM governance-tier proxy — all LLM calls route through here"
+
+  - name: dispatcher
+    check: systemd
+    criticality: P0
+    description: "Keiracom dispatcher — interceptor proxy + watchdog + reaper (KEI-213)"
+
+  - name: agency-os-elliot-slack-listener
+    check: systemd
+    criticality: P0
+    description: "Elliot Slack socket-mode listener — Dave → #ceo inbound path"
+
+  # ── Loop consumer/worker units ──────────────────────────────────────────────
+  - name: keiracom-temporal-worker
+    check: systemd
+    criticality: P0
+    description: "Temporal worker — Phase A6 dual-publish (was silent-dead for 5 days, anchor incident)"
+
+  - name: completion-sync-worker
+    check: systemd
+    criticality: P0
+    description: "Completion sync worker — KEI directive completion tracking"
+
+  - name: deliberator-concur-router
+    check: systemd
+    criticality: P0
+    description: "Deliberator concur router — auto-dispatches round-2 concur on divergence"
+
+  - name: peer-event-ceo-relay
+    check: systemd
+    criticality: P0
+    description: "Peer NATS events → Slack #ceo relay (closes elliot stop-hook blind spot)"
+
+  # ── Indexers (knowledge pipeline) ───────────────────────────────────────────
+  - name: ceo-memory-indexer
+    check: systemd
+    criticality: P0
+    description: "ceo_memory → Weaviate Decisions indexer (KEI-85 phase A)"
+
+  - name: agent-memories-indexer
+    check: systemd
+    criticality: P1
+    description: "agent_memories → Weaviate AgentMemories indexer"
+
+  - name: session-transcript-indexer
+    check: systemd
+    criticality: P1
+    description: "Claude session jsonl → Weaviate SessionTranscripts indexer"
+
+  - name: git-commits-indexer
+    check: systemd
+    criticality: P1
+    description: "git commits → Weaviate Codebase indexer (KEI-85 phase C)"
+
+  - name: linear-state-indexer
+    check: systemd
+    criticality: P1
+    description: "Linear KEI state → Weaviate Keis indexer (KEI-85 phase B)"
+
+  - name: elliot-memories-indexer
+    check: systemd
+    criticality: P1
+    description: "elliot_internal.memories → Weaviate AgentMemories indexer"
+
+  - name: indexing-queue-worker
+    check: systemd
+    criticality: P1
+    description: "Indexing queue worker — batch document ingestion (KEI-61)"
+
+  - name: tool-call-log-indexer
+    check: systemd
+    criticality: P1
+    description: "Tool call log indexer (KEI-54B Stage B)"
+
+  # ── Agent sessions ──────────────────────────────────────────────────────────
+  - name: elliot-agent
+    check: systemd
+    criticality: P0
+    description: "Elliot COO agent session (KEI-94 keep-alive)"
+
+  - name: aiden-agent
+    check: systemd
+    criticality: P0
+    description: "Aiden CTO agent session (KEI-94 keep-alive)"
+
+  - name: atlas-agent
+    check: systemd
+    criticality: P1
+    description: "Atlas clone agent session (KEI-94 keep-alive)"
+
+  - name: max-agent
+    check: systemd
+    criticality: P1
+    description: "Max deliberator agent session (KEI-94 keep-alive)"
+
+  - name: orion-agent
+    check: systemd
+    criticality: P1
+    description: "Orion clone agent session (KEI-94 keep-alive)"
+
+  - name: sync-orchestrator
+    check: systemd
+    criticality: P1
+    description: "Sync orchestrator — cross-store consistency (KEI-229)"
+
+  # ── Timer-based oneshot services ────────────────────────────────────────────
+  # For these, check last trigger time. No trigger within window → alert.
+  - name: migration-apply-watcher
+    check: timer
+    timer_window_hours: 1.0
+    criticality: P0
+    description: "Migration apply gate watcher (KEI-188) — anchor incident: failed silently"
+
+  - name: weaviate-backup
+    check: timer
+    timer_window_hours: 26.0
+    criticality: P0
+    description: "Weaviate data dir backup snapshot (KEI-60) — daily backup"
+
+  - name: memory-core-fact-probe
+    check: timer
+    timer_window_hours: 2.0
+    criticality: P1
+    description: "Memory core-fact probe timer"

@@ -1,17 +1,22 @@
 #!/usr/bin/env python3
 """full_chain_dress_rehearsal.py — THE cutover gate harness (Agency_OS-jb4e).
 
-Drives a REAL open KEI through the full ephemeral chain
-(Chat → Deliberator → Worker → Reviewer → merge), TWICE — once recall-active,
-once cold — and proves memory adds value via the per-hop retrieval-trace gap.
-Success = PR merged + CI passed + governance honoured + trace at every hop +
-memory gap demonstrated. Spec: docs/cutover/full_chain_dress_rehearsal_spec.md.
+Drives a REAL (low-stakes-first) open KEI through the full ephemeral chain
+(Chat → Deliberator → Worker → Reviewer → merge) across 4 runs — cold / recall /
+crash / dead_letter — proving memory adds value via the per-hop retrieval-trace
+gap and that the loop is resilient. Spec: docs/cutover/full_chain_dress_rehearsal_spec.md.
 
-The live run is GATED on the work-loop consumer running (Agency_OS-f5yt) +
-Nova #1268. Without `--live` AND a reachable loop, the harness SELF-SKIPS
-(exit 0) — it is built + CI-green now; the green run is captured once the loop
-is switched on. The pure logic (KEI selection, gap, success evaluation) is
-unit-tested without the live loop.
+v2.0 (Dave/Viktor 2026-05-29): the harness is the WITNESS, not the judge — it
+streams its log LIVE to #ceo (state transitions, retrieval trace, cost, failures)
+and produces P1-P11 evidence; **Dave's pass/fail table is the sign-off**. Cost:
+per-loop is a FLOOR; the binding number is the 48-72h soak run-rate vs A$350.
+
+The live run is GATED on the work-loop consumer running (Agency_OS-f5yt), the
+dispatcher container-defaults fix (g9xx), and Nova #1268. The Slack-origin step
+is HELD pending Atlas's shared-interface note (single wire — no parallel path).
+Without `--live` AND a reachable loop, the harness SELF-SKIPS (exit 0) — it is
+built + CI-green now. The pure logic (KEI selection, gap, cost/soak, P1-P11
+evidence) is unit-tested without the live loop.
 
 Stdlib only. Heavy/optional deps (redis, psycopg) are lazy-imported on the live
 path so the logic layer imports cleanly in hermetic CI.
@@ -72,7 +77,18 @@ FAILURE_MODES = (
     "not_merged",  # PR not merged
     "governance_violation",  # callsign / concur / claim / linear
     "no_memory_gap",  # recall arm did not out-trace cold
+    "crash_unrecovered",  # crash run did not recover
+    "not_dead_lettered",  # dead-letter run did not route the failed task to the DLQ
 )
+
+# v2.0 (Dave/Viktor 2026-05-29): the gate is 4 runs, not 2.
+RUN_MODES = ("cold", "recall", "crash", "dead_letter")
+# Cost: per-loop is a FLOOR; the BINDING number is the 48-72h soak run-rate vs target.
+SOAK_TARGET_AUD = 350.0
+# WITNESS: the rehearsal streams its log LIVE to #ceo so Dave watches it happen.
+# Dave's pass/fail table is the sign-off — the harness is the witness, not the judge.
+CEO_WITNESS_CHANNEL = os.environ.get("CEO_WITNESS_CHANNEL", "C0B2PM3TV0B")
+SLACK_POST_URL = "https://slack.com/api/chat.postMessage"  # NOSONAR S5332
 
 
 # ─── data model ───────────────────────────────────────────────────────────────
@@ -95,6 +111,7 @@ class RunResult:
     kei: str
     recall_active: bool
     hop_traces: tuple[HopTrace, ...]
+    run_mode: str = "recall"  # one of RUN_MODES
     pr_number: int | None = None
     pr_merged: bool = False
     ci_passed: bool = False
@@ -102,6 +119,9 @@ class RunResult:
         default_factory=dict
     )  # {callsign_tagged, concur_count, no_linear_write, claim_observed}
     worker_retries: int = 0
+    cost_aud: float = 0.0  # per-loop cost FLOOR for this run
+    recovered: bool = True  # crash run: did the chain recover?
+    dead_lettered: bool = False  # dead-letter run: was the failed task routed to the DLQ?
 
 
 @dataclass(frozen=True)
@@ -261,6 +281,160 @@ def classify_spawn_failure(status_code: int, body: str = "") -> str | None:  # n
     A 400 today = missing container image/name/port (Atlas container-defaults fix
     pending) — surfaced as spawn_rejected, never swallowed."""
     return None if 200 <= status_code < 300 else "spawn_rejected"
+
+
+# ─── v2.0 WITNESS — live #ceo stream (Dave watches; Dave's table signs off) ───
+
+
+@dataclass(frozen=True)
+class WitnessEvent:
+    run_mode: str
+    kind: str  # state_transition | retrieval_trace | cost | failure | evidence
+    detail: str
+
+
+def format_witness(e: WitnessEvent) -> str:
+    """One scannable #ceo line per witness event (real-time rehearsal log)."""
+    icon = {
+        "state_transition": "▸",
+        "retrieval_trace": "🔎",
+        "cost": "💲",
+        "failure": "🔴",
+        "evidence": "📋",
+    }.get(e.kind, "·")
+    return f"{icon} [rehearsal:{e.run_mode}] {e.kind}: {e.detail}"
+
+
+def post_witness(
+    e: WitnessEvent, *, token: str | None = None, channel: str = CEO_WITNESS_CHANNEL
+) -> bool:
+    """Fire-and-forget post of one witness line to #ceo. Fail-open — a witness
+    outage must never abort the rehearsal (mirrors src/slack_bot/direct_post.py)."""
+    import json as _json
+    import urllib.request as _req
+
+    token = token or os.environ.get("SLACK_BOT_TOKEN", "")
+    if not token:
+        print(f"[witness:no-token] {format_witness(e)}")  # local fallback log
+        return False
+    body = _json.dumps({"channel": channel, "text": format_witness(e)}).encode("utf-8")
+    request = _req.Request(
+        SLACK_POST_URL,
+        data=body,
+        method="POST",
+        headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+    )
+    try:
+        with _req.urlopen(request, timeout=10) as resp:
+            return 200 <= resp.status < 300
+    except Exception:  # noqa: BLE001 — witness must never abort the rehearsal
+        return False
+
+
+# ─── v2.0 COST — per-loop floor vs 48-72h soak (binding A$350) ────────────────
+
+
+def soak_run_rate_aud(per_loop_aud: float, loops_per_hour: float, soak_hours: float) -> float:
+    """Extrapolate the soak run-rate (binding cost) from the per-loop FLOOR.
+    Per-loop is the measured floor; the soak run-rate over 48-72h is what binds."""
+    return round(per_loop_aud * loops_per_hour * soak_hours, 2)
+
+
+def validate_soak(run_rate_aud: float, *, target: float = SOAK_TARGET_AUD) -> tuple[bool, float]:
+    """Binding cost gate: the 48-72h soak run-rate must be <= target (A$350)."""
+    return (run_rate_aud <= target, target)
+
+
+# ─── v2.0 EVIDENCE — P1-P11 rows for DAVE'S table (harness witnesses, not judges) ──
+# PROPOSED P1-P11 — pending Viktor's authoritative enumeration (flagged to Elliot).
+# The harness produces the observed evidence per criterion + streams it to #ceo;
+# DAVE marks pass/fail. This is NOT a self-sign-off.
+
+
+@dataclass(frozen=True)
+class CriterionEvidence:
+    pid: str  # "P1".."P11"
+    label: str
+    observed: bool
+    evidence: str
+
+
+def collect_gate_evidence(
+    runs: dict[str, RunResult], *, target_aud: float = SOAK_TARGET_AUD
+) -> list[CriterionEvidence]:
+    """Build the P1-P11 evidence rows from the 4 runs for Dave's pass/fail table.
+    `runs` keyed by RUN_MODES. Returns observations, NOT a verdict."""
+    recall = runs.get("recall")
+    cold = runs.get("cold")
+    crash = runs.get("crash")
+    dl = runs.get("dead_letter")
+    gap = memory_gap(recall, cold) if recall and cold else {"active_strictly_outtraces_cold": False}
+    atom_ok, atom_n = assert_recall_returned_atom(recall) if recall else (False, 0)
+    g = (recall.governance if recall else {}) or {}
+    fired = {t.hop for t in recall.hop_traces if t.fired} if recall else set()
+    per_loop = recall.cost_aud if recall else 0.0
+
+    def ev(pid, label, observed, detail):
+        return CriterionEvidence(pid=pid, label=label, observed=bool(observed), evidence=detail)
+
+    return [
+        ev("P1", "cold run completes", bool(cold), f"cold run present={bool(cold)}"),
+        ev("P2", "recall run completes", bool(recall), f"recall run present={bool(recall)}"),
+        ev(
+            "P3",
+            "crash run recovers",
+            crash.recovered if crash else False,
+            f"recovered={crash.recovered if crash else 'n/a'}",
+        ),
+        ev(
+            "P4",
+            "dead-letter run routes to DLQ",
+            dl.dead_lettered if dl else False,
+            f"dead_lettered={dl.dead_lettered if dl else 'n/a'}",
+        ),
+        ev(
+            "P5",
+            "PR merged (recall)",
+            recall.pr_merged if recall else False,
+            f"pr_merged={recall.pr_merged if recall else 'n/a'}",
+        ),
+        ev(
+            "P6",
+            "CI passed (recall)",
+            recall.ci_passed if recall else False,
+            f"ci_passed={recall.ci_passed if recall else 'n/a'}",
+        ),
+        ev(
+            "P7",
+            "governance honoured",
+            bool(
+                g.get("callsign_tagged")
+                and int(g.get("concur_count", 0)) >= 2
+                and g.get("no_linear_write", True)
+                and g.get("claim_observed")
+            ),
+            f"gov={g}",
+        ),
+        ev(
+            "P8",
+            "trace at every hop (recall)",
+            not [h for h in HOP_AGENTS_DEFAULT if h not in fired],
+            f"fired_hops={sorted(fired)}",
+        ),
+        ev("P9", "recall returned >=1 relevant atom", atom_ok, f"relevant_atoms={atom_n}"),
+        ev(
+            "P10",
+            "memory gap (recall out-traces cold)",
+            gap["active_strictly_outtraces_cold"],
+            f"active_only={gap.get('active_only_hops')}",
+        ),
+        ev(
+            "P11",
+            "per-loop cost floor measured",
+            per_loop > 0,
+            f"per_loop_aud={per_loop} (binding=48-72h soak run-rate vs A${target_aud})",
+        ),
+    ]
 
 
 # ─── live orchestration (gated) ───────────────────────────────────────────────

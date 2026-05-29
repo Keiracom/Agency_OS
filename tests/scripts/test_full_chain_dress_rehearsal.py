@@ -268,6 +268,69 @@ def test_classify_spawn_failure_400_today_is_spawn_rejected():
     assert "spawn_rejected" in m.FAILURE_MODES
 
 
+# ─── v2.0 — 4 runs + witness + soak cost + P1-P11 evidence (Dave/Viktor) ──────
+
+
+def test_run_modes_are_the_four():
+    assert m.RUN_MODES == ("cold", "recall", "crash", "dead_letter")
+
+
+def test_format_witness_is_scannable():
+    line = m.format_witness(m.WitnessEvent(run_mode="recall", kind="cost", detail="0.006 AUD"))
+    assert "[rehearsal:recall]" in line and "cost" in line and "0.006 AUD" in line
+
+
+def test_post_witness_falls_back_to_local_log_without_token(monkeypatch, capsys):
+    monkeypatch.delenv("SLACK_BOT_TOKEN", raising=False)
+    ok = m.post_witness(m.WitnessEvent(run_mode="cold", kind="failure", detail="spawn_rejected"))
+    assert ok is False
+    assert "spawn_rejected" in capsys.readouterr().out  # streamed locally, not lost
+
+
+def test_soak_run_rate_and_validate():
+    # per-loop floor 0.06 AUD, 1 loop/hr, 60h soak → 3.6 AUD run-rate, under A$350
+    rate = m.soak_run_rate_aud(0.06, 1.0, 60.0)
+    assert rate == 3.6
+    ok, target = m.validate_soak(rate)
+    assert ok is True and target == m.SOAK_TARGET_AUD
+    assert m.validate_soak(500.0)[0] is False  # over A$350 → binding fail
+
+
+def test_collect_gate_evidence_p1_p11():
+    runs = {
+        "cold": _cold_run(),
+        "recall": m.RunResult(
+            **{**_useful_run().__dict__, "run_mode": "recall", "cost_aud": 0.006}
+        ),
+        "crash": m.RunResult(**{**_useful_run().__dict__, "run_mode": "crash", "recovered": True}),
+        "dead_letter": m.RunResult(
+            **{**_useful_run().__dict__, "run_mode": "dead_letter", "dead_lettered": True}
+        ),
+    }
+    rows = m.collect_gate_evidence(runs)
+    assert [r.pid for r in rows] == [f"P{i}" for i in range(1, 12)]  # P1..P11
+    by_pid = {r.pid: r for r in rows}
+    assert by_pid["P3"].observed is True  # crash recovered
+    assert by_pid["P4"].observed is True  # dead-lettered
+    assert by_pid["P9"].observed is True  # recall atoms
+    assert by_pid["P10"].observed is True  # memory gap
+    assert by_pid["P11"].observed is True  # per-loop cost floor measured
+
+
+def test_collect_gate_evidence_marks_failures_observed_false():
+    # crash run that did NOT recover + dead-letter that did NOT route → P3/P4 false
+    runs = {
+        "cold": _cold_run(),
+        "recall": m.RunResult(**{**_useful_run().__dict__, "cost_aud": 0.006}),
+        "crash": m.RunResult(**{**_useful_run().__dict__, "run_mode": "crash", "recovered": False}),
+        "dead_letter": m.RunResult(
+            **{**_useful_run().__dict__, "run_mode": "dead_letter", "dead_lettered": False}
+        ),
+    }
+    by_pid = {r.pid: r for r in m.collect_gate_evidence(runs)}
+    assert by_pid["P3"].observed is False and by_pid["P4"].observed is False
+
+
 # ─── skip-guard ───────────────────────────────────────────────────────────────
 
 

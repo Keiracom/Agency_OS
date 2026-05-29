@@ -1,7 +1,14 @@
 # Full-Chain Dress-Rehearsal — THE Cutover Gate
 
-**KEI:** `Agency_OS-jb4e` (P0). **Design:** Viktor (thread 1779955041). **Owner:** Aiden · **Build:** Scout.
-**Status:** ▸ HARNESS BUILT — live run **GATED on `Agency_OS-f5yt`** (work-loop consumer running). Nothing flips until this gate passes.
+**KEI:** `Agency_OS-jb4e` (P0). **Design:** Viktor (thread 1779955041) + Dave/Viktor **v2.0** 2026-05-29. **Owner:** Aiden · **Build:** Scout.
+**Status:** ▸ HARNESS BUILT — live run **GATED on `Agency_OS-f5yt`** (work-loop consumer running) + the dispatcher container-defaults fix (g9xx). Nothing flips until this gate passes.
+
+## v2.0 deltas (Dave/Viktor 2026-05-29)
+
+1. **SEAM (single wire):** the Slack-origin step (Chat hop entry) and Atlas's task producer are the **same wire** — build to Atlas's shared-interface note (incoming), NOT a parallel path. The Slack-origin step is **HELD** until Atlas confirms whether a `Slack → public.tasks` row-creator even exists. The harness's `seed_task` (INSERT into `public.tasks`) IS that shared wire for seeding; it does not build a second Slack path.
+2. **WITNESS (live #ceo, Dave signs off):** the rehearsal streams its log **LIVE to #ceo in real time** — state transitions, retrieval trace, cost per run, failure results — so **Dave watches it happen**. **Dave's P1-P11 pass/fail table is the sign-off — NOT the harness.** The harness is the witness/instrument: it produces the per-criterion evidence (`collect_gate_evidence`) and streams it (`post_witness`); it never self-declares the gate passed.
+3. **COST (soak binds, per-loop is a floor):** the rehearsal measures **per-loop cost as a FLOOR**. The **binding** number is the **48-72h soak actual run-rate** (`soak_run_rate_aud`) validated against **A$350** (`validate_soak`). A single-loop estimate is not the cost gate.
+4. **Gate = P1-P11 + 4 runs** (`cold` / `recall` / `crash` / `dead_letter`) — supersedes the earlier S1-S5 / 2-run shape. **P1-P11 below are PROPOSED — pending Viktor's authoritative enumeration (flagged to Elliot).**
 
 This is the end-to-end proof that the ephemeral self-driving loop works: a **real** open KEI flows through the full chain to a merged PR, with memory measurably helping. It supersedes the single-hop `empirical_test_spec.md` (which proves one retrieval hop); this proves the *whole pipeline*.
 
@@ -85,17 +92,29 @@ Every spawned agent's `agent_query.query()` writes a `public.retrieval_events` r
 
 ---
 
-## §5 — Success criteria (ALL must hold, recall-active run)
+## §5 — P1-P11 evidence (PROPOSED — DAVE's table is the sign-off)
 
-| # | Criterion | Measured by |
-|---|---|---|
-| S1 | PR merged to `main` | `gh pr view <n> --json state` → `MERGED` |
-| S2 | CI passed | `gh pr checks <n>` all green before merge |
-| S3 | Governance honoured | callsign tag on PR title + commits; **2-of-3** (or 2-of-2 author-excluded) `[REVIEW:approve:<callsign>]` NATS-concur comments present; claim-before-touch observed; **no Linear write** |
-| S4 | Trace at every hop | a `retrieval_events` row for each of the 4 hop agents (§4) |
-| S5 | Memory gap demonstrated | §3 — active strictly out-traces cold |
+The gate is **4 runs** (`cold` / `recall` / `crash` / `dead_letter`). The harness
+produces the evidence per criterion (`collect_gate_evidence`) and streams it LIVE
+to #ceo; **Dave marks each P pass/fail** — the harness never self-declares the gate
+passed. **The list below is PROPOSED, pending Viktor's authoritative P1-P11.**
 
-Any criterion failing → **gate FAILS → cutover does NOT proceed.**
+| P | Criterion | Run | Observed by |
+|---|---|---|---|
+| P1 | cold run completes (control) | cold | run present + chain ran |
+| P2 | recall run completes | recall | run present + chain ran |
+| P3 | crash run **recovers** | crash | `recovered=true` after injected crash |
+| P4 | dead-letter run routes failed task to **DLQ** | dead_letter | `dead_lettered=true` |
+| P5 | PR merged to `main` | recall | `gh pr view --json state → MERGED` |
+| P6 | CI passed | recall | `gh pr checks` green pre-merge |
+| P7 | governance honoured | recall | callsign tag + **2-of-3** concur + claim-before-touch + **no Linear write** |
+| P8 | retrieval trace at every hop | recall | a `retrieval_events` row per hop agent |
+| P9 | recall returned **≥1 relevant atom** | recall | `assert_recall_returned_atom` |
+| P10 | memory gap (recall **out-traces** cold) | recall vs cold | `memory_gap.active_strictly_outtraces_cold` |
+| P11 | per-loop cost floor measured | all | `cost_aud > 0`; **binding** = 48-72h soak run-rate ≤ A$350 (§3 / `validate_soak`) |
+
+Dave's table is authoritative. The harness streaming + evidence exists so the
+sign-off is **witnessed**, not asserted.
 
 ---
 

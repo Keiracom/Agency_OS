@@ -63,3 +63,24 @@ def test_image_overridable_via_env(monkeypatch):
     monkeypatch.setenv("DISPATCHER_CONTAINER_IMAGE", "custom-agent:v9")
     out = main_mod._container_spawn_kwargs("k", {"callsign": "x"})
     assert out["image"] == "custom-agent:v9"
+
+
+# --- P10 vault bootstrap injection (Agency_OS-8dvl) --------------------
+
+
+def test_vault_bootstrap_injected_into_container_env(monkeypatch):
+    monkeypatch.setenv("VAULT_ADDR", "https://v:8200")
+    monkeypatch.setenv("VAULT_TOKEN", "tok")
+    out = main_mod._container_spawn_kwargs("k", {"callsign": "atlas"})
+    assert out["env"]["VAULT_ADDR"] == "https://v:8200"
+    assert out["env"]["VAULT_TOKEN"] == "tok"
+
+
+def test_only_bootstrap_injected_not_other_dot_env_creds(monkeypatch):
+    # The container gets the Vault bootstrap ONLY — not arbitrary .env creds.
+    # This is the P10 invariant at the spawn boundary (no .env inheritance).
+    monkeypatch.setenv("VAULT_ADDR", "https://v:8200")
+    monkeypatch.setenv("VAULT_TOKEN", "tok")
+    monkeypatch.setenv("DATABASE_URL", "postgresql://should-not-leak")
+    out = main_mod._container_spawn_kwargs("k", {"callsign": "atlas"})
+    assert "DATABASE_URL" not in out["env"]  # resolved from Vault in the container, not inherited

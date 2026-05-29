@@ -425,6 +425,15 @@ def _container_spawn_kwargs(key: str, sk: dict[str, Any]) -> dict[str, Any]:
     for meta_key, meta_val in sk.items():
         if meta_val is not None:
             env.setdefault(f"AGENT_{meta_key.upper()}", str(meta_val))
+    # P10 cold-start bootstrap (Agency_OS-8dvl): pass ONLY the Vault bootstrap into
+    # the container — the ephemeral agent resolves every other credential from
+    # Vault KV (kv_resolver.resolve_into_env, Nova #1289), with NO .env inheritance. Docker isolation
+    # means the container sees only this env dict, so these two are the entire
+    # inherited-credential surface.
+    for boot in ("VAULT_ADDR", "VAULT_TOKEN"):
+        boot_val = os.environ.get(boot)
+        if boot_val:
+            env.setdefault(boot, boot_val)
     out: dict[str, Any] = {"image": image, "name": name, "port": port, "env": env}
     if health_path is not None:
         out["health_path"] = health_path

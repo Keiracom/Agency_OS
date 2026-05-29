@@ -69,9 +69,58 @@ PARALLEL_AFTER_STEP: dict[str, list[str]] = {
 
 log = logging.getLogger(__name__)
 
+# Agency_OS-zqni — final-result #ceo post path (mirrors the dispatcher's
+# task_complete hook + the consumer dead-letter notify: shell out to
+# scripts/slack_relay.py with CALLSIGN=elliot and -c ceo, fail-open).
+_SLACK_RELAY_SCRIPT = os.path.join(
+    os.environ.get("DISPATCHER_AGENT_WORKDIR", "/home/elliotbot/clawd/Agency_OS"),
+    "scripts",
+    "slack_relay.py",
+)
+_NOTIFY_TIMEOUT_S = 15
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+
+def _post_final_to_ceo(entry: dict, chain_id: str) -> None:
+    """Agency_OS-zqni — one #ceo post when the V1 chain reaches ``complete``.
+
+    Pairs with nd3b's notify_complete suppression (PR #1337): intermediate
+    chain hops suppress, this final post is the single result Dave sees per
+    directive. Module-level so tests can monkeypatch it.
+
+    Fail-open: any error is logged and swallowed — a notify failure must NEVER
+    block advance_step or the state save.
+    """
+    import subprocess  # noqa: PLC0415 — lazy, only the complete-transition path needs it
+    import sys  # noqa: PLC0415
+
+    task_id = entry.get("task_id") or "?"
+    brief = entry.get("brief") or "(no brief)"
+    msg = (
+        f"✅ [V1-CHAIN] '{brief}' — complete "
+        f"(task={task_id}, chain={chain_id[:8]}). "
+        f"Steps: aiden_plan → max_challenge → nova_build → orion_spec + atlas_safety."
+    )
+    try:
+        result = subprocess.run(
+            [sys.executable, _SLACK_RELAY_SCRIPT, "-c", "ceo", msg],
+            capture_output=True,
+            text=True,
+            timeout=_NOTIFY_TIMEOUT_S,
+            env={**os.environ, "CALLSIGN": "elliot"},
+            check=False,
+        )
+        if result.returncode != 0:
+            log.warning(
+                "v1_chain final-post: slack_relay rc=%d stderr=%r",
+                result.returncode,
+                result.stderr[:200],
+            )
+    except Exception:  # noqa: BLE001 — final-post failure must not break advance_step
+        log.warning("v1_chain final-post raised for chain=%s", chain_id, exc_info=True)
 
 
 def _load_state() -> dict:
@@ -280,6 +329,16 @@ def advance_step(
             # Last parallel step completed → chain is complete.
             entry["current_step"] = "complete"
             entry["pending"] = []
+            # Agency_OS-zqni — single final #ceo post for the directive.
+            # Belt-and-suspenders fail-open: _post_final_to_ceo's internal try/except
+            # is the primary guard, but a future refactor or a test-injected fake
+            # MUST NOT abort the state save here.
+            try:
+                _post_final_to_ceo(entry, chain_id)
+            except Exception:  # noqa: BLE001 — final-post failure must not break state save
+                log.warning(
+                    "v1_chain final-post raised at call site for chain=%s", chain_id, exc_info=True
+                )
         elif completed_step in _SEQ_NEXT:
             next_step = _SEQ_NEXT[completed_step]
             if next_step is not None:

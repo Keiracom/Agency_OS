@@ -1053,6 +1053,97 @@ async def dispatcher_task_complete(req: TaskCompleteRequest) -> dict[str, Any]:
 
 
 # ---------------------------------------------------------------------------
+# /dispatcher/chain_complete — V1 chain final-result hook (Agency_OS-zqni)
+#
+# Called by v1_chain_orchestrator.advance_step when the chain reaches the
+# 'complete' state. Separate from /task_complete so nd3b's intermediate-step
+# suppression rule (CHAIN_STEP != 'complete' → skip) stays clean: per-step
+# notifies are gated at the worker, the single chain-result line fires here.
+# Cost is summed best-effort from keiracom_spawn_attribution (last 24h entries
+# whose source_id equals the chain's task_id), converted USD→AUD at 1.55,
+# omitted from the message if unavailable. Fail-open end to end.
+# ---------------------------------------------------------------------------
+
+
+class ChainCompleteRequest(BaseModel):
+    """V1 chain completion payload from v1_chain_orchestrator."""
+
+    task_id: str
+    chain_id: str
+    brief: str = ""
+    steps: list[str] = []
+
+
+def _lookup_chain_cost_aud(task_id: str) -> float | None:
+    """Sum cost_usd for attribution rows where source_id == task_id, ×1.55. None on miss/error.
+
+    Fail-closed: any exception or zero-sum returns None so the cost line is
+    omitted from the message rather than presenting a misleading A$0.0000.
+    """
+    try:
+        from src.keiracom_system.attribution.logger import load_attribution_last_24h
+
+        entries = load_attribution_last_24h()
+        matching = [e for e in entries if e.get("source_id") == task_id]
+        if not matching:
+            return None
+        cost_usd = sum(float(e.get("cost_usd", 0.0)) for e in matching)
+        if cost_usd <= 0:
+            return None
+        return cost_usd * 1.55  # USD→AUD per CLAUDE.md ratified rate
+    except Exception:  # noqa: BLE001 — cost lookup must never break notification
+        logger.warning("chain_complete: cost lookup failed for task=%s", task_id, exc_info=True)
+        return None
+
+
+@app.post("/dispatcher/chain_complete")
+async def dispatcher_chain_complete(req: ChainCompleteRequest) -> dict[str, Any]:
+    """Post the V1-chain completion summary to #ceo via slack_relay (Elliot's relay).
+
+    Fail-open: any error (slack_relay, cost-lookup, formatting) is logged and
+    swallowed — a notification failure must never block the chain lifecycle.
+    """
+    steps_str = (
+        " → ".join(req.steps)
+        if req.steps
+        else "aiden_plan → max_challenge → nova_build → orion_spec + atlas_safety"
+    )
+    lines = [
+        f"✅ Chain complete — {req.task_id}",
+        f"**Brief:** {req.brief or '(no brief)'}",
+        f"**Steps:** {steps_str}",
+    ]
+    cost_aud = _lookup_chain_cost_aud(req.task_id)
+    if cost_aud is not None:
+        lines.append(f"**Cost:** A${cost_aud:.4f}")
+    lines.append(f"**chain_id:** {req.chain_id}")
+    msg = "\n".join(lines)
+    try:
+        import subprocess as _sp
+        import sys as _sys
+
+        result = _sp.run(
+            [_sys.executable, _SLACK_RELAY_SCRIPT, "-c", "ceo", msg],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            env={**os.environ, "CALLSIGN": "elliot"},
+        )
+        if result.returncode != 0:
+            logger.warning(
+                "chain_complete: slack_relay rc=%d stderr=%r",
+                result.returncode,
+                result.stderr[:200],
+            )
+            return {"notified": False, "reason": f"slack_relay rc={result.returncode}"}
+    except Exception:  # noqa: BLE001 — notification must never break the lifecycle
+        logger.exception("chain_complete: slack_relay raised for chain=%s", req.chain_id)
+        return {"notified": False, "reason": "exception"}
+    logger.info("chain_complete: notified #ceo task=%s chain=%s", req.task_id, req.chain_id)
+    return {"notified": True}
+
+
+# ---------------------------------------------------------------------------
 # /dispatcher/persona — role system-prompt lookup (persona_bank_v1)
 #
 # V1 chain roles (face/deliberator/worker/reviewer) fetch their system prompt

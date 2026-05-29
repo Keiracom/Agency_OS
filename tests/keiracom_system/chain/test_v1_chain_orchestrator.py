@@ -410,3 +410,183 @@ def test_advance_step_unrecognized_step_returns_empty_and_logs_warning(
     assert envelopes == []
     assert len(fake_nats.published) == 0
     assert "no known next for completed_step=garbage_step" in caplog.text
+
+
+# ─── Final #ceo post on complete (Agency_OS-zqni) ─────────────────────────────
+
+
+def test_advance_step_final_post_fires_on_chain_complete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """When the last parallel partner completes, _post_chain_complete is called once."""
+    fake_nats = _fake_nats_module()
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+
+    posts: list[tuple] = []
+    monkeypatch.setattr(
+        orch, "_post_chain_complete", lambda entry, chain_id: posts.append((entry, chain_id))
+    )
+
+    chain_id = "chain-final-post"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": "t-zq",
+            "brief": "wire X to Y",
+            "started_ts": 0.0,
+            "current_step": "atlas_safety",
+            "steps_done": ["aiden_plan", "max_challenge", "nova_build", "orion_spec"],
+            "atom_ids": {
+                "aiden_plan": "a1",
+                "max_challenge": "a2",
+                "nova_build": "a3",
+                "orion_spec": "a4",
+            },
+            "pending": ["atlas_safety"],
+        },
+    )
+
+    with patch.dict("sys.modules", {"nats": fake_nats}):
+        orch.advance_step(chain_id, "atlas_safety", "atom-atlas")
+
+    assert len(posts) == 1
+    entry, posted_chain_id = posts[0]
+    assert posted_chain_id == chain_id
+    assert entry["task_id"] == "t-zq"
+    assert entry["brief"] == "wire X to Y"
+    assert entry["current_step"] == "complete"
+
+
+def test_advance_step_intermediate_does_not_post_to_ceo(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Intermediate transitions (e.g. aiden_plan → max_challenge) must NOT post to #ceo."""
+    fake_nats = _fake_nats_module()
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+
+    posts: list = []
+
+    def boom_post(_entry, _chain_id):
+        posts.append(True)
+        raise AssertionError("_post_chain_complete MUST NOT be called for intermediate steps")
+
+    monkeypatch.setattr(orch, "_post_chain_complete", boom_post)
+
+    chain_id = "chain-intermediate"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": "t-int",
+            "brief": "in flight",
+            "started_ts": 0.0,
+            "current_step": "aiden_plan",
+            "steps_done": [],
+            "atom_ids": {},
+            "pending": [],
+        },
+    )
+
+    with patch.dict("sys.modules", {"nats": fake_nats}):
+        orch.advance_step(chain_id, "aiden_plan", "atom-aiden", clock=lambda: 2.0)
+
+    assert posts == []  # final post never invoked
+
+
+def test_advance_step_final_post_failure_does_not_break_completion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """A raising _post_chain_complete must NOT abort advance_step (fail-open guard)."""
+    fake_nats = _fake_nats_module()
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+
+    def boom_post(_entry, _chain_id):
+        raise RuntimeError("slack down")
+
+    monkeypatch.setattr(orch, "_post_chain_complete", boom_post)
+
+    chain_id = "chain-failopen"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": "t-fo",
+            "brief": "fail-open",
+            "started_ts": 0.0,
+            "current_step": "atlas_safety",
+            "steps_done": ["aiden_plan", "max_challenge", "nova_build", "orion_spec"],
+            "atom_ids": {
+                "aiden_plan": "a1",
+                "max_challenge": "a2",
+                "nova_build": "a3",
+                "orion_spec": "a4",
+            },
+            "pending": ["atlas_safety"],
+        },
+    )
+
+    with patch.dict("sys.modules", {"nats": fake_nats}):
+        # Must NOT raise even though _post_chain_complete blows up.
+        envelopes = orch.advance_step(chain_id, "atlas_safety", "atom-atlas")
+
+    assert envelopes == []  # no further dispatch on complete
+    state = json.loads(state_file.read_text())
+    assert state[chain_id]["current_step"] == "complete"  # state still saved
+
+
+def test_advance_step_async_consumer_path_fires_post_chain_complete(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Aiden HOLD: the consumer-loop async path MUST also fire _post_chain_complete.
+
+    Asserts the async _advance_step_async delegates through to the sync code
+    path so the chain-complete post is guaranteed to fire — eliminates the
+    parallel-implementation divergence bug class Aiden caught.
+    """
+    import asyncio
+
+    fake_nats = _fake_nats_module()
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+
+    posts: list = []
+    monkeypatch.setattr(
+        orch, "_post_chain_complete", lambda entry, chain_id: posts.append((entry, chain_id))
+    )
+
+    chain_id = "chain-async-complete"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": "t-async",
+            "brief": "async complete",
+            "started_ts": 0.0,
+            "current_step": "atlas_safety",
+            "steps_done": ["aiden_plan", "max_challenge", "nova_build", "orion_spec"],
+            "atom_ids": {
+                "aiden_plan": "a1",
+                "max_challenge": "a2",
+                "nova_build": "a3",
+                "orion_spec": "a4",
+            },
+            "pending": ["atlas_safety"],
+        },
+    )
+
+    with patch.dict("sys.modules", {"nats": fake_nats}):
+        asyncio.run(orch._advance_step_async(chain_id, "atlas_safety", "atom-atlas"))
+
+    assert len(posts) == 1  # consumer-loop path fired the chain-complete post
+    entry, posted_chain_id = posts[0]
+    assert posted_chain_id == chain_id
+    assert entry["task_id"] == "t-async"
+    assert entry["current_step"] == "complete"

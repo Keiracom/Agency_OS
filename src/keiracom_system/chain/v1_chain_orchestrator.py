@@ -69,9 +69,59 @@ PARALLEL_AFTER_STEP: dict[str, list[str]] = {
 
 log = logging.getLogger(__name__)
 
+# Agency_OS-zqni — final-result #ceo path. Architecture (Scout / Elliot ratified):
+# POST to a dedicated dispatcher endpoint /dispatcher/chain_complete (separate
+# from /task_complete so nd3b's intermediate-step suppression stays clean), the
+# dispatcher centralises cost lookup + Slack formatting + relay. Mirrors the
+# notify_complete → /task_complete urllib pattern in vault/agent_cold_start.py.
+_DISPATCHER_URL = os.environ.get("DISPATCHER_URL", "http://127.0.0.1:4001")
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+
+def _post_chain_complete(
+    entry: dict, chain_id: str, *, dispatcher_url: str = _DISPATCHER_URL
+) -> None:
+    """Agency_OS-zqni — POST to /dispatcher/chain_complete when the chain ends.
+
+    Pairs with nd3b's notify_complete suppression (PR #1337): intermediate per-
+    step task_complete posts are gated off; this single chain-result line is
+    fired by the orchestrator and centralised in the dispatcher (cost lookup,
+    multi-line formatting, Slack relay). Module-level so tests can monkeypatch.
+
+    Fail-open: any error logged + swallowed — a notify failure must NEVER block
+    advance_step or the state save.
+    """
+    import urllib.error  # noqa: PLC0415 — lazy, only the complete-transition path needs it
+    import urllib.request  # noqa: PLC0415
+
+    payload = json.dumps(
+        {
+            "task_id": entry.get("task_id") or "?",
+            "chain_id": chain_id,
+            "brief": entry.get("brief") or "(no brief)",
+            "steps": list(entry.get("steps_done") or []),
+        }
+    ).encode()
+    url = f"{dispatcher_url.rstrip('/')}/dispatcher/chain_complete"
+    try:
+        req = urllib.request.Request(
+            url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 — fixed loopback host
+            log.info(
+                "chain_complete notify: dispatcher status=%d for chain=%s", resp.status, chain_id
+            )
+    except (urllib.error.URLError, OSError):
+        log.warning(
+            "chain_complete notify: dispatcher unreachable for chain=%s", chain_id, exc_info=True
+        )
+    except Exception:  # noqa: BLE001 — must not break advance_step
+        log.warning(
+            "chain_complete notify: unexpected error for chain=%s", chain_id, exc_info=True
+        )
 
 
 def _load_state() -> dict:
@@ -280,6 +330,18 @@ def advance_step(
             # Last parallel step completed → chain is complete.
             entry["current_step"] = "complete"
             entry["pending"] = []
+            # Agency_OS-zqni — single final #ceo post for the directive.
+            # Belt-and-suspenders fail-open: _post_chain_complete's internal try/except
+            # is the primary guard, but a future refactor or a test-injected fake
+            # MUST NOT abort the state save here.
+            try:
+                _post_chain_complete(entry, chain_id)
+            except Exception:  # noqa: BLE001 — final-post failure must not break state save
+                log.warning(
+                    "v1_chain chain_complete raised at call site for chain=%s",
+                    chain_id,
+                    exc_info=True,
+                )
         elif completed_step in _SEQ_NEXT:
             next_step = _SEQ_NEXT[completed_step]
             if next_step is not None:
@@ -297,6 +359,32 @@ def advance_step(
 
     _save_state(state)
     return dispatched
+
+
+async def _advance_step_async(
+    chain_id: str,
+    completed_step: str,
+    atom_id: str,
+    *,
+    clock: Callable[[], float] = time.time,
+) -> list[dict]:
+    """Async entrypoint for the V1 consumer loop (Atlas oevr) — Aiden HOLD fix.
+
+    Delegates to the sync advance_step via asyncio.to_thread so the completion
+    branch ALWAYS fires _post_chain_complete via the exact same code path the
+    sync caller uses. Parity-by-delegation eliminates the parallel-implementation
+    divergence bug class Aiden caught on PR #1340 — there can never be a "the
+    sync path calls _post_chain_complete but the async path forgot" failure,
+    because there is only one path.
+
+    State I/O (state file read/write) and the urllib POST in _post_chain_complete
+    are I/O-bound, so running them on a worker thread is the correct shape:
+    advance_step returns when the dispatch + state-save + chain-complete-post
+    are all done, and the event loop is not blocked during the urllib POST.
+    """
+    return await asyncio.to_thread(
+        advance_step, chain_id, completed_step, atom_id, clock=clock
+    )
 
 
 # ---------------------------------------------------------------------------

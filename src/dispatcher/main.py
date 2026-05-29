@@ -51,6 +51,7 @@ from src.keiracom_system.attribution.logger import (
     SpawnAttributionEntry,
     log_spawn_attribution,
 )
+from src.keiracom_system.work_loop import integration as work_loop
 from src.relay.budget_ceiling import (
     PRIORITY_NORMAL,
     SOURCE_DAVE_DM,
@@ -227,6 +228,21 @@ workflow_recall_enabled: bool = os.environ.get(_WORKFLOW_RECALL_ENABLED_ENV, "")
     "yes",
 }
 _workflow_recall = WorkflowRecallContext()
+
+# Work-loop reconcile background task (Agency_OS-innu). OFF by default — matches
+# every other dispatcher gate in rollout phase 1, and keeps the loop dormant
+# until the budget-gate go-live. CRITICAL: when ON, the lifespan starts a forever
+# loop that connects to Valkey via get_consumer(); leaving it unconditionally-on
+# made the 8 TestClient dispatcher tests await an absent Valkey in CI (hang →
+# 27-min kill), since no pytest timeout is configured (Agency_OS-28ai root cause).
+_WORK_LOOP_RECONCILE_ENABLED_ENV = "DISPATCHER_WORK_LOOP_RECONCILE_ENABLED"
+work_loop_reconcile_enabled: bool = os.environ.get(
+    _WORK_LOOP_RECONCILE_ENABLED_ENV, ""
+).lower() in {
+    "1",
+    "true",
+    "yes",
+}
 
 
 def _spawn_kwargs_source_type(sk: dict) -> str:
@@ -442,13 +458,23 @@ async def _lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     rp_task = asyncio.create_task(_reaper_loop(_reaper), name="dispatcher-reaper")
     logger.info("KEI-213 reaper: background task started")
 
+    # Step 6 — work-loop reconcile (Agency_OS-innu): reclaim crashed-agent slots
+    # whose lease TTL lapsed (the exit hook only covers clean terminations).
+    # Gated OFF by default — only runs once the loop goes live (post budget-gate);
+    # otherwise it would connect to an absent Valkey (e.g. CI) and hang (28ai).
+    background_tasks = [wd_task, rp_task]
+    if work_loop_reconcile_enabled:
+        rc_task = asyncio.create_task(work_loop.reconcile_loop(), name="work-loop-reconcile")
+        background_tasks.append(rc_task)
+        logger.info("work-loop: reconcile background task started")
+
     try:
         yield
     finally:
         # Graceful shutdown — cancel tasks and wait for clean exit
-        for task in (wd_task, rp_task):
+        for task in background_tasks:
             task.cancel()
-        await asyncio.gather(wd_task, rp_task, return_exceptions=True)
+        await asyncio.gather(*background_tasks, return_exceptions=True)
         logger.info("KEI-213 dispatcher: background tasks cancelled cleanly")
 
 
@@ -661,7 +687,13 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
         manager.terminate(handle)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    _spawned[req.key] = {"handle": handle, "backend": backend}
+    _spawned[req.key] = {
+        "handle": handle,
+        "backend": backend,
+        # Retained for the work-loop exit hook (Agency_OS-innu): release the
+        # tenant slot + pop overflow on terminate. None when not a work-loop spawn.
+        "tenant_id": (req.spawn_kwargs or {}).get("tenant_id"),
+    }
 
     # Bounded-spawn enforcement (Agency_OS-gcpm / Audit RED-7).
     # Runs AFTER register so the active-slot record reflects what's actually
@@ -742,4 +774,9 @@ async def dispatcher_terminate(req: TerminateRequest) -> dict[str, Any]:
     # callsign is treated as the first task on a fresh slot, not a violation.
     if _bounded_spawn_enforcer is not None:
         _bounded_spawn_enforcer.release_spawn(req.key)
+    # Work-loop exit hook (Agency_OS-innu): free the tenant slot → pop overflow →
+    # spawn next. Fail-open inside release_on_exit; never breaks teardown.
+    tenant_id = entry.get("tenant_id")
+    if tenant_id:
+        await work_loop.release_on_exit(str(tenant_id), req.key)
     return {"terminated": True, "key": req.key, "watchdog_tracked": _watchdog.tracked}

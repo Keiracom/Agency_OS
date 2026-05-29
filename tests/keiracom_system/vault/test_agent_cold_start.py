@@ -42,15 +42,32 @@ def test_compose_prompt_tolerates_missing_optionals():
 
 
 def test_fetch_task_found_maps_columns():
-    conn, _ = _fake_conn(fetchone=("t-1", "Title", "Desc", "build", 2, None))
+    conn, cur = _fake_conn(fetchone=("t-1", "Title", "Desc", 2, None))
     assert acs.fetch_task("t-1", conn=conn) == {
         "id": "t-1",
         "title": "Title",
         "description": "Desc",
-        "task_type": "build",
         "priority": 2,
         "acceptance_criteria": None,
     }
+    # regression guard: public.tasks has NO task_type column — must not be selected
+    assert "task_type" not in cur.execute.call_args[0][0]
+
+
+def test_run_sets_task_type_from_env(monkeypatch):
+    # task_type is not a tasks column; it must come from the AGENT_TASK_TYPE env var.
+    monkeypatch.setenv("AGENT_TASK_ID", "t-1")
+    monkeypatch.setenv("AGENT_TASK_TYPE", "review")
+    monkeypatch.setattr(acs.sys, "argv", ["agent_cold_start"])
+    seen = {}
+    acs.run(
+        resolve=lambda: None,
+        fetch=lambda _t: {"id": "t-1", "acceptance_criteria": None},
+        claim=lambda _t, _c: True,
+        agent=lambda prompt: seen.update(prompt=prompt) or 0,
+        finalize=lambda *a: None,
+    )
+    assert "review" in seen["prompt"]  # AGENT_TASK_TYPE flowed into the prompt
 
 
 def test_fetch_task_absent_returns_none():

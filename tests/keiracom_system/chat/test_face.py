@@ -199,3 +199,34 @@ def test_dispatch_to_aiden_fail_open_on_nats_error(monkeypatch):
 
     # Must not raise; must return False.
     assert face._dispatch_to_aiden(brief="x", task_id="t-2") is False
+
+
+def test_respond_task_uses_face_task_id_when_set(monkeypatch):
+    """FACE_TASK_ID env from the dispatcher is used as the dispatch task_id,
+    so Aiden's work is attributable back to the original Postgres tasks row
+    (PR #1312 cost-attribution path)."""
+    calls: list[dict[str, Any]] = []
+
+    def _ok(**kw: Any) -> bool:
+        calls.append(kw)
+        return True
+
+    monkeypatch.setattr(face, "FACE_TASK_ID", "t-9999")
+    reply = face._respond(_ctx("task"), "set up X", dispatch=_ok)
+    assert "Dispatching to Aiden" in reply
+    assert calls[0]["task_id"] == "t-9999"
+
+
+def test_respond_task_falls_back_to_uuid4_when_face_task_id_unset(monkeypatch):
+    """When FACE_TASK_ID is None, manual invocations still work — task_id is
+    a fresh uuid4 string."""
+    calls: list[dict[str, Any]] = []
+
+    def _ok(**kw: Any) -> bool:
+        calls.append(kw)
+        return True
+
+    monkeypatch.setattr(face, "FACE_TASK_ID", None)
+    face._respond(_ctx("task"), "x", dispatch=_ok)
+    tid = calls[0]["task_id"]
+    assert isinstance(tid, str) and len(tid) == 36 and tid.count("-") == 4

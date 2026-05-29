@@ -57,6 +57,13 @@ MAX_HISTORY = 5  # recent user turns fed to the classifier
 NATS_URL = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
 DISPATCH_SUBJECT = "keiracom.dispatch.aiden"
 DISPATCH_TO = "aiden"
+# Original Postgres tasks.id from the dispatcher at spawn — used as task_id so
+# Aiden's work (and downstream cost attribution per PR #1312 task_complete) can
+# be tracked back to the originating tasks row. Falls back to a fresh uuid4 in
+# manual invocations so `python3 -m ...face` still runs.
+# TODO Companion change: dispatcher must set FACE_TASK_ID=<tasks.id> in the
+# spawn env (see zr7e.5).
+FACE_TASK_ID = os.environ.get("FACE_TASK_ID")
 
 ClassifyFn = Callable[[str, int, list[str]], ChatContextResult]
 SaveFn = Callable[[list[dict[str, str]], int], Awaitable[ExitCycleResult]]
@@ -140,7 +147,7 @@ def _respond(
     if result.classification == "ambiguous":
         return "Escalating to a deliberator — not enough context to route this."
     if result.classification == "task":
-        task_id = str(uuid.uuid4())
+        task_id = FACE_TASK_ID or str(uuid.uuid4())
         if dispatch(brief=message, task_id=task_id, atom_id=None):
             return f"Dispatching to Aiden (deliberator). Briefed on: {message[:100]}"
         return "Dispatch failed — try again."

@@ -20,6 +20,7 @@ bd: Agency_OS-8416
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import subprocess
 import time
@@ -46,6 +47,7 @@ def handle_envelope(
     mode: str,
     claude_bin: str | None = None,
     resume_context: Mapping[str, Any] | None = None,
+    envelope: Mapping[str, Any] | None = None,
     popen: Any = subprocess.Popen,
     clock: Any = time,
 ) -> dict[str, Any]:
@@ -85,12 +87,32 @@ def handle_envelope(
         result["mode"] = MODE_NOOP
         return result
 
+    # Agency_OS-0bgt — env-from-envelope auto-injection. Mirrors the
+    # src/dispatcher/main.py spawn_kwargs translator (lines 441-443 +
+    # 513-515): each non-None envelope field becomes AGENT_<KEY>=<value> in
+    # the spawned process env. Future-proofs the per-callsign Path A for any
+    # consumer that reads AGENT_* (e.g. an agent_cold_start invocation, or a
+    # persona-level CHAIN_STEP-aware behavior).
+    #
+    # Orion caveat (bd Agency_OS-0bgt 2026-05-29): this Path A spawns `claude`
+    # directly, NOT agent_cold_start — so the var lands in the spawned process
+    # env but the nd3b notify-suppression gate (which reads CHAIN_STEP /
+    # AGENT_CHAIN_STEP inside agent_cold_start.run) does NOT fire here. The
+    # injection is parity-friendly plumbing; full dress-rehearsal cleanliness on
+    # this path needs a separate architecture call (refactor _spawn.py to run
+    # agent_cold_start, or persona-level CHAIN_STEP awareness).
+    env = dict(os.environ)
+    if envelope:
+        for k, v in envelope.items():
+            if v is not None:
+                env.setdefault(f"AGENT_{k.upper()}", str(v))
     proc = popen(
         [binary],
         stdin=subprocess.PIPE,
         stdout=subprocess.PIPE,
         stderr=subprocess.PIPE,
         text=True,
+        env=env,
     )
     # Write the composed prompt to stdin + close. Caller (dispatcher_main)
     # decides whether to wait() or fire-and-forget.

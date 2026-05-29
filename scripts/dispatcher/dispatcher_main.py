@@ -112,6 +112,7 @@ def main(
             inbox_root=inbox_root,
             mode=mode,
             resume_context=resume_ctx,
+            envelope=envelope,  # Agency_OS-0bgt — env-from-envelope auto-injection
         )
     return 0
 

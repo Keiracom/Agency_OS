@@ -38,15 +38,11 @@ import urllib.request
 from pathlib import Path
 
 # Slack access restricted to elliot only (Dave directive 2026-05-19 — only elliot
-# may post to Slack; default channel is #ceo). Other callsigns invoking this
-# script exit 2 with a clear denial message so callers know access was blocked.
+# may post to Slack; default channel is #ceo). Resolved non-elliot callsigns are
+# REDIRECTED to NATS (keiracom.elliot.inbox) rather than being denied at import
+# time — this keeps the module import side-effect-free so the redirect can happen
+# inside main() after args are parsed (Agency_OS-rlfh part 2).
 _CALLSIGN_ENFORCE = os.environ.get("CALLSIGN", "").strip().lower()
-if _CALLSIGN_ENFORCE and _CALLSIGN_ENFORCE != "elliot":
-    sys.stderr.write(
-        f"SLACK_ACCESS_DENIED: callsign={_CALLSIGN_ENFORCE!r} blocked. "
-        f"Only elliot may post to Slack per Dave directive 2026-05-19.\n"
-    )
-    sys.exit(2)
 # Elliot's default channel is #ceo (C0B2PM3TV0B), not #execution. Override the
 # module-default SLACK_DEFAULT_CHANNEL when running as elliot and no explicit
 # channel was set in the environment.
@@ -425,8 +421,79 @@ def _maybe_escalate_to_ceo(channel: str, text: str, callsign: str) -> None:
         print(f"KEI-80 WARN: CEO escalation post failed: {exc}", file=sys.stderr)
 
 
+def _redirect_to_nats(callsign: str, channel: str, message: str) -> int:
+    """Redirect a non-elliot Slack call to NATS keiracom.elliot.inbox.
+
+    Agency_OS-rlfh part 2: non-elliot callsigns must NEVER reach Slack.
+    Instead, publish the message as an envelope on Elliot's NATS inbox
+    subject so Elliot can decide what (if anything) to forward to Slack.
+
+    Returns 0 on successful publish, 1 on any failure. Mirrors the
+    supervisor_wake_publish pattern: lazy nats import + asyncio.run.
+    """
+    subject = os.environ.get("ELLIOT_INBOX_SUBJECT", "keiracom.elliot.inbox")
+    url = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
+    envelope = {
+        "from": callsign,
+        "kind": "relay_redirect",
+        "summary": message,
+        "requested_channel": channel,
+        "ts": time.time(),
+    }
+    payload = json.dumps(envelope).encode("utf-8")
+
+    async def _publish() -> int:
+        try:
+            import nats  # lazy — keeps module importable on hosts without nats-py
+        except ImportError as exc:
+            print(
+                f"NATS_REDIRECT_ERROR: nats-py not installed; cannot redirect "
+                f"callsign={callsign!r} message to NATS ({exc})",
+                file=sys.stderr,
+            )
+            return 1
+        try:
+            # max_reconnect_attempts=1 + reconnect_time_wait=0 → single attempt,
+            # fail fast without reconnect loop (nats-py: value=0 means "never
+            # discard server" per its source; =1 means discard after 1 retry).
+            nc = await nats.connect(
+                url, connect_timeout=5, max_reconnect_attempts=1, reconnect_time_wait=0
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"NATS_REDIRECT_ERROR: connect failed url={url!r} callsign={callsign!r}: {exc}",
+                file=sys.stderr,
+            )
+            return 1
+        try:
+            await nc.publish(subject, payload)
+            await nc.flush(timeout=5)
+            print(
+                f"redirected tg->NATS callsign={callsign} subject={subject} chars={len(message)}",
+                file=sys.stderr,
+            )
+        except Exception as exc:  # noqa: BLE001
+            print(
+                f"NATS_REDIRECT_ERROR: publish failed subject={subject!r} callsign={callsign!r}: {exc}",
+                file=sys.stderr,
+            )
+            await nc.close()
+            return 1
+        await nc.close()
+        return 0
+
+    import asyncio
+
+    return asyncio.run(_publish())
+
+
 def main() -> int:
     channel, message = parse_args(sys.argv[1:])
+    # Agency_OS-rlfh part 2: resolved non-elliot callsigns redirect to NATS.
+    # parse_args() guarantees message is non-empty (exits 2 otherwise).
+    # This guard runs BEFORE any Slack path — non-elliot NEVER reaches Slack.
+    if CALLSIGN and CALLSIGN != "elliot":
+        return _redirect_to_nats(CALLSIGN, channel, message)
     # KEI-33 — R13 BLOCKER ESCALATION. Runs FIRST so the channel-swap is
     # visible to every downstream gate (R11 #ceo-format, KEI-80 additive
     # escalation). Redirect is a no-op for clone callsigns and for

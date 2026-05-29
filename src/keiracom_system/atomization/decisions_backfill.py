@@ -6,12 +6,15 @@ each into AtomV1 (DecisionsAtomizer), and ingests the atoms into the Hindsight
 `fleet_decisions` bank — so a freshly-spawned agent recalls the full decision
 history, not just atoms written after live atomization came online.
 
-Built ahead of Orion's live AtomV1 writer (Agency_OS-d0kh). `atom_to_hindsight_item`
-is the FORMAT-MATCH SEAM: it must serialize an AtomV1 the same way the live
-writer does. RECONCILE the mapping below with d0kh before the live run; the
-`--execute` path is gated so it cannot run against prod until that confirm lands.
+Format is RECONCILED with the live writer: `atom_to_hindsight_item` +
+`default_hindsight_ingest` are imported from the one-source seam
+`atomization/hindsight_writer.py` (Orion PR #1292 / Agency_OS-9goi) — literally
+the same functions the live exit-cycle writer uses, so backfilled and live atoms
+are byte-identical (only `source` differs: decisions_backfill vs live_spawn_exit).
 
-Default is dry-run (enumerate + plan, no LLM spend, no Hindsight write).
+Default is dry-run (enumerate + plan, no LLM spend, no Hindsight write). The
+`--execute` path stays gated behind `--confirmed-atom-format` as an explicit
+operator go-ahead before a real prod backfill run.
 """
 
 from __future__ import annotations
@@ -19,7 +22,6 @@ from __future__ import annotations
 import argparse
 import json
 import logging
-import os
 import sys
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass, field
@@ -30,56 +32,24 @@ from src.keiracom_system.atomization.decision_sources import (
     DecisionSource,
     iter_all_decision_sources,
 )
+
+# ONE-SOURCE seam (Elliot mandate; Orion PR #1292 / Agency_OS-9goi): the AtomV1→
+# Hindsight item mapping + ingest live in exactly ONE place so the live exit-cycle
+# writer and this backfill are byte-identical. atom_to_hindsight_item defaults
+# source="decisions_backfill" (our provenance); the live writer passes
+# source="live_spawn_exit" — the only field that differs. The shared converter
+# str()s schema_version (Hindsight 422s on non-string metadata) — fixes the
+# int-schema_version bug that would have failed every backfilled atom on --execute.
+from src.keiracom_system.atomization.hindsight_writer import (
+    DEFAULT_BANK,
+    atom_to_hindsight_item,
+    default_hindsight_ingest,
+)
 from src.keiracom_system.atomization.schema import AtomV1
 
 logger = logging.getLogger(__name__)
 
-DEFAULT_BANK = "fleet_decisions"
-HINDSIGHT_BASE = os.environ.get("HINDSIGHT_BASE", "http://localhost:8889")
-HINDSIGHT_TENANT = os.environ.get("HINDSIGHT_TENANT_SLUG", "default")
 IngestFn = Callable[[str, list[dict[str, Any]]], None]
-
-
-def atom_to_hindsight_item(atom: AtomV1) -> dict[str, Any]:
-    """Serialize an AtomV1 into a Hindsight memory item.
-
-    ⚠ FORMAT-MATCH SEAM (Agency_OS-d0kh): this must mirror the live writer's
-    AtomV1→item mapping exactly, or backfilled atoms diverge from live atoms in
-    the same bank. Reconcile before the --execute run. Reference mapping:
-      content  = atom.content (the decision statement; what recall ranks on)
-      tags     = ["atom_v1", state, schema_vN] + composition-tag axis values
-      metadata = the full structured atom (so retrieval keeps trigger/provenance)
-    """
-    ct = atom.composition_tags or {}
-    tags = ["atom_v1", f"state:{atom.state}", f"schema_v{atom.schema_version}"]
-    tags += [v for v in (ct.get("domain"), ct.get("concern"), ct.get("applicable_context")) if v]
-    metadata = {
-        "atom_id": str(atom.atom_id),
-        "tenant_id": str(atom.tenant_id),
-        "schema_version": atom.schema_version,
-        "state": atom.state,
-        "trigger_condition": json.dumps(atom.trigger_condition),
-        "anti_pattern": atom.anti_pattern or "",
-        "example": atom.example or "",
-        "provenance": json.dumps(atom.provenance),
-        "composition_tags": json.dumps(ct),
-        "source": "decisions_backfill",
-    }
-    return {"content": atom.content, "tags": tags, "metadata": metadata}
-
-
-def default_hindsight_ingest(bank: str, items: list[dict[str, Any]]) -> None:
-    """POST items to the Hindsight bank (synchronous retain). Live path only."""
-    from urllib import request as urlrequest
-
-    body = json.dumps({"items": items, "async": False}).encode()
-    url = f"{HINDSIGHT_BASE}/v1/{HINDSIGHT_TENANT}/banks/{bank}/memories"
-    req = urlrequest.Request(
-        url, data=body, method="POST", headers={"Content-Type": "application/json"}
-    )
-    with urlrequest.urlopen(req, timeout=120) as resp:
-        if resp.status >= 300:
-            raise RuntimeError(f"hindsight ingest HTTP {resp.status} for bank {bank}")
 
 
 @dataclass

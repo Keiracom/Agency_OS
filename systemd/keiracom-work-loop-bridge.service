@@ -1,0 +1,34 @@
+[Unit]
+# Work-loop producer bridge (Agency_OS-nkc0). LISTENs on the Postgres
+# 'task_event' channel (kei45_emit_task_event trigger) and publishes
+# new_available events to Valkey keiracom:tasks:available — the missing
+# Postgres→Valkey link that feeds the consumer.
+#
+# Singleton. Enable with:
+#   systemctl --user enable --now keiracom-work-loop-bridge.service
+#
+# NOT ENABLED AT MERGE TIME: live smoke held pending Dave's budget-gate decision
+# (same hold as the consumer unit). Land the unit; enable only after that.
+Description=Keiracom work-loop producer bridge (Postgres task_event → Valkey)
+Documentation=https://github.com/Keiracom/Agency_OS
+After=network-online.target
+Wants=network-online.target
+StartLimitBurst=5
+StartLimitIntervalSec=300
+
+[Service]
+Type=simple
+EnvironmentFile=/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+ExecStart=/usr/bin/python3 -B -m src.keiracom_system.work_loop.bridge
+
+# P11 (Agency_OS-c2xk): always restart — a long-running loop driver must never
+# stay down (Restart=always covers clean exits too, not just failures).
+Restart=always
+RestartSec=10
+
+StandardOutput=append:/home/elliotbot/clawd/logs/keiracom-work-loop-bridge.log
+StandardError=append:/home/elliotbot/clawd/logs/keiracom-work-loop-bridge.log
+
+[Install]
+WantedBy=default.target

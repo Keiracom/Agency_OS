@@ -696,13 +696,23 @@ def _execute_atomic_complete(
     not claimed by the caller (caller-side rollback expected)."""
     import uuid as _uuid
 
+    # Resolve actual Supabase UUID — task_id may be a Beads bd_id (e.g. Agency_OS-evbn)
+    # which is not present in public.tasks.id. The FK on task_verifications requires
+    # the real UUID, not the bd_id string.
+    cur.execute(
+        "SELECT id FROM public.tasks WHERE id = %s OR bd_id = %s",
+        (task_id, task_id),
+    )
+    id_row = cur.fetchone()
+    supabase_id = id_row[0] if id_row else task_id  # fall back to task_id if not found
+
     cur.execute(
         """
         INSERT INTO public.task_verifications
                (id, task_id, verified_by, behavioral_test, test_output, created_at)
         VALUES (%s, %s, %s, %s, %s, NOW())
         """,
-        (str(_uuid.uuid4()), task_id, callsign, behavioral_test, canonical_str),
+        (str(_uuid.uuid4()), supabase_id, callsign, behavioral_test, canonical_str),
     )
     cur.execute(
         """

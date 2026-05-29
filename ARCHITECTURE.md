@@ -74,6 +74,11 @@ Agency OS and its entire vendor stack are NOT called from Keiracom V1.0. If a ne
 - Salesforge (email outreach), Unipile (LinkedIn), ElevenAgents (voice), Telnyx (SMS)
 - Vapi, Resend (Agency OS-era outreach surfaces)
 
+**Retired memory engine — COGNEE (retired ~2026-05-26, Dave directive 2026-05-29):**
+- Cognee was the memory engine evaluated and run during MAL V1 deliberation (pre-Hindsight adoption).
+- Superseded by Hindsight (Vectorize.io MIT) — ratified 2026-05-24 as the V1 engine; Cognee retired when Hindsight went live ~2026-05-26.
+- Do NOT ingest new memories to Cognee. Do NOT call Cognee APIs from V1.0 code. Hindsight is the live engine — see SECTION 5.
+
 **Dead skills** in `skills/` that target dead vendors (audit-and-archive in a separate KEI; this doc establishes the dead-set):
 - `leadmagic`, `dataforseo`, `salesforge-*`, `prospeo`, `unipile-*`, `vapi-*`, `telnyx-*`, `resend-*` for outbound — flag for archival when worker bandwidth allows.
 
@@ -168,8 +173,8 @@ Phase 2 (build) BLOCKS on ALL six clearing, each with verbatim evidence to `#ceo
 3. 🟡 Phase 1.2 Retire Agency OS doc, produce V1.0-aligned architecture doc (THIS DOC, in flight)
 4. 🟡 Phase 1.3 Agent identity audit (Elliot orchestrate; Stage 0 dispatched to Orion 2026-05-24; fwdb v3 dual-concurred)
 5. ⏳ Phase 2.1 Hindsight verification spike (6 items, 1-2 days)
-6. ⏳ Phase 3.1a Cognee OOM watchdog with two-trigger pattern — parallel with 1.2/1.3
-7. ⏳ Phase 3.1b Cognee-vs-Hindsight evaluation spike (after Hindsight spike)
+6. ❌ Phase 3.1a Cognee OOM watchdog — CANCELLED (Cognee retired ~2026-05-26; Hindsight is the live engine; no Cognee watchdog required)
+7. ❌ Phase 3.1b Cognee-vs-Hindsight evaluation spike — CANCELLED (decision made; Hindsight adopted 2026-05-24; Cognee retired; evaluation spike superseded by Phase 2.1 Hindsight verification spike)
 
 ---
 

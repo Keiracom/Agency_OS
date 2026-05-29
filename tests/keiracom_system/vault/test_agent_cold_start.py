@@ -146,6 +146,7 @@ def _run(monkeypatch, *, task_id="t-1", fetch_ret=None, claim_ret=True, agent_rc
         claim=lambda _tid, _cs: claim_ret,
         agent=lambda _p: agent_rc,
         finalize=finalize,
+        save_atoms=lambda *a, **k: None,
     )
     return rc, finalize, calls
 
@@ -248,6 +249,7 @@ def test_run_calls_notify_after_finalize(monkeypatch):
         claim=lambda _t, _c: True,
         agent=lambda _p: 0,
         finalize=lambda *a: None,
+        save_atoms=lambda *a, **k: None,
         notify=lambda *a, **kw: notify_calls.append((a, kw)),
     )
     assert len(notify_calls) == 1
@@ -271,7 +273,65 @@ def test_run_notify_blocked_on_agent_failure(monkeypatch):
         claim=lambda _t, _c: True,
         agent=lambda _p: 2,
         finalize=lambda *a: None,
+        save_atoms=lambda *a, **k: None,
         notify=lambda *a, **kw: notify_calls.append(a),
     )
     assert notify_calls[0][3] == "blocked"
     assert notify_calls[0][4] == 2
+
+
+# ---- save_exit_atoms (AtomV1 memory capture, zr7e.4) ------------------------
+
+
+def test_run_calls_save_atoms_after_finalize_before_notify(monkeypatch):
+    """run() invokes save_atoms once, with (task, rc, status), between
+    finalize and notify."""
+    monkeypatch.setenv("AGENT_TASK_ID", "t-1")
+    monkeypatch.setattr(acs.sys, "argv", ["agent_cold_start"])
+    order = []
+    save_calls = []
+    task = {"id": "t-1", "title": "My Task", "acceptance_criteria": None}
+    acs.run(
+        resolve=lambda: None,
+        fetch=lambda _t: task,
+        claim=lambda _t, _c: True,
+        agent=lambda _p: 0,
+        finalize=lambda *a: order.append("finalize"),
+        save_atoms=lambda *a: (order.append("save"), save_calls.append(a)),
+        notify=lambda *a, **kw: order.append("notify"),
+    )
+    assert order == ["finalize", "save", "notify"]
+    assert save_calls == [(task, 0, "done")]
+
+
+def test_save_exit_atoms_builds_conversation_and_calls_classify(monkeypatch):
+    """save_exit_atoms feeds task brief + completion stamp to classify_and_save
+    with the env/default customer_id."""
+    import src.keiracom_system.chat.exit_cycle as ec
+
+    captured = {}
+
+    async def fake_classify(conversation, customer_id, **kw):
+        captured["conversation"] = conversation
+        captured["customer_id"] = customer_id
+        return MagicMock(skipped_reason=None)
+
+    monkeypatch.setattr(ec, "classify_and_save", fake_classify)
+    monkeypatch.setenv("AGENT_CUSTOMER_ID", "7")
+    acs.save_exit_atoms({"id": "t-9", "title": "Wire X", "description": "Do the thing"}, 0, "done")
+    assert captured["customer_id"] == 7
+    convo = captured["conversation"]
+    assert convo[0]["role"] == "user" and "Do the thing" in convo[0]["content"]
+    assert convo[1]["role"] == "assistant" and "rc=0" in convo[1]["content"]
+
+
+def test_save_exit_atoms_fail_open_on_classify_error(monkeypatch):
+    """An error anywhere in the capture path must be swallowed — never raises."""
+    import src.keiracom_system.chat.exit_cycle as ec
+
+    def boom(*_a, **_k):
+        raise RuntimeError("gemini exploded")
+
+    monkeypatch.setattr(ec, "classify_and_save", boom)
+    # no exception = pass
+    acs.save_exit_atoms({"id": "t-1", "title": "T", "description": "d"}, 1, "blocked")

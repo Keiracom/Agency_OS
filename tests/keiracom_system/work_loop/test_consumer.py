@@ -206,6 +206,94 @@ async def test_renew_lease_keeps_slot_alive():
     assert ttl > 0  # lease still leased after heartbeat
 
 
+# --- crash recovery (Agency_OS-avii) -----------------------------------
+
+
+async def test_reconcile_requeues_crashed_task():
+    """When lease expires, reconcile re-publishes the task to the channel."""
+    r, spawner = _redis(), _Spawner()
+    c = _consumer(r, spawner, ceiling=1)
+    await c.process_task(_msg("task-1"))
+    assert await r.get(wl._active_key("t1")) == "1"
+    # Simulate crash: delete the lease key (TTL expiry)
+    await r.delete(wl._lease_key("t1", "task-1"))
+    # Verify task_raw was stored
+    assert await r.get(wl._task_raw_key("t1", "task-1")) is not None
+    # Stub out the notify helpers so no HTTP calls are made
+    async def _noop_retry(_task_id: str) -> None:
+        pass
+
+    c._notify_crash_retry = _noop_retry
+    # Reconcile should reclaim + re-queue via publish
+    published: list[tuple[str, str]] = []
+    original_publish = r.publish
+
+    async def _capture_publish(channel: str, data: str) -> int:
+        published.append((channel, data))
+        return await original_publish(channel, data)
+
+    r.publish = _capture_publish
+    reclaimed = await c.reconcile("t1")
+    assert reclaimed == 1
+    assert await r.get(wl._active_key("t1")) == "0"
+    assert len(published) == 1
+    assert published[0][0] == wl.TASKS_CHANNEL
+    # crash_attempts counter should be 1
+    assert int(await r.get("keiracom:tasks:crash_attempts:task-1")) == 1
+
+
+async def test_reconcile_dead_letters_after_max_attempts():
+    """After max_attempts crashes, task goes to dead-letter."""
+    r = _redis()
+    notified: list[str] = []
+
+    async def fake_notify_dl(task_id: str) -> None:
+        notified.append(task_id)
+
+    async def fake_notify_retry(_task_id: str) -> None:
+        pass
+
+    c = WorkLoopConsumer(valkey=r, spawn_fn=_Spawner(), ceiling_fn=_ceiling(5), max_attempts=3)
+    c._notify_dead_letter = fake_notify_dl
+    c._notify_crash_retry = fake_notify_retry
+    # Pre-set crash attempts to 2 (next crash = 3 = max)
+    await r.set("keiracom:tasks:crash_attempts:task-x", "2")
+    await r.set(wl._task_raw_key("t1", "task-x"), _msg("task-x"))
+    await c._handle_crashed_task("task-x", _msg("task-x"))
+    # Should be dead-lettered
+    dl = await r.lrange(wl.DEADLETTER_KEY, 0, -1)
+    assert len(dl) == 1
+    assert "task-x" in dl[0]
+    assert notified == ["task-x"]
+    # crash_attempts key should be deleted
+    assert await r.exists("keiracom:tasks:crash_attempts:task-x") == 0
+
+
+async def test_release_slot_deletes_task_raw():
+    """release_slot cleans up the task_raw key."""
+    r = _redis()
+    c = WorkLoopConsumer(valkey=r, spawn_fn=_Spawner(), ceiling_fn=_ceiling(2))
+    await c.process_task(_msg("task-1"))
+    assert await r.exists(wl._task_raw_key("t1", "task-1")) == 1
+    await c.release_slot("t1", "task-1")
+    assert await r.exists(wl._task_raw_key("t1", "task-1")) == 0
+
+
+async def test_reconcile_no_orphan_on_raw_miss():
+    """If task_raw is missing (reconcile-miss), no orphaned slot is left."""
+    r = _redis()
+    c = WorkLoopConsumer(valkey=r, spawn_fn=_Spawner(), ceiling_fn=_ceiling(2))
+    await c.process_task(_msg("task-1"))
+    # Simulate lease expiry AND missing task_raw (e.g. DEL race)
+    await r.delete(wl._lease_key("t1", "task-1"))
+    await r.delete(wl._task_raw_key("t1", "task-1"))
+    reclaimed = await c.reconcile("t1")
+    assert reclaimed == 1
+    assert await r.get(wl._active_key("t1")) == "0"
+    # Nothing dead-lettered since raw was missing
+    assert await r.llen(wl.DEADLETTER_KEY) == 0
+
+
 # --- capacity alert ----------------------------------------------------
 
 

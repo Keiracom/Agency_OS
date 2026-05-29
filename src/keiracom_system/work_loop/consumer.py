@@ -37,8 +37,10 @@ DEFAULT_DISPATCHER_URL = "http://127.0.0.1:4001"  # NOSONAR S5332 loopback (KEI-
 DEFAULT_LEASE_TTL_S = 300  # 5 min slot lease; heartbeat renews it
 LOCK_TTL_S = 300  # dup-spawn lock; renewed alongside the lease
 ATTEMPTS_TTL_S = 3600
+CRASH_ATTEMPTS_TTL_S = 86400  # 24h retention on crash-recovery counter
 DEFAULT_MAX_ATTEMPTS = 3
 DEFAULT_ALERT_THRESHOLD = 0.70  # node-level capacity alert
+_TASK_RAW_PREFIX = "keiracom:tenant:task_raw"
 
 # Dead-letter #ceo notification (Agency_OS-gl3v). A dropped task that no human
 # sees destroys solo-operation trust, so every dead-letter posts to #ceo via
@@ -115,6 +117,11 @@ def _lock_key(task_id: str) -> str:
 
 def _attempts_key(task_id: str) -> str:
     return f"keiracom:tasks:attempts:{task_id}"
+
+
+def _task_raw_key(tenant_id: str, task_id: str) -> str:
+    """Key that stores the original task message for crash-recovery re-queue."""
+    return f"{_TASK_RAW_PREFIX}:{tenant_id}:{task_id}"
 
 
 def _parse(raw: str) -> Task | None:
@@ -209,7 +216,7 @@ class WorkLoopConsumer:
             return False
 
     async def _admit(self, task: Task, ceiling: int) -> int:
-        return int(
+        result = int(
             await self._r.eval(
                 ADMIT_LUA,
                 3,
@@ -221,6 +228,11 @@ class WorkLoopConsumer:
                 task.task_id,
             )
         )
+        if result >= 0:
+            # Store the task message for crash-recovery re-queue.
+            # No TTL — it must survive a lease expiry so reconcile can re-queue.
+            await self._r.set(_task_raw_key(task.tenant_id, task.task_id), task.raw)
+        return result
 
     async def _maybe_alert(self, tenant_id: str, count: int, ceiling: int) -> None:
         if ceiling > 0 and count / ceiling >= self._alert_threshold:
@@ -335,6 +347,7 @@ class WorkLoopConsumer:
             task_id,
         )
         await self._r.delete(_lock_key(task_id))
+        await self._r.delete(_task_raw_key(tenant_id, task_id))  # clean up raw message
         nxt = await self._r.lpop(_overflow_key(tenant_id))
         if nxt is not None:
             await self.process_task(nxt)
@@ -347,14 +360,72 @@ class WorkLoopConsumer:
     async def reconcile(self, tenant_id: str) -> int:
         """Crash recovery: release slots whose lease TTL lapsed (no heartbeat).
 
-        Returns the number of slots reclaimed. Run periodically per active tenant.
+        For each expired lease, the original task message is re-queued (up to
+        max_attempts) or dead-lettered. Returns the number of slots reclaimed.
+        Run periodically per active tenant.
         """
         reclaimed = 0
         for task_id in await self._r.smembers(_leases_set(tenant_id)):
             if not await self._r.exists(_lease_key(tenant_id, task_id)):
+                raw = await self._r.get(_task_raw_key(tenant_id, task_id))
                 await self.release_slot(tenant_id, task_id)
                 reclaimed += 1
+                if raw:
+                    await self._handle_crashed_task(task_id, raw)
         return reclaimed
+
+    async def _handle_crashed_task(self, task_id: str, raw: str) -> None:
+        """Re-queue or dead-letter a task whose agent crashed (lease expired)."""
+        crash_key = f"keiracom:tasks:crash_attempts:{task_id}"
+        attempts = int(await self._r.incr(crash_key))
+        await self._r.expire(crash_key, CRASH_ATTEMPTS_TTL_S)
+        if attempts >= self._max_attempts:
+            await self._dead_letter(raw, f"crash_max_attempts={attempts}")
+            await self._r.delete(crash_key)
+            await self._notify_dead_letter(task_id)
+        else:
+            logger.info(
+                "work-loop: crash recovery requeue task=%s attempt=%d/%d",
+                task_id,
+                attempts,
+                self._max_attempts,
+            )
+            await self._notify_crash_retry(task_id)
+            await self._r.publish(TASKS_CHANNEL, raw)
+
+    async def _notify_dead_letter(self, task_id: str) -> None:
+        """POST /dispatcher/task_dead_letter to mark DB row. Fail-open."""
+        import httpx  # noqa: PLC0415
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                await client.post(
+                    f"{self._dispatcher_url}/dispatcher/task_dead_letter",
+                    json={"task_id": task_id},
+                )
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "work-loop: task_dead_letter notify failed for task=%s",
+                task_id,
+                exc_info=True,
+            )
+
+    async def _notify_crash_retry(self, task_id: str) -> None:
+        """POST /dispatcher/task_crash_retry to increment retry_count in DB. Fail-open."""
+        import httpx  # noqa: PLC0415
+
+        try:
+            async with httpx.AsyncClient(timeout=10.0) as client:
+                await client.post(
+                    f"{self._dispatcher_url}/dispatcher/task_crash_retry",
+                    json={"task_id": task_id},
+                )
+        except Exception:  # noqa: BLE001
+            logger.warning(
+                "work-loop: task_crash_retry notify failed for task=%s",
+                task_id,
+                exc_info=True,
+            )
 
     async def reconcile_all(self) -> int:
         """Reconcile every tenant with a live counter (SCAN). Returns total reclaimed.

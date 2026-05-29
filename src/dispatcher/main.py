@@ -1122,3 +1122,92 @@ async def dispatcher_persona(
             detail=f"no persona for role={role} tier={tier} variant={variant}",
         )
     return persona
+
+
+# ---------------------------------------------------------------------------
+# /dispatcher/task_dead_letter + /dispatcher/task_crash_retry
+# Crash-recovery DB callbacks (Agency_OS-avii). Fail-open — never 5xx.
+# ---------------------------------------------------------------------------
+
+
+class TaskDeadLetterRequest(BaseModel):
+    task_id: str
+
+
+class TaskCrashRetryRequest(BaseModel):
+    task_id: str
+
+
+def _db_dsn() -> str:
+    """Return a psycopg-compatible DSN from DATABASE_URL or SUPABASE_DB_URL."""
+    raw = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
+    return raw.replace("+asyncpg", "").replace("postgresql+asyncpg://", "postgresql://", 1)
+
+
+@app.post("/dispatcher/task_dead_letter")
+async def dispatcher_task_dead_letter(req: TaskDeadLetterRequest) -> dict[str, Any]:
+    """Mark a task as dead-lettered in Postgres after exhausting crash retries.
+
+    Fail-open: DB errors are logged but never returned as 5xx.
+    """
+    import asyncio as _aio  # noqa: PLC0415  # isort:skip
+    import psycopg  # noqa: PLC0415  # isort:skip
+
+    dsn = _db_dsn()
+    if not dsn:
+        logger.warning(
+            "task_dead_letter: no DATABASE_URL — skipping DB update task=%s", req.task_id
+        )
+        return {"updated": False, "reason": "no_dsn"}
+    try:
+
+        def _update() -> int:
+            with psycopg.connect(dsn, prepare_threshold=None) as conn, conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE public.tasks SET dead_lettered_at = NOW(), "
+                    "retry_count = retry_count + 1 "
+                    "WHERE id = %s AND dead_lettered_at IS NULL",
+                    (req.task_id,),
+                )
+                conn.commit()
+                return cur.rowcount
+
+        rowcount = await _aio.get_running_loop().run_in_executor(None, _update)
+        logger.info("task_dead_letter: updated %d row(s) for task=%s", rowcount, req.task_id)
+        return {"updated": rowcount > 0}
+    except Exception:  # noqa: BLE001
+        logger.exception("task_dead_letter: DB error for task=%s", req.task_id)
+        return {"updated": False, "reason": "exception"}
+
+
+@app.post("/dispatcher/task_crash_retry")
+async def dispatcher_task_crash_retry(req: TaskCrashRetryRequest) -> dict[str, Any]:
+    """Increment retry_count on a crashed task row. Returns new count.
+
+    Fail-open: never 5xx.
+    """
+    import asyncio as _aio  # noqa: PLC0415
+
+    import psycopg  # noqa: PLC0415
+
+    dsn = _db_dsn()
+    if not dsn:
+        return {"retry_count": -1, "reason": "no_dsn"}
+    try:
+
+        def _update() -> int:
+            with psycopg.connect(dsn, prepare_threshold=None) as conn, conn.cursor() as cur:
+                cur.execute(
+                    "UPDATE public.tasks SET retry_count = retry_count + 1 "
+                    "WHERE id = %s RETURNING retry_count",
+                    (req.task_id,),
+                )
+                row = cur.fetchone()
+                conn.commit()
+                return row[0] if row else 0
+
+        count = await _aio.get_running_loop().run_in_executor(None, _update)
+        return {"retry_count": count}
+    except Exception:  # noqa: BLE001
+        logger.exception("task_crash_retry: DB error for task=%s", req.task_id)
+        return {"retry_count": -1, "reason": "exception"}

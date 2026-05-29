@@ -418,14 +418,14 @@ def test_advance_step_unrecognized_step_returns_empty_and_logs_warning(
 def test_advance_step_final_post_fires_on_chain_complete(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """When the last parallel partner completes, _post_final_to_ceo is called once."""
+    """When the last parallel partner completes, _post_chain_complete is called once."""
     fake_nats = _fake_nats_module()
     state_file = tmp_path / "v1_chain_state.json"
     monkeypatch.setattr(orch, "STATE_FILE", state_file)
 
     posts: list[tuple] = []
     monkeypatch.setattr(
-        orch, "_post_final_to_ceo", lambda entry, chain_id: posts.append((entry, chain_id))
+        orch, "_post_chain_complete", lambda entry, chain_id: posts.append((entry, chain_id))
     )
 
     chain_id = "chain-final-post"
@@ -472,9 +472,9 @@ def test_advance_step_intermediate_does_not_post_to_ceo(
 
     def boom_post(_entry, _chain_id):
         posts.append(True)
-        raise AssertionError("_post_final_to_ceo MUST NOT be called for intermediate steps")
+        raise AssertionError("_post_chain_complete MUST NOT be called for intermediate steps")
 
-    monkeypatch.setattr(orch, "_post_final_to_ceo", boom_post)
+    monkeypatch.setattr(orch, "_post_chain_complete", boom_post)
 
     chain_id = "chain-intermediate"
     _seed_state(
@@ -501,7 +501,7 @@ def test_advance_step_intermediate_does_not_post_to_ceo(
 def test_advance_step_final_post_failure_does_not_break_completion(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """A raising _post_final_to_ceo must NOT abort advance_step (fail-open guard)."""
+    """A raising _post_chain_complete must NOT abort advance_step (fail-open guard)."""
     fake_nats = _fake_nats_module()
     state_file = tmp_path / "v1_chain_state.json"
     monkeypatch.setattr(orch, "STATE_FILE", state_file)
@@ -509,7 +509,7 @@ def test_advance_step_final_post_failure_does_not_break_completion(
     def boom_post(_entry, _chain_id):
         raise RuntimeError("slack down")
 
-    monkeypatch.setattr(orch, "_post_final_to_ceo", boom_post)
+    monkeypatch.setattr(orch, "_post_chain_complete", boom_post)
 
     chain_id = "chain-failopen"
     _seed_state(
@@ -533,7 +533,7 @@ def test_advance_step_final_post_failure_does_not_break_completion(
     )
 
     with patch.dict("sys.modules", {"nats": fake_nats}):
-        # Must NOT raise even though _post_final_to_ceo blows up.
+        # Must NOT raise even though _post_chain_complete blows up.
         envelopes = orch.advance_step(chain_id, "atlas_safety", "atom-atlas")
 
     assert envelopes == []  # no further dispatch on complete

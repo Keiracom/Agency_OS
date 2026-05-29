@@ -69,58 +69,59 @@ PARALLEL_AFTER_STEP: dict[str, list[str]] = {
 
 log = logging.getLogger(__name__)
 
-# Agency_OS-zqni — final-result #ceo post path (mirrors the dispatcher's
-# task_complete hook + the consumer dead-letter notify: shell out to
-# scripts/slack_relay.py with CALLSIGN=elliot and -c ceo, fail-open).
-_SLACK_RELAY_SCRIPT = os.path.join(
-    os.environ.get("DISPATCHER_AGENT_WORKDIR", "/home/elliotbot/clawd/Agency_OS"),
-    "scripts",
-    "slack_relay.py",
-)
-_NOTIFY_TIMEOUT_S = 15
+# Agency_OS-zqni — final-result #ceo path. Architecture (Scout / Elliot ratified):
+# POST to a dedicated dispatcher endpoint /dispatcher/chain_complete (separate
+# from /task_complete so nd3b's intermediate-step suppression stays clean), the
+# dispatcher centralises cost lookup + Slack formatting + relay. Mirrors the
+# notify_complete → /task_complete urllib pattern in vault/agent_cold_start.py.
+_DISPATCHER_URL = os.environ.get("DISPATCHER_URL", "http://127.0.0.1:4001")
 
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
 
 
-def _post_final_to_ceo(entry: dict, chain_id: str) -> None:
-    """Agency_OS-zqni — one #ceo post when the V1 chain reaches ``complete``.
+def _post_chain_complete(
+    entry: dict, chain_id: str, *, dispatcher_url: str = _DISPATCHER_URL
+) -> None:
+    """Agency_OS-zqni — POST to /dispatcher/chain_complete when the chain ends.
 
-    Pairs with nd3b's notify_complete suppression (PR #1337): intermediate
-    chain hops suppress, this final post is the single result Dave sees per
-    directive. Module-level so tests can monkeypatch it.
+    Pairs with nd3b's notify_complete suppression (PR #1337): intermediate per-
+    step task_complete posts are gated off; this single chain-result line is
+    fired by the orchestrator and centralised in the dispatcher (cost lookup,
+    multi-line formatting, Slack relay). Module-level so tests can monkeypatch.
 
-    Fail-open: any error is logged and swallowed — a notify failure must NEVER
-    block advance_step or the state save.
+    Fail-open: any error logged + swallowed — a notify failure must NEVER block
+    advance_step or the state save.
     """
-    import subprocess  # noqa: PLC0415 — lazy, only the complete-transition path needs it
-    import sys  # noqa: PLC0415
+    import urllib.error  # noqa: PLC0415 — lazy, only the complete-transition path needs it
+    import urllib.request  # noqa: PLC0415
 
-    task_id = entry.get("task_id") or "?"
-    brief = entry.get("brief") or "(no brief)"
-    msg = (
-        f"✅ [V1-CHAIN] '{brief}' — complete "
-        f"(task={task_id}, chain={chain_id[:8]}). "
-        f"Steps: aiden_plan → max_challenge → nova_build → orion_spec + atlas_safety."
-    )
+    payload = json.dumps(
+        {
+            "task_id": entry.get("task_id") or "?",
+            "chain_id": chain_id,
+            "brief": entry.get("brief") or "(no brief)",
+            "steps": list(entry.get("steps_done") or []),
+        }
+    ).encode()
+    url = f"{dispatcher_url.rstrip('/')}/dispatcher/chain_complete"
     try:
-        result = subprocess.run(
-            [sys.executable, _SLACK_RELAY_SCRIPT, "-c", "ceo", msg],
-            capture_output=True,
-            text=True,
-            timeout=_NOTIFY_TIMEOUT_S,
-            env={**os.environ, "CALLSIGN": "elliot"},
-            check=False,
+        req = urllib.request.Request(
+            url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
         )
-        if result.returncode != 0:
-            log.warning(
-                "v1_chain final-post: slack_relay rc=%d stderr=%r",
-                result.returncode,
-                result.stderr[:200],
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 — fixed loopback host
+            log.info(
+                "chain_complete notify: dispatcher status=%d for chain=%s", resp.status, chain_id
             )
-    except Exception:  # noqa: BLE001 — final-post failure must not break advance_step
-        log.warning("v1_chain final-post raised for chain=%s", chain_id, exc_info=True)
+    except (urllib.error.URLError, OSError):
+        log.warning(
+            "chain_complete notify: dispatcher unreachable for chain=%s", chain_id, exc_info=True
+        )
+    except Exception:  # noqa: BLE001 — must not break advance_step
+        log.warning(
+            "chain_complete notify: unexpected error for chain=%s", chain_id, exc_info=True
+        )
 
 
 def _load_state() -> dict:
@@ -330,14 +331,16 @@ def advance_step(
             entry["current_step"] = "complete"
             entry["pending"] = []
             # Agency_OS-zqni — single final #ceo post for the directive.
-            # Belt-and-suspenders fail-open: _post_final_to_ceo's internal try/except
+            # Belt-and-suspenders fail-open: _post_chain_complete's internal try/except
             # is the primary guard, but a future refactor or a test-injected fake
             # MUST NOT abort the state save here.
             try:
-                _post_final_to_ceo(entry, chain_id)
+                _post_chain_complete(entry, chain_id)
             except Exception:  # noqa: BLE001 — final-post failure must not break state save
                 log.warning(
-                    "v1_chain final-post raised at call site for chain=%s", chain_id, exc_info=True
+                    "v1_chain chain_complete raised at call site for chain=%s",
+                    chain_id,
+                    exc_info=True,
                 )
         elif completed_step in _SEQ_NEXT:
             next_step = _SEQ_NEXT[completed_step]

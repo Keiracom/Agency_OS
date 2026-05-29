@@ -98,3 +98,27 @@ async def test_publish_skips_non_new_available():
         r, json.dumps({"event_type": "completed", "id": "T-6"}), "f"
     )
     assert published is False
+
+
+# --- brief + task_type for the recall arm (Agency_OS-g9xx) -------------
+
+
+def test_maps_title_to_brief():
+    d = json.loads(bridge.task_event_to_message(_new_available("T-7", "atlas"), "f"))
+    assert d["spawn_kwargs"]["brief"] == "do the thing"  # title → brief (feeds spawn_recall)
+
+
+def test_task_type_from_recognized_tag():
+    payload = json.dumps(
+        {"event_type": "new_available", "id": "T-8", "title": "t", "tags": ["research", "urgent"]}
+    )
+    d = json.loads(bridge.task_event_to_message(payload, "f"))
+    assert d["spawn_kwargs"]["task_type"] == "research"
+
+
+def test_task_type_defaults_to_build_without_known_tag():
+    payload = json.dumps(
+        {"event_type": "new_available", "id": "T-9", "title": "t", "tags": ["urgent", "p0"]}
+    )
+    d = json.loads(bridge.task_event_to_message(payload, "f"))
+    assert d["spawn_kwargs"]["task_type"] == bridge.DEFAULT_TASK_TYPE  # build

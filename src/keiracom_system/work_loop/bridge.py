@@ -34,6 +34,11 @@ NEW_AVAILABLE = "new_available"
 DEFAULT_BACKEND = "container"
 DEFAULT_CALLSIGN = "worker"
 DEFAULT_FLEET_TENANT_ID = "default"
+# Recall keys consumed by the dispatcher (spawn_recall): brief + task_type feed
+# the prior-context query. Without them the recall arm queries with an empty
+# brief + default task_type. Task types per the spawn-governance §2 contract.
+KNOWN_TASK_TYPES = ("build", "review", "research", "devops")
+DEFAULT_TASK_TYPE = "build"
 
 
 def _fleet_tenant_id() -> str:
@@ -66,6 +71,9 @@ def task_event_to_message(payload: str | dict[str, Any], fleet_tenant_id: str) -
     if not task_id:
         return None
     task_id = str(task_id)
+    title = d.get("title")
+    tags = d.get("tags") if isinstance(d.get("tags"), list) else []
+    task_type = next((t for t in tags if t in KNOWN_TASK_TYPES), DEFAULT_TASK_TYPE)
     return json.dumps(
         {
             "task_id": task_id,
@@ -74,9 +82,13 @@ def task_event_to_message(payload: str | dict[str, Any], fleet_tenant_id: str) -
             "spawn_kwargs": {
                 "callsign": d.get("claimed_by") or DEFAULT_CALLSIGN,
                 "task_id": task_id,
-                "title": d.get("title"),
+                "title": title,
+                # brief + task_type feed the dispatcher's spawn_recall block so the
+                # recall-active run isn't empty (Agency_OS-g9xx).
+                "brief": title,
+                "task_type": task_type,
                 "priority": d.get("priority"),
-                "tags": d.get("tags"),
+                "tags": tags or None,
             },
         }
     )

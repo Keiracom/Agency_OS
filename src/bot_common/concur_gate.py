@@ -46,6 +46,12 @@ EXECUTION_CHANNEL = "C0B3QB0K1GQ"
 # not `:` after CONCUR), and prose containing the word "concur".
 _GATE_TRIGGER = re.compile(r"\[(?:CONCUR|BLOCK):[a-z][a-z0-9_-]*\]", re.IGNORECASE)
 
+# Canonical 7-callsign roster (mirrors scripts/cache_hit_rate_ingest.py:44).
+# Used by _eligible_reviewers() when ceo:agent_health is absent (Agency_OS-yvlr51).
+_KNOWN_CALLSIGNS: frozenset[str] = frozenset(
+    {"elliot", "aiden", "max", "atlas", "orion", "scout", "nova"}
+)
+
 
 def _pending_dir(callsign: str) -> Path:
     return Path(f"/tmp/{callsign}-pending-concur")
@@ -61,6 +67,23 @@ def _topic_sha(text: str) -> str:
 _ESCALATION_SENTINEL = re.compile(
     r"\[ESCALATION-INITIATED:[a-z][a-z0-9_-]*:[A-Z]+-\d+\]", re.IGNORECASE
 )
+
+
+def _eligible_reviewers(my_callsign: str) -> list[str]:
+    """Return sorted list of peers eligible to release a CONCUR-REQUEST.
+
+    Agency_OS-yvlr51 — when ceo:agent_health is populated by the polling loop
+    (KEI-63 follow-up, not yet shipped), this filters peers by API-cap (<70%
+    weekly), idle window (<30 min), and recent HOLD/BLOCK absence. Until that
+    infrastructure exists, fallback returns ALL non-author callsigns — the
+    release lookup already accepts [CONCUR:<requester>] from any sender, so
+    advertising the full roster keeps routing unblocked when a specific peer
+    is at context cap (the V1-chain freeze scenario Dave diagnosed).
+    """
+    # TODO(yvlr51 follow-up): query ceo:agent_health via mcp-bridge supabase
+    # and filter by (weekly_cap < 70%) AND (idle_minutes < 30) AND
+    # (no_recent_hold_or_block). Fail-open to the fallback on any read error.
+    return sorted(cs for cs in _KNOWN_CALLSIGNS if cs != my_callsign.lower())
 
 
 def should_gate(text: str) -> bool:
@@ -109,8 +132,10 @@ def gate_check(
     pdir.mkdir(parents=True, exist_ok=True)
     (pdir / f"{sha}.txt").write_text(text)
     topic = text.splitlines()[0][:120]
+    eligible = ", ".join(_eligible_reviewers(my_callsign))
     replacement = (
         f"[CONCUR-REQUEST:{my_callsign.upper()}] requesting concurrence from {peer_label} on: {topic}\n"
+        f"Eligible reviewers: {eligible}\n"
         f"(held under /tmp/{my_callsign}-pending-concur/{sha}.txt; release on [CONCUR:{my_callsign}] in #execution)"
     )
     return False, replacement

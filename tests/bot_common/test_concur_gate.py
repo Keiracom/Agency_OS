@@ -318,3 +318,41 @@ def test_topic_sha_different_inputs_different_outputs() -> None:
 def test_topic_sha_length() -> None:
     """12-char prefix of sha1."""
     assert len(concur_gate._topic_sha("anything")) == 12
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# _eligible_reviewers — Agency_OS-yvlr51 routing-fix (CONCUR-REQUEST signaling)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_eligible_reviewers_fallback_when_no_agent_health() -> None:
+    """Agency_OS-yvlr51 negative path — ceo:agent_health absent → all non-author callsigns.
+
+    The polling-loop infra that populates ceo:agent_health (KEI-63 follow-up)
+    does not exist yet. The fallback MUST return the full 7-callsign roster
+    minus the author, so the CONCUR-REQUEST stub advertises every peer that
+    can validly release the gate. This is what unblocks the V1-chain
+    specific-callsign-stuck failure mode Dave diagnosed 2026-05-14.
+    """
+    result = concur_gate._eligible_reviewers("aiden")
+    expected = sorted({"elliot", "max", "atlas", "orion", "scout", "nova"})
+    assert result == expected
+    # Author always excluded, case-insensitive.
+    assert "aiden" not in concur_gate._eligible_reviewers("AIDEN")
+
+
+def test_gate_check_replacement_advertises_eligible_reviewers(tmp_path, monkeypatch) -> None:
+    """CONCUR-REQUEST stub must list eligible non-author peers in its body."""
+    monkeypatch.setattr(concur_gate, "_pending_dir", lambda cs: tmp_path / cs)
+    with patch.object(concur_gate, "has_peer_concur", return_value=False):
+        _, replacement = concur_gate.gate_check(
+            "[CONCUR:max] verified the diff", "aiden", "fake-token"
+        )
+    assert "Eligible reviewers:" in replacement
+    eligible_line = next(
+        ln for ln in replacement.splitlines() if ln.startswith("Eligible reviewers:")
+    )
+    for peer in ("elliot", "max", "atlas", "orion", "scout", "nova"):
+        assert peer in eligible_line
+    # Author not in the eligible-reviewers line itself.
+    assert "aiden" not in eligible_line

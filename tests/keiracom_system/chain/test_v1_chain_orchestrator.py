@@ -425,10 +425,15 @@ def test_advance_step_unrecognized_step_returns_empty_and_logs_warning(
 # ─── Final #ceo post on complete (Agency_OS-zqni) ─────────────────────────────
 
 
-def test_advance_step_final_post_fires_on_chain_complete(
+def test_advance_step_async_final_post_fires_on_chain_complete(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """When the last parallel partner completes, _post_chain_complete is called once."""
+    """When the last parallel partner completes via _advance_step_async,
+    _post_chain_complete fires exactly once. The post lives in the async
+    wrapper now (2026-05-30 race fix) — sync advance_step no longer posts.
+    """
+    import asyncio
+
     _capture_publishes(monkeypatch)
     state_file = tmp_path / "v1_chain_state.json"
     monkeypatch.setattr(orch, "STATE_FILE", state_file)
@@ -459,7 +464,7 @@ def test_advance_step_final_post_fires_on_chain_complete(
         },
     )
 
-    orch.advance_step(chain_id, "atlas_safety", "atom-atlas")
+    asyncio.run(orch._advance_step_async(chain_id, "atlas_safety", "atom-atlas"))
 
     assert len(posts) == 1
     entry, posted_chain_id = posts[0]
@@ -467,6 +472,55 @@ def test_advance_step_final_post_fires_on_chain_complete(
     assert entry["task_id"] == "t-zq"
     assert entry["brief"] == "wire X to Y"
     assert entry["current_step"] == "complete"
+
+
+def test_advance_step_sync_path_does_not_post(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """Sync advance_step MUST NOT post to #ceo — the post is now serialised in
+    _advance_step_async. Calling advance_step directly on a chain that closes
+    should mutate state but never invoke _post_chain_complete (this is the
+    duplicate-#ceo-post race fix, 2026-05-30 Elliot).
+    """
+    _capture_publishes(monkeypatch)
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+
+    posts: list = []
+
+    def boom_post(_entry, _chain_id):
+        posts.append(True)
+        raise AssertionError("sync advance_step MUST NOT call _post_chain_complete")
+
+    monkeypatch.setattr(orch, "_post_chain_complete", boom_post)
+
+    chain_id = "chain-sync-no-post"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": "t-sync",
+            "brief": "sync no post",
+            "started_ts": 0.0,
+            "current_step": "atlas_safety",
+            "steps_done": ["aiden_plan", "max_challenge", "nova_build", "orion_spec"],
+            "atom_ids": {
+                "aiden_plan": "a1",
+                "max_challenge": "a2",
+                "nova_build": "a3",
+                "orion_spec": "a4",
+            },
+            "pending": ["atlas_safety"],
+        },
+    )
+
+    orch.advance_step(chain_id, "atlas_safety", "atom-atlas")
+    assert posts == []  # sync path silent — async wrapper owns the post
+
+    state = json.loads(state_file.read_text())
+    assert state[chain_id]["current_step"] == "complete"
+    # complete_posted should NOT be set by sync path either — the async
+    # wrapper writes that flag when it actually posts.
+    assert state[chain_id].get("complete_posted") is not True
 
 
 def test_advance_step_intermediate_does_not_post_to_ceo(
@@ -506,10 +560,13 @@ def test_advance_step_intermediate_does_not_post_to_ceo(
     assert posts == []  # final post never invoked
 
 
-def test_advance_step_final_post_failure_does_not_break_completion(
+def test_advance_step_async_final_post_failure_does_not_break_completion(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ):
-    """A raising _post_chain_complete must NOT abort advance_step (fail-open guard)."""
+    """A raising _post_chain_complete must NOT abort _advance_step_async
+    (fail-open guard — post moved to async wrapper 2026-05-30)."""
+    import asyncio
+
     _capture_publishes(monkeypatch)
     state_file = tmp_path / "v1_chain_state.json"
     monkeypatch.setattr(orch, "STATE_FILE", state_file)
@@ -541,11 +598,61 @@ def test_advance_step_final_post_failure_does_not_break_completion(
     )
 
     # Must NOT raise even though _post_chain_complete blows up.
-    envelopes = orch.advance_step(chain_id, "atlas_safety", "atom-atlas")
+    envelopes = asyncio.run(orch._advance_step_async(chain_id, "atlas_safety", "atom-atlas"))
 
     assert envelopes == []  # no further dispatch on complete
     state = json.loads(state_file.read_text())
     assert state[chain_id]["current_step"] == "complete"  # state still saved
+    # complete_posted flag set BEFORE the raise, so a retry won't double-post.
+    assert state[chain_id].get("complete_posted") is True
+
+
+def test_advance_step_async_idempotent_post_on_repeated_completion(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Race-safety: calling _advance_step_async twice on a chain whose state
+    already says complete (e.g. a re-delivered NATS message) must NOT post
+    twice. The complete_posted flag in chain state is the de-dup guard.
+    Anchors the triplicate-#ceo-post race fix (Elliot 2026-05-30).
+    """
+    import asyncio
+
+    _capture_publishes(monkeypatch)
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+
+    posts: list = []
+    monkeypatch.setattr(orch, "_post_chain_complete", lambda entry, cid: posts.append((entry, cid)))
+
+    chain_id = "chain-idempotent"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": "t-idem",
+            "brief": "idempotent",
+            "started_ts": 0.0,
+            "current_step": "atlas_safety",
+            "steps_done": ["aiden_plan", "max_challenge", "nova_build", "orion_spec"],
+            "atom_ids": {
+                "aiden_plan": "a1",
+                "max_challenge": "a2",
+                "nova_build": "a3",
+                "orion_spec": "a4",
+            },
+            "pending": ["atlas_safety"],
+        },
+    )
+
+    async def two_calls():
+        await orch._advance_step_async(chain_id, "atlas_safety", "atom-atlas")
+        # Second call on already-complete state — must NOT post again.
+        await orch._advance_step_async(chain_id, "atlas_safety", "atom-atlas")
+
+    asyncio.run(two_calls())
+
+    assert len(posts) == 1  # exactly one post despite two async invocations
 
 
 def test_advance_step_async_consumer_path_fires_post_chain_complete(

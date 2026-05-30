@@ -53,6 +53,7 @@ _VALID_KINDS = {
     "confirmed_pattern",
     "dave_approval",
     "viktor_explanation",
+    "implementation_plan",
 }
 
 CLASSIFY_SYSTEM_PROMPT = (
@@ -60,14 +61,18 @@ CLASSIFY_SYSTEM_PROMPT = (
     "it survives past an ephemeral agent that is about to exit. Return ONLY items "
     "that are one of: a ratified architectural decision ('we will use X for Y'); "
     "a confirmed pattern ('always do X when Y'); an explicit Dave approval ('yes', "
-    "'go ahead', 'confirmed' against a concrete proposal); or a Viktor explanation "
-    "of how something works. DO NOT return status updates, questions, routine task "
+    "'go ahead', 'confirmed' against a concrete proposal); a Viktor explanation "
+    "of how something works; or an implementation_plan — a concrete decision "
+    "about HOW to implement a task, where the assistant lays out a specific "
+    "approach (what was chosen, what was rejected, and why) with rationale, not "
+    "just code output. DO NOT return status updates, questions, routine task "
     "dispatches, or casual conversation. For each item give: decision_text (a "
-    "self-contained one-sentence statement of the decision/pattern/fact — written "
-    "so a future agent with no prior context understands it), topic_slug (2-5 "
-    "kebab-case words), kind (one of architectural_decision|confirmed_pattern|"
-    "dave_approval|viktor_explanation), and confidence (0.0-1.0). Return an empty "
-    "items list when nothing qualifies. Be conservative — precision over recall."
+    "self-contained one-sentence statement of the decision/pattern/fact/plan — "
+    "written so a future agent with no prior context understands it), topic_slug "
+    "(2-5 kebab-case words), kind (one of architectural_decision|"
+    "confirmed_pattern|dave_approval|viktor_explanation|implementation_plan), and "
+    "confidence (0.0-1.0). Return an empty items list when nothing qualifies. Be "
+    "conservative — precision over recall."
 )
 
 RESPONSE_SCHEMA: dict[str, Any] = {

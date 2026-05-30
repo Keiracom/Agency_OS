@@ -288,6 +288,39 @@ def wait_for_chain_complete(chain_id: str, timeout_s: int) -> dict:
 # ─── crash injection (Agency_OS-avii test case) ───────────────────────────────
 
 
+def _wait_for_hop_session(chain_id: str, hop_step: str, timeout_s: int = 60) -> bool:
+    """Poll until the dispatcher tmux session `disp-chain-{chain_id}-{hop_step}`
+    actually exists, then return True. Returns False on timeout.
+
+    Replaces the prior fixed `time.sleep(15)` before inject_crash. Spawn overhead
+    is 20-25 s (Python cold start + first API call), so the 15 s sleep always
+    landed either pre-spawn (no session yet) or post-complete (session gone) —
+    a live mid-hop kill never landed. Elliot diagnosed 2026-05-30.
+
+    Uses time.monotonic() — pure intra-function deadline loop (the Max HOLD on
+    #1351 said monotonic is correct for intra-process duration, only the
+    cross-domain comparisons need wall-clock).
+    """
+    session_name = f"disp-chain-{chain_id}-{hop_step}"
+    deadline = time.monotonic() + timeout_s
+    while time.monotonic() < deadline:
+        try:
+            result = subprocess.run(
+                ["tmux", "has-session", "-t", session_name],
+                capture_output=True,
+                timeout=3,
+                check=False,
+            )
+        except (subprocess.TimeoutExpired, OSError):
+            # tmux subprocess hiccup — keep polling; the next iteration retries.
+            time.sleep(0.5)
+            continue
+        if result.returncode == 0:
+            return True
+        time.sleep(0.5)
+    return False
+
+
 def inject_crash(hop_step: str, chain_id: str) -> tuple[bool, str]:
     """tmux kill-session for the DISPATCHER-spawned chain-hop session.
 
@@ -551,9 +584,20 @@ def execute_run(plan: dict) -> RunResult:
     crash_hop = plan.get("crash_hop")
     crash_note = None
     if crash_hop:
-        # Allow the chain to step into the target role briefly before killing.
-        time.sleep(15)
-        ok, msg = inject_crash(crash_hop, chain_id)
+        # Wait until the dispatcher tmux session for this hop actually appears,
+        # then kill it. Fixed `time.sleep(15)` was wrong: spawn overhead is 20-25s
+        # (Python cold start + first API call), so the kill always landed either
+        # pre-spawn or post-complete — a live mid-hop kill never landed. Poll
+        # via tmux has-session (≤90s) so the kill catches the target alive.
+        # Elliot diagnosed 2026-05-30.
+        found = _wait_for_hop_session(chain_id, crash_hop, timeout_s=90)
+        if found:
+            ok, msg = inject_crash(crash_hop, chain_id)
+        else:
+            ok, msg = (
+                False,
+                f"session disp-chain-{chain_id}-{crash_hop} never appeared within 90s",
+            )
         crash_note = f"crash@{crash_hop}: {'OK' if ok else 'FAILED'} — {msg}"
         print(f"  {crash_note}", file=sys.stderr)
     # Wait for completion (or timeout).

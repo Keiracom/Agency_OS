@@ -225,7 +225,9 @@ def _load_chain_state() -> dict:
         return {}
 
 
-def trigger_chain_direct(brief: str) -> tuple[str | None, float, str]:
+def trigger_chain_direct(
+    brief: str, extra_task_fields: dict | None = None
+) -> tuple[str | None, float, str]:
     """Dispatch the V1 chain's first hop directly via v1_chain_orchestrator.dispatch().
     Returns (chain_id, started_wall_clock, log_message).
 
@@ -254,8 +256,16 @@ def trigger_chain_direct(brief: str) -> tuple[str | None, float, str]:
     # ISO timestamps + chain-state-file mtime in derive_metrics (Max HOLD #1351).
     started = time.time()
     task_id = str(uuid.uuid4())
+    task: dict = {"id": task_id, "brief": brief}
+    # Forward optional task fields (e.g. prior_chain_id for warm runs — Elliot
+    # 2026-05-30; the orch/dispatcher pickup that injects AGENT_PRIOR_CHAIN_ID
+    # into the spawn env is a separate follow-up. This is the harness-side
+    # prep — orch.dispatch ignores unknown task keys today, so the warm run
+    # still produces a valid chain even before the recall layer lands).
+    if extra_task_fields:
+        task.update(extra_task_fields)
     try:
-        chain_id = orch.dispatch({"id": task_id, "brief": brief})
+        chain_id = orch.dispatch(task)
     except Exception as exc:  # noqa: BLE001 — harness must mark the run FAIL not crash
         return None, started, f"orch.dispatch failed: {type(exc).__name__}: {exc}"
     return chain_id, started, f"orch.dispatch ok chain_id={chain_id} task_id={task_id}"
@@ -278,30 +288,48 @@ def wait_for_chain_complete(chain_id: str, timeout_s: int) -> dict:
 # ─── crash injection (Agency_OS-avii test case) ───────────────────────────────
 
 
-def inject_crash(hop_step: str) -> tuple[bool, str]:
-    """tmux kill-session for the callsign whose hop matches `hop_step`.
+def inject_crash(hop_step: str, chain_id: str) -> tuple[bool, str]:
+    """tmux kill-session for the DISPATCHER-spawned chain-hop session.
 
     Mid-chain crash injector — the work-loop reconcile path (5-min lease lapse →
     reconcile() reclaim → retry → dead-letter after 3) should observably either
     RECOVER the chain (next hop fires) or DEAD-LETTER it (visible in the chain
     state pending list / DLQ Valkey list).
+
+    Targets the dispatcher session name `disp-chain-{chain_id}-{hop_step}` —
+    NOT the production agent session (`maxbot`, `aiden`, ...). Killing the
+    production session would (a) take out the wrong process and (b) not test
+    the chain crash-recovery path, since the chain agents live in their own
+    short-lived dispatcher-spawned sessions (Elliot diagnosed 2026-05-30).
+
+    Graceful handling: if the hop completed before kill landed, tmux returns
+    rc!=0 with stderr like "can't find session" / "no server running" — this
+    still validates the recovery path (next hop fired naturally), so it's
+    treated as success.
     """
     role = ROLE_FOR_STEP.get(hop_step)
     if role is None:
         return False, f"unknown hop_step {hop_step!r}; expected one of {list(ROLE_FOR_STEP)}"
+    session_name = f"disp-chain-{chain_id}-{hop_step}"
     try:
         proc = subprocess.run(
-            ["tmux", "kill-session", "-t", role],
+            ["tmux", "kill-session", "-t", session_name],
             capture_output=True,
             text=True,
             timeout=5,
             check=False,
         )
-        if proc.returncode == 0:
-            return True, f"killed tmux session {role!r}"
-        return False, f"tmux kill-session rc={proc.returncode}: {proc.stderr.strip()}"
     except (subprocess.TimeoutExpired, OSError) as exc:
         return False, f"tmux kill-session raised: {exc}"
+    if proc.returncode == 0:
+        return True, f"killed dispatcher session {session_name!r}"
+    stderr_lower = (proc.stderr or "").lower()
+    if any(
+        needle in stderr_lower
+        for needle in ("no server running", "no such session", "can't find session")
+    ):
+        return True, f"dispatcher session {session_name!r} already exited (hop completed pre-kill)"
+    return False, f"tmux kill-session rc={proc.returncode}: {proc.stderr.strip()}"
 
 
 # ─── metrics collection ───────────────────────────────────────────────────────
@@ -456,13 +484,23 @@ def derive_metrics(
     return out
 
 
-def _iso_to_unix(ts: str | None) -> float:
+def _iso_to_unix(ts) -> float:
+    """Convert an attribution-row ts (datetime OR ISO-8601 string) to Unix seconds.
+
+    psycopg3 returns TIMESTAMPTZ columns as `datetime` objects, not strings.
+    The prior implementation called `ts.replace("Z", "+00:00")` unconditionally,
+    which raised TypeError on datetime (.replace takes year/month/day kwargs,
+    not str→str) — caught and returned 0.0. With ts=0, spawn_overhead computed
+    as `0 - started_ts*1000 = ~-1.78e12` (Elliot diagnosed 2026-05-30).
+    """
     if not ts:
         return 0.0
     try:
         from datetime import datetime  # noqa: PLC0415
 
-        return datetime.fromisoformat(ts.replace("Z", "+00:00")).timestamp()
+        if isinstance(ts, datetime):
+            return ts.timestamp()
+        return datetime.fromisoformat(str(ts).replace("Z", "+00:00")).timestamp()
     except (ValueError, TypeError):
         return 0.0
 
@@ -488,7 +526,15 @@ def execute_run(plan: dict) -> RunResult:
     kind = plan["kind"]
     brief = plan["brief"]
     print(f"\n▶ running {label} ({kind})…", file=sys.stderr)
-    chain_id, started_ts, trigger_log = trigger_chain_direct(brief)
+    # Warm-run plumbing (Elliot 2026-05-30): when the plan carries a
+    # `prior_chain_id` (populated by the outer loop from a prior cold run's
+    # chain_id), forward it as a task field so the dispatcher can later
+    # inject AGENT_PRIOR_CHAIN_ID for persona-level recall.
+    extra_fields: dict | None = None
+    prior_chain_id = plan.get("prior_chain_id")
+    if prior_chain_id:
+        extra_fields = {"prior_chain_id": prior_chain_id}
+    chain_id, started_ts, trigger_log = trigger_chain_direct(brief, extra_task_fields=extra_fields)
     if chain_id is None:
         return RunResult(
             label=label,
@@ -507,7 +553,7 @@ def execute_run(plan: dict) -> RunResult:
     if crash_hop:
         # Allow the chain to step into the target role briefly before killing.
         time.sleep(15)
-        ok, msg = inject_crash(crash_hop)
+        ok, msg = inject_crash(crash_hop, chain_id)
         crash_note = f"crash@{crash_hop}: {'OK' if ok else 'FAILED'} — {msg}"
         print(f"  {crash_note}", file=sys.stderr)
     # Wait for completion (or timeout).
@@ -561,7 +607,13 @@ def battery_plan(tasks_filter: list[str] | None) -> list[dict]:
         {"label": "TaskA-run1", "brief": TASK_A_BRIEF, "kind": "variance#1", "task": "A"},
         {"label": "TaskA-run2", "brief": TASK_A_BRIEF, "kind": "variance#2", "task": "A"},
         {"label": "TaskB-cold", "brief": TASK_B_BRIEF, "kind": "memory-cold", "task": "B"},
-        {"label": "TaskB-warm", "brief": TASK_B_BRIEF, "kind": "memory-warm", "task": "B"},
+        {
+            "label": "TaskB-warm",
+            "brief": TASK_B_BRIEF,
+            "kind": "memory-warm",
+            "task": "B",
+            "warm_for": "TaskB-cold",
+        },
         {
             "label": "TaskB-crash",
             "brief": TASK_B_BRIEF,
@@ -742,7 +794,21 @@ def main(argv: list[str] | None = None) -> int:
             print(f"no runs selected (tasks={args.tasks!r}); nothing to do", file=sys.stderr)
             return 0
 
-    results = [execute_run(p) for p in plan]
+    # Sequential loop so a plan entry with `warm_for: <prior-label>` can pick
+    # up the prior run's chain_id (Elliot 2026-05-30). The list comprehension
+    # the harness used previously had no way to feed prior results forward —
+    # warm runs ran with no context, defeating the cold-vs-warm comparison.
+    results: list[RunResult] = []
+    chain_by_label: dict[str, str | None] = {}
+    for p in plan:
+        if p.get("warm_for") and p["warm_for"] in chain_by_label:
+            prior_chain_id = chain_by_label[p["warm_for"]]
+            if prior_chain_id:
+                p = dict(p)  # copy — don't mutate the caller's plan dict
+                p["prior_chain_id"] = prior_chain_id
+        result = execute_run(p)
+        chain_by_label[p["label"]] = result.chain_id
+        results.append(result)
     print(render_markdown(results, thresholds))
     rc = 0 if all(_verdict(r.metrics, r.status, thresholds)[0] == "PASS" for r in results) else 1
     return rc

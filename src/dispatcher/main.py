@@ -20,11 +20,13 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import dataclasses
+import json
 import logging
 import os
 import shlex
 import socket
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException
@@ -1314,3 +1316,104 @@ async def dispatcher_task_crash_retry(req: TaskCrashRetryRequest) -> dict[str, A
     except Exception:  # noqa: BLE001
         logger.exception("task_crash_retry: DB error for task=%s", req.task_id)
         return {"retry_count": -1, "reason": "exception"}
+
+
+# ---------------------------------------------------------------------------
+# /dispatcher/chain_status — live V1 chain run status + per-hop cost view
+#
+# Reads chain state from v1_chain_orchestrator's STATE_FILE (V1_CHAIN_STATE_FILE
+# env override; default /tmp/v1_chain_state.json — same path the orchestrator
+# writes to) and sums cost_usd × USD_TO_AUD per chain from
+# keiracom_spawn_attribution. Lets Dave see a chain run in progress: which
+# steps are done, what step is current, $AUD spent so far per chain.
+#
+# KNOWN SCHEMA GAP (TODO follow-up KEI):
+# keiracom_spawn_attribution has no chain_id column yet — cost is summed via
+# a source_id heuristic (matches `chain_id` or `task_id`). This will return
+# 0.0 until the attribution writer starts logging chain_id/task_id as the
+# source_id for chain spawns, OR a dedicated chain_id column lands. Similarly
+# there is no latency_ms column, so latency_ms_so_far is 0.0 for V1.
+# ---------------------------------------------------------------------------
+
+_CHAIN_STATE_FILE_ENV = "V1_CHAIN_STATE_FILE"
+_DEFAULT_CHAIN_STATE_FILE = "/tmp/v1_chain_state.json"
+# LAW II — Australia First. 1 USD = 1.55 AUD per CLAUDE.md.
+_USD_TO_AUD_RATE = 1.55
+
+
+def _load_chain_state() -> dict[str, Any]:
+    """Load v1_chain_orchestrator state from STATE_FILE.
+
+    Fail-open: returns {} on missing file, malformed JSON, or any read error —
+    the endpoint serves {"chains": []} rather than 500. State path is the
+    SAME path the orchestrator writes to (V1_CHAIN_STATE_FILE env override or
+    /tmp/v1_chain_state.json default), so this is a read of authoritative state.
+    """
+    path = Path(os.environ.get(_CHAIN_STATE_FILE_ENV, _DEFAULT_CHAIN_STATE_FILE))
+    try:
+        if not path.is_file():
+            return {}
+        loaded = json.loads(path.read_text())
+        return loaded if isinstance(loaded, dict) else {}
+    except Exception as exc:  # noqa: BLE001 — fail-open
+        logger.warning("chain_status: failed to load %s: %s", path, exc)
+        return {}
+
+
+async def _chain_cost_aud(chain_id: str, task_id: str) -> float:
+    """Best-effort SUM(cost_usd) × 1.55 from keiracom_spawn_attribution for one chain.
+
+    No chain_id column exists yet, so this matches via source_id ∈ {chain_id,
+    task_id}. Fail-open: returns 0.0 on DSN absent, asyncpg unavailable, DB
+    error, or no matching rows. LAW II currency: USD → AUD via USD_TO_AUD_RATE.
+    """
+    dsn = os.environ.get(_PERSONA_DSN_ENV)
+    if not dsn:
+        return 0.0
+    try:
+        import asyncpg  # noqa: PLC0415 — deferred (optional in test envs)
+
+        conn = await asyncpg.connect(dsn.replace(_ASYNCPG_DSN_SUFFIX, ""))
+        try:
+            row = await conn.fetchrow(
+                "SELECT COALESCE(SUM(cost_usd), 0)::float8 AS s "
+                "FROM public.keiracom_spawn_attribution "
+                "WHERE source_id = ANY($1::text[])",
+                [chain_id, task_id],
+            )
+        finally:
+            await conn.close()
+        return float(row["s"]) * _USD_TO_AUD_RATE if row else 0.0
+    except Exception as exc:  # noqa: BLE001 — fail-open: never 500 the status endpoint
+        logger.warning("chain_status: cost sum failed for chain=%s: %s", chain_id, exc)
+        return 0.0
+
+
+@app.get("/dispatcher/chain_status")
+async def dispatcher_chain_status() -> dict[str, Any]:
+    """Live V1 chain run status: per-chain state + per-hop cost accumulation.
+
+    Returns ``{"chains": [...]}`` — one row per active chain in STATE_FILE,
+    each carrying chain_id, current_step, steps_done, started_ts,
+    cost_aud_so_far, latency_ms_so_far. Empty list when no chains active.
+    Fail-open at every leg: state-file missing → []; DB unreachable → cost 0.0.
+    """
+    state = _load_chain_state()
+    chains: list[dict[str, Any]] = []
+    for chain_id, chain in state.items():
+        if not isinstance(chain, dict):
+            continue
+        task_id = str(chain.get("task_id") or chain_id)
+        cost_aud = await _chain_cost_aud(chain_id, task_id)
+        chains.append(
+            {
+                "chain_id": chain_id,
+                "current_step": chain.get("current_step", ""),
+                "steps_done": chain.get("steps_done", []),
+                "started_ts": float(chain.get("started_ts") or 0.0),
+                "cost_aud_so_far": cost_aud,
+                # TODO: keiracom_spawn_attribution has no latency_ms column yet.
+                "latency_ms_so_far": 0.0,
+            }
+        )
+    return {"chains": chains}

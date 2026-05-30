@@ -908,7 +908,12 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
         # release the slot. Reads len(_spawned) live on each poll; no new state
         # required. 503 still raised on actual timeout. Env-overridable via
         # DISPATCHER_QUEUE_TIMEOUT_S.
-        queue_timeout_s = int(os.environ.get("DISPATCHER_QUEUE_TIMEOUT_S", "300"))
+        # Max HOLD on PR #1361: int() on a non-numeric env value raises
+        # ValueError that would crash the spawn — fall back to default instead.
+        try:
+            queue_timeout_s = int(os.environ.get("DISPATCHER_QUEUE_TIMEOUT_S") or "300")
+        except ValueError:
+            queue_timeout_s = 300
         queue_poll_s = 5
         import time as _time  # noqa: PLC0415 — avoid shadowing the module-level time
 

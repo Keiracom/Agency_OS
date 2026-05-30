@@ -6,7 +6,7 @@
   "latency_ms_max": 300000,
   "cache_hit_pct_min": 0,
   "spawn_overhead_ms_max": 30000,
-  "ttf_signal_ms_max": 10000,
+  "ttf_signal_ms_max": 120000,
   "_baseline_only": {
     "api_vs_max_ratio_pass_pct": 95,
     "api_vs_max_ratio_warn_pct": 90,

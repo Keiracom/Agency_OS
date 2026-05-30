@@ -34,8 +34,11 @@ from src.keiracom_system.attribution.logger import (
 # ---------- SOURCE_TYPES / TASK_TYPES ----------
 
 
-def test_source_types_enumerated_to_five():
-    assert {"slack", "pr", "cron", "inbox", "unknown"} == SOURCE_TYPES
+def test_source_types_enumerated_to_six():
+    """Six canonical source_types — v1_chain added 2026-05-30 for V1 chain
+    attribution writes (companion migration:
+    20260530_keiracom_spawn_attribution_v1_chain_source_type.sql)."""
+    assert {"slack", "pr", "cron", "inbox", "unknown", "v1_chain"} == SOURCE_TYPES
 
 
 def test_task_types_enumerated_to_six():

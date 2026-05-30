@@ -160,6 +160,50 @@ def test_insert_attribution_inserts_all_columns():
     assert 0.0033 in params and 0.005115 in params
 
 
+def test_insert_attribution_maps_chain_step_to_task_type():
+    """V1-battery prep fix — chain_step (chain position) maps to TASK_TYPES
+    (workload class) before INSERT. Raw chain_step value MUST NOT land in
+    task_type column or the table CHECK constraint rejects the row.
+    """
+    conn, cur = _fake_conn()
+    aacs.insert_attribution(
+        callsign="nova",
+        chain_id="c1",
+        task_id="t1",
+        chain_step="nova_build",
+        input_tokens=10,
+        output_tokens=20,
+        cost_usd=0.0,
+        cost_aud=0.0,
+        latency_ms=1.0,
+        conn=conn,
+    )
+    params = cur.execute.call_args[0][1]
+    # Mapped workload class lands in task_type position; raw chain_step does not.
+    assert "build" in params
+    assert "nova_build" not in params
+
+
+def test_insert_attribution_unknown_chain_step_maps_to_unknown_task_type():
+    """Chain step outside the canonical map → task_type='unknown' (honest fallback)."""
+    conn, cur = _fake_conn()
+    aacs.insert_attribution(
+        callsign="atlas",
+        chain_id="c2",
+        task_id="t2",
+        chain_step="some_future_step",
+        input_tokens=0,
+        output_tokens=0,
+        cost_usd=0.0,
+        cost_aud=0.0,
+        latency_ms=0.0,
+        conn=conn,
+    )
+    params = cur.execute.call_args[0][1]
+    assert "unknown" in params
+    assert "some_future_step" not in params
+
+
 def test_insert_attribution_failopen_on_db_error():
     """conn.cursor() raising → logged + returns None (does NOT raise)."""
     conn = MagicMock()

@@ -53,7 +53,7 @@ DEFAULT_ATTRIBUTION_LOG = Path("/home/elliotbot/clawd/logs/spawn-attribution.jso
 # Canonical source_type values. New types must be added intentionally —
 # unknown sources at dispatch-time MUST be tagged "unknown" (not silently
 # default to one of the existing types).
-SOURCE_TYPES: frozenset[str] = frozenset({"slack", "pr", "cron", "inbox", "unknown"})
+SOURCE_TYPES: frozenset[str] = frozenset({"slack", "pr", "cron", "inbox", "unknown", "v1_chain"})
 
 # Canonical task_type values per Cutover Blocker 7 / Cat 21 lever 23.
 # Same discipline as SOURCE_TYPES: explicit "unknown" tag is honest;

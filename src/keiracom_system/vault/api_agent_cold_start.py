@@ -78,6 +78,21 @@ CALLSIGN_TO_PERSONA: dict[str, tuple[str, str]] = {
 _PERSONA_RETRY_MAX_SECONDS = 60
 _PERSONA_RETRY_INTERVAL = 1.0
 
+# V1 chain step → workload class (TASK_TYPES). The attribution table's
+# task_type column constrains values to the logger.py TASK_TYPES set
+# {pr_review, deliberation, build, chat, dispatch_mgmt, unknown} — chain_step
+# values (aiden_plan, max_challenge, ...) are chain *positions*, not workload
+# classes, and inserting them raw violates the table CHECK. Map each step to
+# its closest workload class so attribution rollups (cost-by-task_type) bucket
+# the V1 chain into the same categories used by the rest of the dispatcher.
+_CHAIN_STEP_TO_TASK_TYPE: dict[str, str] = {
+    "aiden_plan": "deliberation",
+    "max_challenge": "deliberation",
+    "nova_build": "build",
+    "orion_spec": "pr_review",
+    "atlas_safety": "pr_review",
+}
+
 # V1-battery Gate 2 — 429/529 retry (Elliot dispatch 2026-05-30 ~11:35 AEST).
 # Exponential backoff: 1s, 2s, 4s, 8s ... capped at 60s. max 4 attempts means
 # the call_anthropic_with_retry helper attempts once + 3 retries. Retry-After
@@ -161,7 +176,7 @@ def insert_attribution(
     cost_aud: float,
     latency_ms: float,
     rate_limit_retries: int = 0,
-    completion_status: str = "done",
+    completion_status: str = "success",
     conn: Any = None,
 ) -> None:
     """INSERT a row into public.keiracom_spawn_attribution. Fail-open.
@@ -186,7 +201,7 @@ def insert_attribution(
                     str(uuid.uuid4()),
                     "v1_chain",
                     chain_id,
-                    chain_step,
+                    _CHAIN_STEP_TO_TASK_TYPE.get(chain_step, "unknown"),
                     callsign,
                     _MODEL,
                     int(input_tokens),

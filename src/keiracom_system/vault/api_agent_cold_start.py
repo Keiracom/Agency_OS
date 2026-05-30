@@ -78,6 +78,17 @@ CALLSIGN_TO_PERSONA: dict[str, tuple[str, str]] = {
 _PERSONA_RETRY_MAX_SECONDS = 60
 _PERSONA_RETRY_INTERVAL = 1.0
 
+# V1-battery Gate 2 — 429/529 retry (Elliot dispatch 2026-05-30 ~11:35 AEST).
+# Exponential backoff: 1s, 2s, 4s, 8s ... capped at 60s. max 4 attempts means
+# the call_anthropic_with_retry helper attempts once + 3 retries. Retry-After
+# header (when present, integer seconds) overrides backoff for that attempt.
+_RATE_LIMIT_MAX_ATTEMPTS = 4
+_RATE_LIMIT_BASE_BACKOFF_S = 1.0
+_RATE_LIMIT_MAX_BACKOFF_S = 60.0
+_OVERLOADED_STATUS_CODES: frozenset[int] = frozenset({429, 503, 529})
+_OPS_FAILURE_SUBJECT = os.environ.get("OPS_FAILURE_SUBJECT", "keiracom.ops.failure")
+_NATS_URL = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
+
 # Exit codes
 RC_NO_AGENT_ENV = 2
 RC_PERSONA_FAILED = 3
@@ -149,6 +160,7 @@ def insert_attribution(
     cost_usd: float,
     cost_aud: float,
     latency_ms: float,
+    rate_limit_retries: int = 0,
     completion_status: str = "done",
     conn: Any = None,
 ) -> None:
@@ -167,8 +179,9 @@ def insert_attribution(
                 "INSERT INTO public.keiracom_spawn_attribution "
                 "(spawn_id, source_type, source_id, task_type, callsign, model, "
                 "input_tokens, output_tokens, cache_read_tokens, cache_write_tokens, "
-                "cost_usd, cost_aud, latency_ms, chain_id, task_id, completion_status) "
-                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+                "cost_usd, cost_aud, latency_ms, chain_id, task_id, "
+                "rate_limit_retries, completion_status) "
+                "VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)",
                 (
                     str(uuid.uuid4()),
                     "v1_chain",
@@ -185,6 +198,7 @@ def insert_attribution(
                     latency_ms,
                     chain_id,
                     task_id,
+                    int(rate_limit_retries),
                     completion_status,
                 ),
             )
@@ -196,21 +210,158 @@ def insert_attribution(
                 conn.close()
 
 
-def call_anthropic(api_key: str, system: str, brief: str) -> tuple[str, int, int]:
-    """Single Anthropic messages.create call. Returns (text, input_tokens, output_tokens).
-    Raises on SDK import error or API failure (caller maps to exit code).
+def _parse_retry_after(exc: Any) -> float | None:
+    """Pull Retry-After (integer seconds) from an anthropic APIStatusError-shaped
+    exception. Returns None if absent or unparseable. Vendored here so the retry
+    loop doesn't depend on internal SDK shape changes — best-effort header read.
+    """
+    response = getattr(exc, "response", None)
+    headers = getattr(response, "headers", None) if response is not None else None
+    if headers is None:
+        return None
+    try:
+        val = headers.get("retry-after")
+    except (AttributeError, TypeError):
+        return None
+    if val is None:
+        return None
+    try:
+        return float(val)
+    except (TypeError, ValueError):
+        return None
+
+
+def _publish_rate_limit_exhaust(task_id: str, callsign: str, retries: int) -> None:
+    """Publish keiracom.ops.failure envelope when 429/529 retry budget exhausts.
+
+    peer_event_ceo_relay subscribes to this subject and fans rate-limit-exhaust
+    events to #ceo as visible incidents — closes the 'silent hang on rate
+    limit' failure mode the V1-battery gate dispatch called out. Fail-open: any
+    NATS error logged + swallowed; the calling chain hop has already returned
+    RC_API_FAILED so the orchestrator-side bookkeeping handles the rest.
+    """
+    import asyncio  # noqa: PLC0415 — lazy
+    import json as _json  # noqa: PLC0415
+
+    envelope = {
+        "from": "api_agent_cold_start",
+        "kind": "ops_failure",
+        "unit": f"api_agent_cold_start/{callsign or '?'}",
+        "task_id": task_id or "?",
+        "callsign": callsign or "?",
+        "retries": retries,
+        "summary": (
+            f"api_agent_cold_start: rate-limit retry budget exhausted "
+            f"(callsign={callsign or '?'}, task_id={task_id or '?'}, "
+            f"attempts={retries + 1})."
+        ),
+        "ts": time.time(),
+    }
+
+    async def _publish() -> None:
+        try:
+            import nats  # noqa: PLC0415 — lazy, optional dep
+        except ImportError as exc:
+            logger.warning(
+                "api_agent_cold_start: nats-py not installed; ops.failure skipped (%s)", exc
+            )
+            return
+        try:
+            nc = await nats.connect(_NATS_URL, connect_timeout=5)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("api_agent_cold_start: NATS connect failed: %s", exc)
+            return
+        try:
+            await nc.publish(_OPS_FAILURE_SUBJECT, _json.dumps(envelope).encode("utf-8"))
+            await nc.flush(timeout=5)
+            logger.info("api_agent_cold_start: published ops.failure for task_id=%s", task_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("api_agent_cold_start: ops.failure publish failed: %s", exc)
+        finally:
+            with contextlib.suppress(Exception):
+                await nc.close()
+
+    try:
+        asyncio.run(_publish())
+    except Exception:  # noqa: BLE001 — must never block the RC_API_FAILED exit
+        logger.exception("api_agent_cold_start: _publish_rate_limit_exhaust raised")
+
+
+def call_anthropic(
+    api_key: str,
+    system: str,
+    brief: str,
+    *,
+    task_id: str = "",
+    callsign: str = "",
+) -> tuple[str, int, int, int]:
+    """Anthropic messages.create with 429/529 retry. Returns (text, in_tok, out_tok, retries).
+
+    V1-battery Gate 2 (Elliot dispatch 2026-05-30 ~11:35 AEST): retry on
+    HTTP 429 (RateLimitError) and 529/503 (APIStatusError — overloaded /
+    unavailable). Exponential backoff: 1s base, doubled per attempt, capped at
+    60s. Max 4 attempts (1 initial + 3 retries). Retry-After header (when
+    present and parseable) overrides the computed backoff for that attempt.
+
+    On exhaust: publish a keiracom.ops.failure NATS envelope so the rate-limit
+    incident surfaces to #ceo (not a silent hang), then re-raise the last
+    APIStatusError. The run() caller maps to RC_API_FAILED.
+
+    Non-retriable APIStatusError (400 / 401 / 403 etc) re-raises immediately —
+    backoff helps overloaded servers, not bad requests.
     """
     import anthropic  # noqa: PLC0415 — optional dep
 
     client = anthropic.Anthropic(api_key=api_key)
-    response = client.messages.create(
-        model=_MODEL,
-        max_tokens=_MAX_TOKENS,
-        system=system,
-        messages=[{"role": "user", "content": brief}],
-    )
-    text = response.content[0].text if response.content else ""
-    return text, int(response.usage.input_tokens), int(response.usage.output_tokens)
+    retries = 0
+    last_exc: Exception | None = None
+    for attempt in range(_RATE_LIMIT_MAX_ATTEMPTS):
+        try:
+            response = client.messages.create(
+                model=_MODEL,
+                max_tokens=_MAX_TOKENS,
+                system=system,
+                messages=[{"role": "user", "content": brief}],
+            )
+            text = response.content[0].text if response.content else ""
+            return (
+                text,
+                int(response.usage.input_tokens),
+                int(response.usage.output_tokens),
+                retries,
+            )
+        except anthropic.APIStatusError as exc:
+            status = getattr(exc, "status_code", None)
+            if status not in _OVERLOADED_STATUS_CODES:
+                raise
+            last_exc = exc
+            if attempt == _RATE_LIMIT_MAX_ATTEMPTS - 1:
+                break  # no sleep after last attempt — fall through to exhaust
+            retry_after = _parse_retry_after(exc)
+            backoff = (
+                retry_after
+                if retry_after is not None and retry_after > 0
+                else min(
+                    _RATE_LIMIT_BASE_BACKOFF_S * (2**attempt),
+                    _RATE_LIMIT_MAX_BACKOFF_S,
+                )
+            )
+            logger.warning(
+                "api_agent_cold_start: status=%s on attempt %d/%d (callsign=%s); "
+                "backing off %.1fs (retry_after=%s)",
+                status,
+                attempt + 1,
+                _RATE_LIMIT_MAX_ATTEMPTS,
+                callsign or "?",
+                backoff,
+                retry_after,
+            )
+            time.sleep(backoff)
+            retries += 1
+    # Exhausted — surface as ops.failure and re-raise
+    _publish_rate_limit_exhaust(task_id=task_id, callsign=callsign, retries=retries)
+    assert last_exc is not None  # noqa: S101 — invariant: loop only breaks here after assignment
+    raise last_exc
 
 
 def run() -> int:
@@ -247,7 +398,9 @@ def run() -> int:
 
     spawned_at = time.time()
     try:
-        text, input_tokens, output_tokens = call_anthropic(api_key, persona, brief)
+        text, input_tokens, output_tokens, rate_limit_retries = call_anthropic(
+            api_key, persona, brief, task_id=task_id, callsign=callsign
+        )
     except ImportError:
         logger.exception("api_agent_cold_start: anthropic SDK not installed")
         return RC_SDK_MISSING
@@ -268,6 +421,7 @@ def run() -> int:
         cost_usd=cost_usd,
         cost_aud=cost_aud,
         latency_ms=latency_ms,
+        rate_limit_retries=rate_limit_retries,
     )
 
     logger.info(

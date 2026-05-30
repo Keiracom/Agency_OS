@@ -11,7 +11,6 @@ import pytest
 
 from src.keiracom_system.vault import api_agent_cold_start as aacs
 
-
 # ---------------------------------------------------------------------------
 # CALLSIGN_TO_PERSONA mapping
 # ---------------------------------------------------------------------------
@@ -216,10 +215,11 @@ def test_call_anthropic_passes_model_system_brief_and_returns_text_tokens(
     fake_anthropic.Anthropic = _FakeClient
     monkeypatch.setitem(sys.modules, "anthropic", fake_anthropic)
 
-    text, in_t, out_t = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    text, in_t, out_t, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
 
     assert text == "Atlas safety-review verdict: looks OK."
     assert in_t == 42 and out_t == 137
+    assert retries == 0  # happy path → no rate-limit retries
     assert captured["api_key"] == "KEY"
     kw = captured["create_kwargs"]
     assert kw["model"] == aacs._MODEL
@@ -276,7 +276,7 @@ def test_run_happy_path_writes_attribution_and_publishes_handoff(
     _publish_handoff all fire with the right args, and exit code is 0."""
     _seed_env(monkeypatch)
     monkeypatch.setattr(aacs, "fetch_persona", lambda _c: "ATLAS_PROMPT")
-    monkeypatch.setattr(aacs, "call_anthropic", lambda _k, _s, _b: ("REPLY", 100, 200))
+    monkeypatch.setattr(aacs, "call_anthropic", lambda *_a, **_kw: ("REPLY", 100, 200, 0))
 
     insert_calls: list[dict] = []
 
@@ -333,7 +333,7 @@ def test_run_no_atoms_still_fires_one_empty_handoff(monkeypatch: pytest.MonkeyPa
     atom_id so the chain consumer still advances (no stall)."""
     _seed_env(monkeypatch)
     monkeypatch.setattr(aacs, "fetch_persona", lambda _c: "PROMPT")
-    monkeypatch.setattr(aacs, "call_anthropic", lambda _k, _s, _b: ("REPLY", 0, 0))
+    monkeypatch.setattr(aacs, "call_anthropic", lambda *_a, **_kw: ("REPLY", 0, 0, 0))
     monkeypatch.setattr(aacs, "insert_attribution", lambda **_kw: None)
 
     async def fake_classify(*_a, **_kw):
@@ -358,3 +358,160 @@ def test_run_no_atoms_still_fires_one_empty_handoff(monkeypatch: pytest.MonkeyPa
     # Exactly one handoff with empty atom_id — chain MUST advance.
     assert len(handoff_calls) == 1
     assert handoff_calls[0]["atom_id"] == ""
+
+
+# ---------------------------------------------------------------------------
+# V1-battery Gate 2 — 429 / 529 retry (Elliot dispatch 2026-05-30 ~11:35 AEST)
+# ---------------------------------------------------------------------------
+
+
+def _install_fake_anthropic_with_statuses(
+    monkeypatch: pytest.MonkeyPatch,
+    statuses: list[int | None],
+    *,
+    retry_after_header: str | None = None,
+) -> dict:
+    """Build a fake anthropic module whose messages.create raises an
+    APIStatusError-shaped exception for each non-None status in `statuses`,
+    then on the first None entry returns a normal response.
+
+    Returns a dict with attempt counts so the test can assert how many calls
+    landed before success / exhaustion.
+    """
+    state = {"attempts": 0, "captured_sleeps": []}
+
+    class _FakeContent:
+        def __init__(self, text):
+            self.text = text
+
+    class _FakeUsage:
+        input_tokens = 10
+        output_tokens = 20
+
+    class _FakeResponse:
+        content = [_FakeContent("OK")]
+        usage = _FakeUsage()
+
+    class _FakeAnthropicError(Exception):
+        pass
+
+    class _FakeAPIError(_FakeAnthropicError):
+        pass
+
+    class _FakeAPIStatusError(_FakeAPIError):
+        def __init__(self, status_code: int, headers: dict | None = None):
+            super().__init__(f"http {status_code}")
+            self.status_code = status_code
+            self.response = types.SimpleNamespace(status_code=status_code, headers=headers or {})
+
+    class _FakeRateLimitError(_FakeAPIStatusError):
+        pass
+
+    class _FakeClient:
+        def __init__(self, *, api_key):
+            self.messages = self
+
+        def create(self, **_kwargs):
+            idx = state["attempts"]
+            state["attempts"] += 1
+            if idx >= len(statuses) or statuses[idx] is None:
+                return _FakeResponse()
+            status = statuses[idx]
+            headers = {"retry-after": retry_after_header} if retry_after_header else {}
+            if status == 429:
+                raise _FakeRateLimitError(429, headers)
+            raise _FakeAPIStatusError(status, headers)
+
+    fake_anthropic = types.ModuleType("anthropic")
+    fake_anthropic.Anthropic = _FakeClient
+    fake_anthropic.AnthropicError = _FakeAnthropicError
+    fake_anthropic.APIError = _FakeAPIError
+    fake_anthropic.APIStatusError = _FakeAPIStatusError
+    fake_anthropic.RateLimitError = _FakeRateLimitError
+    monkeypatch.setitem(sys.modules, "anthropic", fake_anthropic)
+
+    # Patch time.sleep so the retry waits don't actually block the test, and
+    # capture the backoff intervals for assertion.
+    def _fake_sleep(secs: float) -> None:
+        state["captured_sleeps"].append(secs)
+
+    monkeypatch.setattr(aacs.time, "sleep", _fake_sleep)
+    return state
+
+
+def test_call_anthropic_retries_on_429_then_succeeds(monkeypatch: pytest.MonkeyPatch):
+    """One 429 then success → returns retries=1, exponential backoff started at 1s."""
+    state = _install_fake_anthropic_with_statuses(monkeypatch, [429, None])
+    text, in_t, out_t, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    assert text == "OK"
+    assert in_t == 10 and out_t == 20
+    assert retries == 1
+    assert state["attempts"] == 2
+    # First retry backoff = 1.0s (base * 2**0 = 1.0).
+    assert state["captured_sleeps"] == [pytest.approx(1.0)]
+
+
+def test_call_anthropic_retries_on_529_overloaded(monkeypatch: pytest.MonkeyPatch):
+    """529 (overloaded) is in the retriable set — same path as 429."""
+    state = _install_fake_anthropic_with_statuses(monkeypatch, [529, 529, None])
+    _, _, _, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    assert retries == 2
+    assert state["attempts"] == 3
+    # Exponential: 1s, 2s.
+    assert state["captured_sleeps"] == [pytest.approx(1.0), pytest.approx(2.0)]
+
+
+def test_call_anthropic_respects_retry_after_header(monkeypatch: pytest.MonkeyPatch):
+    """Retry-After: 7 → backoff = 7s (overrides computed exponential)."""
+    state = _install_fake_anthropic_with_statuses(monkeypatch, [429, None], retry_after_header="7")
+    _, _, _, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    assert retries == 1
+    assert state["captured_sleeps"] == [pytest.approx(7.0)]
+
+
+def test_call_anthropic_backoff_caps_at_60s(monkeypatch: pytest.MonkeyPatch):
+    """Computed backoff cap is 60s — verifies the max-cap guard against runaway exponential."""
+    # 4 attempts with statuses [429, 429, 429, None]: backoffs would be 1, 2, 4
+    # (last attempt has no sleep). Cap doesn't bite here, but we can validate
+    # the cap kicks in by patching the base to a large value and re-running.
+    monkeypatch.setattr(aacs, "_RATE_LIMIT_BASE_BACKOFF_S", 100.0)
+    state = _install_fake_anthropic_with_statuses(monkeypatch, [429, 429, 429, None])
+    _, _, _, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    assert retries == 3
+    # All 3 backoffs should be capped at 60s.
+    assert all(s == pytest.approx(60.0) for s in state["captured_sleeps"])
+
+
+def test_call_anthropic_exhausts_publishes_ops_failure(monkeypatch: pytest.MonkeyPatch):
+    """4 consecutive 429s → publish_rate_limit_exhaust fires; APIStatusError re-raised."""
+    state = _install_fake_anthropic_with_statuses(monkeypatch, [429, 429, 429, 429])
+    published: list[dict] = []
+
+    def fake_publish(task_id: str, callsign: str, retries: int) -> None:
+        published.append({"task_id": task_id, "callsign": callsign, "retries": retries})
+
+    monkeypatch.setattr(aacs, "_publish_rate_limit_exhaust", fake_publish)
+
+    with pytest.raises(Exception) as excinfo:
+        aacs.call_anthropic("KEY", "SYS", "BRIEF", task_id="t-x", callsign="atlas")
+    assert getattr(excinfo.value, "status_code", None) == 429
+    assert state["attempts"] == aacs._RATE_LIMIT_MAX_ATTEMPTS == 4
+    assert len(published) == 1
+    assert published[0] == {"task_id": "t-x", "callsign": "atlas", "retries": 3}
+
+
+def test_call_anthropic_does_not_retry_non_retriable_400(monkeypatch: pytest.MonkeyPatch):
+    """400 (bad request) is not in the retriable set — immediate raise, no publish."""
+    state = _install_fake_anthropic_with_statuses(monkeypatch, [400])
+    published: list[dict] = []
+    monkeypatch.setattr(
+        aacs,
+        "_publish_rate_limit_exhaust",
+        lambda **kw: published.append(kw),
+    )
+    with pytest.raises(Exception) as excinfo:
+        aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    assert getattr(excinfo.value, "status_code", None) == 400
+    assert state["attempts"] == 1
+    assert state["captured_sleeps"] == []
+    assert published == []  # exhaust path NOT taken

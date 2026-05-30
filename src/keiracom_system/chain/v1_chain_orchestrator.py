@@ -89,9 +89,114 @@ log = logging.getLogger(__name__)
 # notify_complete → /task_complete urllib pattern in vault/agent_cold_start.py.
 _DISPATCHER_URL = os.environ.get("DISPATCHER_URL", "http://127.0.0.1:4001")
 
+# V1-battery Gate 1 — per-task A$10 spend ceiling (Elliot dispatch 2026-05-30
+# ~11:35 AEST). Reads cumulative cost_aud per task_id from
+# keiracom_spawn_attribution after each hop. Complements Orion's fleet-level
+# cost_breaker (#1297 Agency_OS-wdws) — that's fleet daily/monthly aggregate at
+# /spawn time; this is per-task SUM after each hop. Both must trip to be
+# load-bearing for the V1 battery.
+_TASK_COST_CEILING_AUD = float(os.environ.get("V1_TASK_COST_CEILING_AUD", "10.00"))
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
+
+
+def _query_task_cost_aud(task_id: str) -> tuple[float, list[dict]] | None:
+    """Return (sum_aud, per_hop_rows) for a task_id, or None on read failure.
+
+    V1-battery Gate 1 helper — runs the dispatch's specified SUM(cost_aud) +
+    per-hop breakdown query against public.keiracom_spawn_attribution. Per-hop
+    breakdown shape: [{callsign, chain_step, cost_aud}, ...] ordered by ts.
+
+    Returns None (not (0.0, [])) on read failure so callers can distinguish
+    "checked, no spend yet" from "couldn't check". A read failure is fail-OPEN:
+    the chain proceeds — Orion's fleet-level breaker (#1297) is the fail-SAFE
+    backstop and this gate is the per-task complement.
+    """
+    if not task_id:
+        return None
+    # Fast-fail when no DSN — keeps unit tests + CI hosts off a 10s
+    # psycopg.connect timeout. fail-OPEN per the docstring contract.
+    if not os.environ.get("DATABASE_URL"):
+        return None
+    try:
+        from src.keiracom_system.vault.agent_cold_start import _connect  # noqa: PLC0415
+    except ImportError:
+        return None
+    conn = None
+    try:
+        conn = _connect()
+        with conn.cursor() as cur:
+            cur.execute(
+                "SELECT callsign, task_type, cost_aud "
+                "FROM public.keiracom_spawn_attribution "
+                "WHERE task_id = %s "
+                "ORDER BY ts ASC",
+                (task_id,),
+            )
+            rows = cur.fetchall() or []
+    except Exception:  # noqa: BLE001 — fail-OPEN; fleet breaker is the fail-safe
+        log.warning(
+            "v1_chain Gate 1: cost-ceiling query failed for task=%s", task_id, exc_info=True
+        )
+        return None
+    finally:
+        if conn is not None:
+            with contextlib.suppress(Exception):
+                conn.close()
+    per_hop = [
+        {"callsign": r[0] or "?", "chain_step": r[1] or "?", "cost_aud": float(r[2] or 0)}
+        for r in rows
+    ]
+    total = sum(h["cost_aud"] for h in per_hop)
+    return total, per_hop
+
+
+def _post_ceiling_breach(
+    entry: dict,
+    chain_id: str,
+    total_aud: float,
+    per_hop: list[dict],
+    *,
+    dispatcher_url: str = _DISPATCHER_URL,
+) -> None:
+    """V1-battery Gate 1 — POST to /dispatcher/ceiling_breach when a task
+    exceeds the per-task A$10 ceiling. Fail-open identical to
+    _post_chain_complete: a notify failure must NEVER block the halt state save.
+    """
+    import urllib.error  # noqa: PLC0415 — lazy; only the breach-transition path needs it
+    import urllib.request  # noqa: PLC0415
+
+    payload = json.dumps(
+        {
+            "task_id": entry.get("task_id") or "?",
+            "chain_id": chain_id,
+            "brief": entry.get("brief") or "(no brief)",
+            "ceiling_aud": _TASK_COST_CEILING_AUD,
+            "total_aud": round(total_aud, 4),
+            "per_hop": per_hop,
+            "steps_done": list(entry.get("steps_done") or []),
+        }
+    ).encode()
+    url = f"{dispatcher_url.rstrip('/')}/dispatcher/ceiling_breach"
+    try:
+        req = urllib.request.Request(
+            url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 — fixed loopback host
+            log.info(
+                "ceiling_breach notify: dispatcher status=%d for chain=%s total=A$%.4f",
+                resp.status,
+                chain_id,
+                total_aud,
+            )
+    except (urllib.error.URLError, OSError):
+        log.warning(
+            "ceiling_breach notify: dispatcher unreachable for chain=%s", chain_id, exc_info=True
+        )
+    except Exception:  # noqa: BLE001 — must not break halt-state save
+        log.warning("ceiling_breach notify: unexpected error for chain=%s", chain_id, exc_info=True)
 
 
 def _post_chain_complete(
@@ -360,6 +465,40 @@ def advance_step(
         entry["pending"].remove(completed_step)
 
     dispatched: list[dict] = []
+
+    # V1-battery Gate 1 — per-task A$10 ceiling. Query SUM(cost_aud) for
+    # this task_id; halt + post #ceo if exceeded. Runs BEFORE the dispatch
+    # branch so an over-ceiling task cannot fan out a new hop. fail-OPEN on
+    # read error (None) — the chain proceeds and the fleet-level breaker
+    # (#1297) remains the fail-SAFE backstop. GOV-12: this is the runtime
+    # conditional, not a comment.
+    task_id_for_query = entry.get("task_id") or chain_id
+    ceiling_result = _query_task_cost_aud(task_id_for_query)
+    if ceiling_result is not None:
+        total_aud, per_hop = ceiling_result
+        if total_aud > _TASK_COST_CEILING_AUD:
+            log.error(
+                "v1_chain Gate 1: ceiling breached chain=%s task=%s total=A$%.4f > A$%.2f — HALTING",
+                chain_id,
+                task_id_for_query,
+                total_aud,
+                _TASK_COST_CEILING_AUD,
+            )
+            entry["current_step"] = "halted_ceiling_exceeded"
+            entry["ceiling_tripped"] = True
+            entry["ceiling_total_aud"] = round(total_aud, 4)
+            entry["ceiling_per_hop"] = per_hop
+            entry["pending"] = []
+            try:
+                _post_ceiling_breach(entry, chain_id, total_aud, per_hop)
+            except Exception:  # noqa: BLE001 — must not break halt-state save
+                log.warning(
+                    "v1_chain Gate 1: ceiling_breach raised at call site for chain=%s",
+                    chain_id,
+                    exc_info=True,
+                )
+            _save_state(state)
+            return []
 
     if completed_step in PARALLEL_AFTER_STEP:
         # Fan-out: dispatch all parallel next steps simultaneously.

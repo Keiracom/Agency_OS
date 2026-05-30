@@ -362,7 +362,8 @@ def fetch_attribution_rows(chain_id: str, task_id: str | None) -> list[dict]:
         ):
             cur.execute(
                 "SELECT ts, source_id, callsign, model, input_tokens, output_tokens, "
-                "cache_read_tokens, cache_write_tokens, cost_usd, completion_status "
+                "cache_read_tokens, cache_write_tokens, cost_usd, completion_status, "
+                "COALESCE(rate_limit_retries, 0) "
                 "FROM public.keiracom_spawn_attribution "
                 "WHERE source_id LIKE %s "
                 "ORDER BY ts ASC",
@@ -382,6 +383,7 @@ def fetch_attribution_rows(chain_id: str, task_id: str | None) -> list[dict]:
         "cache_write_tokens",
         "cost_usd",
         "completion_status",
+        "rate_limit_retries",
     ]
     return [dict(zip(cols, r, strict=False)) for r in rows]
 
@@ -437,6 +439,21 @@ def derive_metrics(
         int((_first_mutation_ts(chain_id) or ended_ts) * 1000 - started_ts * 1000)
         if chain_id
         else None
+    )
+    # V1-battery hard-gate columns (Elliot dispatch 2026-05-30):
+    # - ceiling_tripped: per-task A$10 ceiling status from chain state.
+    # - rate_limit_429s: sum of rate_limit_retries across attribution rows.
+    out["ceiling_tripped"] = bool(entry.get("ceiling_tripped", False))
+    if out["ceiling_tripped"]:
+        breakdown = entry.get("ceiling_per_hop") or []
+        out["ceiling_breakdown"] = (
+            "; ".join(f"{h.get('chain_step', '?')}={h.get('cost_aud', 0):.4f}" for h in breakdown)
+            or "—"
+        )
+    else:
+        out["ceiling_breakdown"] = "—"
+    out["rate_limit_429s"] = (
+        sum(int(r.get("rate_limit_retries", 0) or 0) for r in attribution) if attribution else 0
     )
     return out
 
@@ -611,9 +628,9 @@ def render_markdown(results: list[RunResult], thresholds: dict) -> str:
     lines.append("")
     header = (
         "| Run | Status | chain_id | cost A$ | latency ms | in tok | out tok | "
-        "cache hit % | spawn ms | ttf ms | hops | Notes |"
+        "cache hit % | spawn ms | ttf ms | hops | ceiling_tripped | rate_limit_429s | Notes |"
     )
-    sep = "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|"
+    sep = "|---|---|---|---:|---:|---:|---:|---:|---:|---:|---:|---|---:|---|"
     lines.append(header)
     lines.append(sep)
     for r in results:
@@ -628,12 +645,16 @@ def render_markdown(results: list[RunResult], thresholds: dict) -> str:
         }.get(verdict, verdict)
         m = r.metrics
         notes = "; ".join(reasons + r.notes) or "—"
+        ceiling_cell = (
+            f"YES ({m.get('ceiling_breakdown', '—')})" if m.get("ceiling_tripped") else "NO"
+        )
         lines.append(
             f"| {r.label} ({r.kind}) | {glyph} | `{m.get('chain_id', '—')}` | "
             f"{_fmt(m.get('cost_aud'))} | {_fmt(m.get('latency_ms'))} | "
             f"{_fmt(m.get('input_tokens'))} | {_fmt(m.get('output_tokens'))} | "
             f"{_fmt(m.get('cache_hit_pct'))} | {_fmt(m.get('spawn_overhead_ms'))} | "
-            f"{_fmt(m.get('ttf_signal_ms'))} | {_fmt(m.get('hops_attributed'))} | {notes} |"
+            f"{_fmt(m.get('ttf_signal_ms'))} | {_fmt(m.get('hops_attributed'))} | "
+            f"{ceiling_cell} | {_fmt(m.get('rate_limit_429s'))} | {notes} |"
         )
     # Aggregate verdict
     overall = (

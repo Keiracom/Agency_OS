@@ -1188,13 +1188,74 @@ def _lookup_chain_cost_aud(task_id: str) -> float | None:
         return None
 
 
+def _chain_complete_already_posted(chain_id: str) -> bool:
+    """Agency_OS-wdcw — durable dedup via public.keiracom_chain_complete_posted.
+
+    Atomic INSERT ON CONFLICT DO NOTHING RETURNING chain_id. If RETURNING is
+    populated, this process won the insert lock → first post, proceed with the
+    Slack relay. If RETURNING is empty, another process / a prior run already
+    claimed → SKIP the Slack relay.
+
+    Survives dispatcher restart + NATS redeliver (replaces an in-process
+    state-file flag that was lost on restart and caused dup #ceo posts).
+    Lives in the dispatcher (not the orchestrator) per boundary_matrix_v1:
+    src/keiracom_system/ is MAL-scoped — direct psycopg is forbidden there;
+    src/dispatcher/ is the supabase-layer caller and exempt.
+
+    Fail-open: DSN unset / DB unreachable / any error → returns False so the
+    caller proceeds with the post. Posting once-too-often beats silently
+    dropping Dave's final chain-complete signal.
+    """
+    dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL") or ""
+    if not dsn:
+        return False
+    # Strip SQLAlchemy +asyncpg suffix (same pattern as fleet_supervisor KEI-218).
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    try:
+        import psycopg  # noqa: PLC0415 — lazy; dispatcher psycopg is fine (control_plane scope)
+
+        with (
+            psycopg.connect(dsn, connect_timeout=5, prepare_threshold=None) as conn,
+            conn.cursor() as cur,
+        ):
+            cur.execute(
+                "INSERT INTO public.keiracom_chain_complete_posted (chain_id) "
+                "VALUES (%s) ON CONFLICT (chain_id) DO NOTHING "
+                "RETURNING chain_id",
+                (chain_id,),
+            )
+            row = cur.fetchone()
+            conn.commit()
+        # RETURNING populated → we inserted (first post). RETURNING empty →
+        # already-existed conflict → already posted, caller skips Slack.
+        return row is None
+    except Exception as exc:  # noqa: BLE001 — fail-open: posting once-too-often beats never posting
+        logger.warning(
+            "chain_complete dedup DB check failed for chain=%s (posting anyway): %s",
+            chain_id,
+            exc,
+        )
+        return False
+
+
 @app.post("/dispatcher/chain_complete")
 async def dispatcher_chain_complete(req: ChainCompleteRequest) -> dict[str, Any]:
     """Post the V1-chain completion summary to #ceo via slack_relay (Elliot's relay).
 
-    Fail-open: any error (slack_relay, cost-lookup, formatting) is logged and
-    swallowed — a notification failure must never block the chain lifecycle.
+    Receiver-side dedup (Agency_OS-wdcw): consults a Supabase ledger before
+    relaying to Slack. Catches dup sources from anywhere — NATS redeliver,
+    dispatcher restart, manual retry. Survives dispatcher restart.
+
+    Fail-open: any error (slack_relay, cost-lookup, formatting, dedup) is
+    logged and swallowed — a notification failure must never block the chain
+    lifecycle.
     """
+    if _chain_complete_already_posted(req.chain_id):
+        logger.info(
+            "chain_complete dedup: chain=%s already posted (ledger hit) — skipping Slack relay",
+            req.chain_id,
+        )
+        return {"notified": False, "reason": "deduped_already_posted"}
     steps_str = (
         " → ".join(req.steps)
         if req.steps

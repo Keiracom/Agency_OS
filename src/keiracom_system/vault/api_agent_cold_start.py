@@ -100,6 +100,13 @@ _CHAIN_STEP_TO_TASK_TYPE: dict[str, str] = {
 _RATE_LIMIT_MAX_ATTEMPTS = 4
 _RATE_LIMIT_BASE_BACKOFF_S = 1.0
 _RATE_LIMIT_MAX_BACKOFF_S = 60.0
+
+# Anthropic prompt-caching threshold (Sonnet 4.x — docs.anthropic.com/.../prompt-caching).
+# Personas at or above this size go through the cache_control: ephemeral path so
+# back-to-back chain hops with the same persona hit the 5-min cache (5x cheaper
+# reads); personas below it would never cache anyway, so we send a plain str
+# system. 1-hour TTL deliberately NOT used — 2x write cost vs 1.25x for 5-min.
+_PROMPT_CACHE_MIN_TOKENS = 1024
 _OVERLOADED_STATUS_CODES: frozenset[int] = frozenset({429, 503, 529})
 _OPS_FAILURE_SUBJECT = os.environ.get("OPS_FAILURE_SUBJECT", "keiracom.ops.failure")
 _NATS_URL = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
@@ -115,9 +122,16 @@ def _env(name: str, default: str = "") -> str:
     return os.environ.get(name, default) or default
 
 
-def fetch_persona(callsign: str, *, dispatcher_url: str = _DISPATCHER_URL) -> str | None:
+def fetch_persona(
+    callsign: str, *, dispatcher_url: str = _DISPATCHER_URL
+) -> tuple[str, int] | None:
     """GET /dispatcher/persona with retry (up to 60s; Nova's worker persona may
-    land in parallel). Returns the prompt_text or None on terminal failure.
+    land in parallel). Returns (prompt_text, token_count) or None on terminal failure.
+
+    The token_count is needed by call_anthropic to gate prompt caching on the
+    1,024-token minimum cacheable prefix threshold (Sonnet 4.x — Anthropic docs
+    2026-05-30). Personas below that threshold skip the cache_control block
+    entirely; over-threshold personas get an ephemeral cache breakpoint.
     """
     mapping = CALLSIGN_TO_PERSONA.get(callsign)
     if mapping is None:
@@ -136,7 +150,11 @@ def fetch_persona(callsign: str, *, dispatcher_url: str = _DISPATCHER_URL) -> st
                 payload = json.loads(resp.read())
             prompt = payload.get("prompt_text")
             if isinstance(prompt, str) and prompt.strip():
-                return prompt
+                try:
+                    token_count = int(payload.get("token_count") or 0)
+                except (TypeError, ValueError):
+                    token_count = 0
+                return prompt, token_count
             logger.warning("api_agent_cold_start: persona endpoint returned empty prompt_text")
             return None
         except urllib.error.HTTPError as exc:
@@ -302,6 +320,26 @@ def _publish_rate_limit_exhaust(task_id: str, callsign: str, retries: int) -> No
         logger.exception("api_agent_cold_start: _publish_rate_limit_exhaust raised")
 
 
+def _build_system_param(persona: str, persona_token_count: int):
+    """Wrap the persona in a cache_control block when it's over the cache
+    threshold; pass through as a plain string otherwise.
+
+    Anthropic SDK accepts ``system`` as either str OR a list of TextBlockParam
+    dicts; the list form is what carries cache_control. Returning the str when
+    we're under-threshold keeps the wire format minimal for tiny personas
+    (Nova worker = 104 tokens today — would never cache regardless).
+    """
+    if persona_token_count >= _PROMPT_CACHE_MIN_TOKENS:
+        return [
+            {
+                "type": "text",
+                "text": persona,
+                "cache_control": {"type": "ephemeral"},
+            }
+        ]
+    return persona
+
+
 def call_anthropic(
     api_key: str,
     system: str,
@@ -309,6 +347,7 @@ def call_anthropic(
     *,
     task_id: str = "",
     callsign: str = "",
+    persona_token_count: int = 0,
 ) -> tuple[str, int, int, int]:
     """Anthropic messages.create with 429/529 retry. Returns (text, in_tok, out_tok, retries).
 
@@ -328,6 +367,7 @@ def call_anthropic(
     import anthropic  # noqa: PLC0415 — optional dep
 
     client = anthropic.Anthropic(api_key=api_key)
+    system_param = _build_system_param(system, persona_token_count)
     retries = 0
     last_exc: Exception | None = None
     for attempt in range(_RATE_LIMIT_MAX_ATTEMPTS):
@@ -335,7 +375,7 @@ def call_anthropic(
             response = client.messages.create(
                 model=_MODEL,
                 max_tokens=_MAX_TOKENS,
-                system=system,
+                system=system_param,
                 messages=[{"role": "user", "content": brief}],
             )
             text = response.content[0].text if response.content else ""
@@ -407,14 +447,20 @@ def run() -> int:
         )
         return RC_NO_AGENT_ENV
 
-    persona = fetch_persona(callsign)
-    if not persona:
+    persona_result = fetch_persona(callsign)
+    if not persona_result:
         return RC_PERSONA_FAILED
+    persona, persona_token_count = persona_result
 
     spawned_at = time.time()
     try:
         text, input_tokens, output_tokens, rate_limit_retries = call_anthropic(
-            api_key, persona, brief, task_id=task_id, callsign=callsign
+            api_key,
+            persona,
+            brief,
+            task_id=task_id,
+            callsign=callsign,
+            persona_token_count=persona_token_count,
         )
     except ImportError:
         logger.exception("api_agent_cold_start: anthropic SDK not installed")

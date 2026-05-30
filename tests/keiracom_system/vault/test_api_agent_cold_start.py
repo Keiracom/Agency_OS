@@ -69,7 +69,7 @@ class _FakeResp:
 
 
 def test_fetch_persona_success(monkeypatch: pytest.MonkeyPatch):
-    """Happy path: 200 with prompt_text returns the string."""
+    """Happy path: 200 with prompt_text returns (prompt, token_count) tuple."""
     captured: dict = {}
 
     def fake_urlopen(url, timeout=None):
@@ -77,15 +77,15 @@ def test_fetch_persona_success(monkeypatch: pytest.MonkeyPatch):
         return _FakeResp(json.dumps({"prompt_text": "Atlas persona", "token_count": 805}).encode())
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-    prompt = aacs.fetch_persona("atlas")
-    assert prompt == "Atlas persona"
+    result = aacs.fetch_persona("atlas")
+    assert result == ("Atlas persona", 805)
     assert "/dispatcher/persona" in captured["url"]
     assert "role=reviewer" in captured["url"]
     assert "variant=atlas" in captured["url"]
 
 
 def test_fetch_persona_404_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch):
-    """404 → retry; eventually 200 returns prompt. Use short retry config."""
+    """404 → retry; eventually 200 returns (prompt, token_count). Short retry config."""
     import urllib.error
 
     monkeypatch.setattr(aacs, "_PERSONA_RETRY_MAX_SECONDS", 5)
@@ -98,11 +98,11 @@ def test_fetch_persona_404_retries_then_succeeds(monkeypatch: pytest.MonkeyPatch
         calls["n"] += 1
         if calls["n"] < 3:
             raise urllib.error.HTTPError(url, 404, "not found", {}, None)
-        return _FakeResp(json.dumps({"prompt_text": "Nova worker"}).encode())
+        return _FakeResp(json.dumps({"prompt_text": "Nova worker", "token_count": 104}).encode())
 
     monkeypatch.setattr("urllib.request.urlopen", fake_urlopen)
-    prompt = aacs.fetch_persona("nova")
-    assert prompt == "Nova worker"
+    result = aacs.fetch_persona("nova")
+    assert result == ("Nova worker", 104)
     assert calls["n"] == 3
 
 
@@ -319,7 +319,7 @@ def test_run_happy_path_writes_attribution_and_publishes_handoff(
     """Mock every subsystem; assert insert_attribution + classify_and_save +
     _publish_handoff all fire with the right args, and exit code is 0."""
     _seed_env(monkeypatch)
-    monkeypatch.setattr(aacs, "fetch_persona", lambda _c: "ATLAS_PROMPT")
+    monkeypatch.setattr(aacs, "fetch_persona", lambda _c: ("ATLAS_PROMPT", 500))
     monkeypatch.setattr(aacs, "call_anthropic", lambda *_a, **_kw: ("REPLY", 100, 200, 0))
 
     insert_calls: list[dict] = []
@@ -376,7 +376,7 @@ def test_run_no_atoms_still_fires_one_empty_handoff(monkeypatch: pytest.MonkeyPa
     """If classify_and_save produces no atoms, fire ONE handoff with empty
     atom_id so the chain consumer still advances (no stall)."""
     _seed_env(monkeypatch)
-    monkeypatch.setattr(aacs, "fetch_persona", lambda _c: "PROMPT")
+    monkeypatch.setattr(aacs, "fetch_persona", lambda _c: ("PROMPT", 500))
     monkeypatch.setattr(aacs, "call_anthropic", lambda *_a, **_kw: ("REPLY", 0, 0, 0))
     monkeypatch.setattr(aacs, "insert_attribution", lambda **_kw: None)
 
@@ -542,6 +542,79 @@ def test_call_anthropic_exhausts_publishes_ops_failure(monkeypatch: pytest.Monke
     assert state["attempts"] == aacs._RATE_LIMIT_MAX_ATTEMPTS == 4
     assert len(published) == 1
     assert published[0] == {"task_id": "t-x", "callsign": "atlas", "retries": 3}
+
+
+def test_build_system_param_caches_when_over_threshold():
+    """persona_token_count >= 1024 → list-of-blocks with cache_control: ephemeral."""
+    result = aacs._build_system_param("PERSONA_TEXT", 1024)
+    assert isinstance(result, list)
+    assert result == [
+        {
+            "type": "text",
+            "text": "PERSONA_TEXT",
+            "cache_control": {"type": "ephemeral"},
+        }
+    ]
+    # 2576-token aiden persona (over threshold) — also caches.
+    big = aacs._build_system_param("PERSONA_TEXT", 2576)
+    assert isinstance(big, list)
+    assert big[0]["cache_control"] == {"type": "ephemeral"}
+
+
+def test_build_system_param_passthrough_when_under_threshold():
+    """persona_token_count < 1024 → plain string (cacheable threshold not met)."""
+    # Nova at 104 tokens — way under.
+    result = aacs._build_system_param("PERSONA_TEXT", 104)
+    assert result == "PERSONA_TEXT"
+    # Atlas at 202 tokens — also under.
+    result = aacs._build_system_param("ATLAS_TEXT", 202)
+    assert result == "ATLAS_TEXT"
+    # Edge: 1023 → still under.
+    edge = aacs._build_system_param("EDGE", 1023)
+    assert edge == "EDGE"
+
+
+def test_call_anthropic_uses_cached_system_when_persona_over_threshold(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """End-to-end: call_anthropic with persona_token_count=1024 → SDK call sees
+    the list-form system param with cache_control set."""
+    captured: dict = {}
+
+    class _FakeContent:
+        def __init__(self, text):
+            self.text = text
+
+    class _FakeUsage:
+        input_tokens = 50
+        output_tokens = 10
+
+    class _FakeResponse:
+        content = [_FakeContent("OK")]
+        usage = _FakeUsage()
+
+    class _FakeClient:
+        def __init__(self, *, api_key):
+            self.messages = self
+
+        def create(self, **kwargs):
+            captured["system"] = kwargs.get("system")
+            return _FakeResponse()
+
+    fake_anthropic = types.ModuleType("anthropic")
+    fake_anthropic.Anthropic = _FakeClient
+    fake_anthropic.APIStatusError = Exception
+    fake_anthropic.RateLimitError = Exception
+    monkeypatch.setitem(sys.modules, "anthropic", fake_anthropic)
+
+    aacs.call_anthropic("KEY", "BIG_PERSONA", "BRIEF", persona_token_count=1500)
+    assert isinstance(captured["system"], list)
+    assert captured["system"][0]["cache_control"] == {"type": "ephemeral"}
+
+    # And the converse — small persona stays as str.
+    captured.clear()
+    aacs.call_anthropic("KEY", "SMALL_PERSONA", "BRIEF", persona_token_count=100)
+    assert captured["system"] == "SMALL_PERSONA"
 
 
 def test_call_anthropic_does_not_retry_non_retriable_400(monkeypatch: pytest.MonkeyPatch):

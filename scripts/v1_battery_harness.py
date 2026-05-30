@@ -238,7 +238,12 @@ def trigger_face_run(brief: str) -> tuple[str | None, float, str]:
     """
     pre_ids = set(_load_chain_state().keys())
     env = {**os.environ, "FACE_BRIEF": brief}
-    started = time.monotonic()
+    # time.time() (Unix wall-clock seconds), NOT time.monotonic(): this value is
+    # passed to derive_metrics where it is subtracted from attribution-row ISO
+    # timestamps and the chain-state-file mtime — both of which are wall-clock.
+    # time.monotonic() has an arbitrary process-local epoch and cannot be
+    # correlated across process boundaries (Max HOLD on #1351).
+    started = time.time()
     try:
         proc = subprocess.run(
             [sys.executable, "-m", FACE_MODULE],
@@ -477,7 +482,7 @@ def execute_run(plan: dict) -> RunResult:
             chain_id=None,
             status="FAIL",
             started_ts=started_ts,
-            ended_ts=time.monotonic(),
+            ended_ts=time.time(),  # wall-clock, paired with started_ts (also wall-clock) — Max HOLD on #1351
             notes=[f"Face did not produce a new chain_id; tail: {face_log[-400:]!r}"],
         )
     print(f"  chain_id={chain_id}", file=sys.stderr)
@@ -492,7 +497,11 @@ def execute_run(plan: dict) -> RunResult:
         print(f"  {crash_note}", file=sys.stderr)
     # Wait for completion (or timeout).
     entry = wait_for_chain_complete(chain_id, RUN_TIMEOUT_S)
-    ended_ts = time.monotonic()
+    # time.time() (wall-clock), NOT time.monotonic(): paired with started_ts in
+    # derive_metrics' cross-domain math (vs attribution.ts + state file mtime).
+    # wait_for_chain_complete's internal loop is still on time.monotonic() — pure
+    # intra-function duration. Max HOLD on #1351.
+    ended_ts = time.time()
     chain_status = fetch_chain_status(chain_id)
     task_id = entry.get("task_id") if entry else None
     attribution = fetch_attribution_rows(chain_id, task_id)

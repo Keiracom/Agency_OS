@@ -259,9 +259,11 @@ def test_call_anthropic_passes_model_system_brief_and_returns_text_tokens(
     fake_anthropic.Anthropic = _FakeClient
     monkeypatch.setitem(sys.modules, "anthropic", fake_anthropic)
 
-    text, in_t, out_t, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    text, in_t, out_t, cache_r, cache_w, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
 
     assert text == "Atlas safety-review verdict: looks OK."
+    # Cache fields absent on the fake usage → getattr defaults to 0.
+    assert cache_r == 0 and cache_w == 0
     assert in_t == 42 and out_t == 137
     assert retries == 0  # happy path → no rate-limit retries
     assert captured["api_key"] == "KEY"
@@ -270,6 +272,69 @@ def test_call_anthropic_passes_model_system_brief_and_returns_text_tokens(
     assert kw["max_tokens"] == aacs._MAX_TOKENS
     assert kw["system"] == "SYS"
     assert kw["messages"] == [{"role": "user", "content": "BRIEF"}]
+
+
+def test_call_anthropic_extracts_cache_tokens_from_usage(monkeypatch: pytest.MonkeyPatch):
+    """When the Anthropic response.usage exposes cache_creation_input_tokens +
+    cache_read_input_tokens, call_anthropic returns them positionally (5th + 4th
+    slots of the return tuple). This is the V1-battery cache-attribution fix —
+    previously these were dropped, so cache_hit_pct showed 0% in the harness.
+    """
+
+    class _FakeUsage:
+        input_tokens = 11
+        output_tokens = 22
+        cache_creation_input_tokens = 2544
+        cache_read_input_tokens = 1024
+
+    class _FakeContent:
+        def __init__(self, text):
+            self.text = text
+
+    class _FakeResponse:
+        content = [_FakeContent("ok")]
+        usage = _FakeUsage()
+
+    class _FakeClient:
+        def __init__(self, *, api_key):
+            self.messages = self
+
+        def create(self, **_kwargs):
+            return _FakeResponse()
+
+    fake_anthropic = types.ModuleType("anthropic")
+    fake_anthropic.Anthropic = _FakeClient
+    monkeypatch.setitem(sys.modules, "anthropic", fake_anthropic)
+
+    text, in_t, out_t, cache_r, cache_w, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    assert text == "ok"
+    assert in_t == 11 and out_t == 22
+    assert cache_r == 1024
+    assert cache_w == 2544
+    assert retries == 0
+
+
+def test_insert_attribution_writes_cache_token_columns():
+    """V1-battery fix — cache_read_tokens + cache_write_tokens kwargs land in
+    the INSERT params (no longer hardcoded zeros)."""
+    conn, cur = _fake_conn()
+    aacs.insert_attribution(
+        callsign="aiden",
+        chain_id="c-cache",
+        task_id="t-cache",
+        chain_step="aiden_plan",
+        input_tokens=11,
+        output_tokens=22,
+        cost_usd=0.0,
+        cost_aud=0.0,
+        latency_ms=1.0,
+        cache_read_tokens=1024,
+        cache_write_tokens=2544,
+        conn=conn,
+    )
+    params = cur.execute.call_args[0][1]
+    assert 1024 in params
+    assert 2544 in params
 
 
 # ---------------------------------------------------------------------------
@@ -320,7 +385,7 @@ def test_run_happy_path_writes_attribution_and_publishes_handoff(
     _publish_handoff all fire with the right args, and exit code is 0."""
     _seed_env(monkeypatch)
     monkeypatch.setattr(aacs, "fetch_persona", lambda _c: ("ATLAS_PROMPT", 500))
-    monkeypatch.setattr(aacs, "call_anthropic", lambda *_a, **_kw: ("REPLY", 100, 200, 0))
+    monkeypatch.setattr(aacs, "call_anthropic", lambda *_a, **_kw: ("REPLY", 100, 200, 0, 0, 0))
 
     insert_calls: list[dict] = []
 
@@ -377,7 +442,7 @@ def test_run_no_atoms_still_fires_one_empty_handoff(monkeypatch: pytest.MonkeyPa
     atom_id so the chain consumer still advances (no stall)."""
     _seed_env(monkeypatch)
     monkeypatch.setattr(aacs, "fetch_persona", lambda _c: ("PROMPT", 500))
-    monkeypatch.setattr(aacs, "call_anthropic", lambda *_a, **_kw: ("REPLY", 0, 0, 0))
+    monkeypatch.setattr(aacs, "call_anthropic", lambda *_a, **_kw: ("REPLY", 0, 0, 0, 0, 0))
     monkeypatch.setattr(aacs, "insert_attribution", lambda **_kw: None)
 
     async def fake_classify(*_a, **_kw):
@@ -486,7 +551,7 @@ def _install_fake_anthropic_with_statuses(
 def test_call_anthropic_retries_on_429_then_succeeds(monkeypatch: pytest.MonkeyPatch):
     """One 429 then success → returns retries=1, exponential backoff started at 1s."""
     state = _install_fake_anthropic_with_statuses(monkeypatch, [429, None])
-    text, in_t, out_t, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    text, in_t, out_t, cache_r, cache_w, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
     assert text == "OK"
     assert in_t == 10 and out_t == 20
     assert retries == 1
@@ -498,7 +563,7 @@ def test_call_anthropic_retries_on_429_then_succeeds(monkeypatch: pytest.MonkeyP
 def test_call_anthropic_retries_on_529_overloaded(monkeypatch: pytest.MonkeyPatch):
     """529 (overloaded) is in the retriable set — same path as 429."""
     state = _install_fake_anthropic_with_statuses(monkeypatch, [529, 529, None])
-    _, _, _, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    _, _, _, _, _, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
     assert retries == 2
     assert state["attempts"] == 3
     # Exponential: 1s, 2s.
@@ -508,7 +573,7 @@ def test_call_anthropic_retries_on_529_overloaded(monkeypatch: pytest.MonkeyPatc
 def test_call_anthropic_respects_retry_after_header(monkeypatch: pytest.MonkeyPatch):
     """Retry-After: 7 → backoff = 7s (overrides computed exponential)."""
     state = _install_fake_anthropic_with_statuses(monkeypatch, [429, None], retry_after_header="7")
-    _, _, _, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    _, _, _, _, _, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
     assert retries == 1
     assert state["captured_sleeps"] == [pytest.approx(7.0)]
 
@@ -520,7 +585,7 @@ def test_call_anthropic_backoff_caps_at_60s(monkeypatch: pytest.MonkeyPatch):
     # the cap kicks in by patching the base to a large value and re-running.
     monkeypatch.setattr(aacs, "_RATE_LIMIT_BASE_BACKOFF_S", 100.0)
     state = _install_fake_anthropic_with_statuses(monkeypatch, [429, 429, 429, None])
-    _, _, _, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    _, _, _, _, _, retries = aacs.call_anthropic("KEY", "SYS", "BRIEF")
     assert retries == 3
     # All 3 backoffs should be capped at 60s.
     assert all(s == pytest.approx(60.0) for s in state["captured_sleeps"])

@@ -193,6 +193,8 @@ def insert_attribution(
     cost_usd: float,
     cost_aud: float,
     latency_ms: float,
+    cache_read_tokens: int = 0,
+    cache_write_tokens: int = 0,
     rate_limit_retries: int = 0,
     completion_status: str = "success",
     conn: Any = None,
@@ -224,8 +226,8 @@ def insert_attribution(
                     _MODEL,
                     int(input_tokens),
                     int(output_tokens),
-                    0,
-                    0,
+                    int(cache_read_tokens),
+                    int(cache_write_tokens),
                     cost_usd,
                     cost_aud,
                     latency_ms,
@@ -348,7 +350,7 @@ def call_anthropic(
     task_id: str = "",
     callsign: str = "",
     persona_token_count: int = 0,
-) -> tuple[str, int, int, int]:
+) -> tuple[str, int, int, int, int, int]:
     """Anthropic messages.create with 429/529 retry. Returns (text, in_tok, out_tok, retries).
 
     V1-battery Gate 2 (Elliot dispatch 2026-05-30 ~11:35 AEST): retry on
@@ -379,10 +381,18 @@ def call_anthropic(
                 messages=[{"role": "user", "content": brief}],
             )
             text = response.content[0].text if response.content else ""
+            # Anthropic SDK exposes cache tokens on usage when prompt caching
+            # is engaged (docs.anthropic.com/.../prompt-caching). Older SDK
+            # versions / non-caching responses omit these fields → getattr
+            # default 0. `or 0` covers an explicit None some SDK paths return.
+            cache_write_tokens = getattr(response.usage, "cache_creation_input_tokens", 0) or 0
+            cache_read_tokens = getattr(response.usage, "cache_read_input_tokens", 0) or 0
             return (
                 text,
                 int(response.usage.input_tokens),
                 int(response.usage.output_tokens),
+                int(cache_read_tokens),
+                int(cache_write_tokens),
                 retries,
             )
         except anthropic.APIStatusError as exc:
@@ -454,7 +464,14 @@ def run() -> int:
 
     spawned_at = time.time()
     try:
-        text, input_tokens, output_tokens, rate_limit_retries = call_anthropic(
+        (
+            text,
+            input_tokens,
+            output_tokens,
+            cache_read_tokens,
+            cache_write_tokens,
+            rate_limit_retries,
+        ) = call_anthropic(
             api_key,
             persona,
             brief,
@@ -482,15 +499,19 @@ def run() -> int:
         cost_usd=cost_usd,
         cost_aud=cost_aud,
         latency_ms=latency_ms,
+        cache_read_tokens=cache_read_tokens,
+        cache_write_tokens=cache_write_tokens,
         rate_limit_retries=rate_limit_retries,
     )
 
     logger.info(
-        "api_agent_cold_start: callsign=%s chain_step=%s in=%d out=%d cost_usd=%.6f cost_aud=%.6f latency_ms=%.1f",
+        "api_agent_cold_start: callsign=%s chain_step=%s in=%d out=%d cache_r=%d cache_w=%d cost_usd=%.6f cost_aud=%.6f latency_ms=%.1f",
         callsign,
         chain_step,
         input_tokens,
         output_tokens,
+        cache_read_tokens,
+        cache_write_tokens,
         cost_usd,
         cost_aud,
         latency_ms,

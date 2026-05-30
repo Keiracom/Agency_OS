@@ -533,18 +533,15 @@ def advance_step(
             # Last parallel step completed → chain is complete.
             entry["current_step"] = "complete"
             entry["pending"] = []
-            # Agency_OS-zqni — single final #ceo post for the directive.
-            # Belt-and-suspenders fail-open: _post_chain_complete's internal try/except
-            # is the primary guard, but a future refactor or a test-injected fake
-            # MUST NOT abort the state save here.
-            try:
-                _post_chain_complete(entry, chain_id)
-            except Exception:  # noqa: BLE001 — final-post failure must not break state save
-                log.warning(
-                    "v1_chain chain_complete raised at call site for chain=%s",
-                    chain_id,
-                    exc_info=True,
-                )
+            # NOTE: _post_chain_complete is NOT called here — it fires from
+            # _advance_step_async (the event-loop-level wrapper) instead.
+            # asyncio.to_thread runs advance_step on a worker thread; parallel
+            # hop completions (orion_spec + atlas_safety) arriving close in
+            # time can both enter this branch before either has saved state,
+            # causing duplicate (or triplicate) #ceo posts. Moving the post to
+            # the single-threaded event loop with a `complete_posted` flag
+            # serialises it (race found 2026-05-30 Elliot, fix Agency_OS-chain-
+            # complete-post-event-loop).
         elif completed_step in _SEQ_NEXT:
             next_step = _SEQ_NEXT[completed_step]
             if next_step is not None:
@@ -571,21 +568,40 @@ async def _advance_step_async(
     *,
     clock: Callable[[], float] = time.time,
 ) -> list[dict]:
-    """Async entrypoint for the V1 consumer loop (Atlas oevr) — Aiden HOLD fix.
+    """Async entrypoint for the V1 consumer loop (Atlas oevr).
 
-    Delegates to the sync advance_step via asyncio.to_thread so the completion
-    branch ALWAYS fires _post_chain_complete via the exact same code path the
-    sync caller uses. Parity-by-delegation eliminates the parallel-implementation
-    divergence bug class Aiden caught on PR #1340 — there can never be a "the
-    sync path calls _post_chain_complete but the async path forgot" failure,
-    because there is only one path.
+    Delegates state-mutation work to advance_step on the thread pool (state
+    I/O + urllib publishes are I/O-bound), then fires _post_chain_complete
+    ONCE from the event-loop level. The post is here — not inside
+    advance_step — to serialise it: parallel hop completions (orion_spec +
+    atlas_safety) hitting the consumer back-to-back each enter advance_step
+    on separate threads, and prior to this both threads could observe
+    current_step == 'complete' before either persisted the
+    "I already posted" flag → duplicate (or triplicate) #ceo posts.
 
-    State I/O (state file read/write) and the urllib POST in _post_chain_complete
-    are I/O-bound, so running them on a worker thread is the correct shape:
-    advance_step returns when the dispatch + state-save + chain-complete-post
-    are all done, and the event loop is not blocked during the urllib POST.
+    The complete_posted flag is a re-load-check-write triple under the
+    event loop, which runs single-threaded: only one coroutine can observe
+    `complete_posted is False` and flip it, so only one post fires.
+    Race fixed 2026-05-30 (Elliot diagnosis).
     """
-    return await asyncio.to_thread(advance_step, chain_id, completed_step, atom_id, clock=clock)
+    envelopes = await asyncio.to_thread(
+        advance_step, chain_id, completed_step, atom_id, clock=clock
+    )
+    # Single-threaded serialisation point — only one coroutine wins the flip.
+    state = _load_state()
+    entry = state.get(chain_id) or {}
+    if entry.get("current_step") == "complete" and not entry.get("complete_posted"):
+        entry["complete_posted"] = True
+        _save_state(state)
+        try:
+            _post_chain_complete(entry, chain_id)
+        except Exception:  # noqa: BLE001 — final-post failure must not break completion
+            log.warning(
+                "v1_chain chain_complete raised at _advance_step_async for chain=%s",
+                chain_id,
+                exc_info=True,
+            )
+    return envelopes
 
 
 # ---------------------------------------------------------------------------

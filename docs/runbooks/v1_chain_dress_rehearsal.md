@@ -65,11 +65,11 @@ nats --server=nats://127.0.0.1:4222 rtt
 ```bash
 source /home/elliotbot/.config/agency-os/.env
 DSN="${DATABASE_URL//postgresql+asyncpg/postgresql}"
-psql "$DSN" -t -c "SELECT to_regclass('public.tasks'), to_regclass('kei45_task_event_trigger');"
+psql "$DSN" -t -c "SELECT to_regclass('public.tasks'), (SELECT COUNT(*) FROM pg_trigger WHERE tgname = 'kei45_task_event_trigger');"
 ```
-The `${DATABASE_URL//postgresql+asyncpg/postgresql}` strip is required: `DATABASE_URL` carries the SQLAlchemy-style `postgresql+asyncpg://…` prefix, which `psql` cannot parse, causing it to silently fall back to the missing local socket.
+The `${DATABASE_URL//postgresql+asyncpg/postgresql}` strip is required: `DATABASE_URL` carries the SQLAlchemy-style `postgresql+asyncpg://…` prefix, which `psql` cannot parse, causing it to silently fall back to the missing local socket. The trigger check uses `pg_trigger` (not `to_regclass`, which only resolves *relations* — tables/views/sequences/indexes — never triggers).
 
-**Expect:** the first column resolves to `public.tasks` (table present). If either column is empty/NULL the relation does not exist → §5.5.
+**Expect:** ` public.tasks | 1` — first column resolves to the table, second column is the trigger count (`1` = present). If the first column is empty/NULL the table is missing; if the second column is `0` the trigger is missing → §5.5.
 
 ### 1.6 Chain state file clean (no stranded prior run)
 

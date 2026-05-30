@@ -42,7 +42,7 @@ from src.dispatcher.cost_breaker import BreakerDecision, CostBreaker
 from src.dispatcher.idempotency import IdempotencyDecision, IdempotencyGate
 from src.dispatcher.interceptor_proxy import router as interceptor_router
 from src.dispatcher.physical_ceiling import check_physical_ceiling
-from src.dispatcher.reaper import Reaper
+from src.dispatcher.reaper import Reaper, _list_tmux_sessions
 from src.dispatcher.session_manager import Backend, SessionManager
 from src.dispatcher.spend_tracker import get_spend
 from src.dispatcher.tmux_lifecycle import (
@@ -581,6 +581,29 @@ async def _reaper_loop(rp: Reaper) -> None:
             result = rp.sweep()
             if result.total_reaped:
                 logger.info("KEI-213 reaper reaped %d sessions", result.total_reaped)
+            # ── _spawned GC (Elliot 2026-05-30) ──────────────────────────────
+            # Sessions exit naturally (api_agent_cold_start finishes, tmux
+            # closes) but nothing pops them from _spawned. check_physical_ceiling
+            # then sees a stale count and queues new spawns forever. Cross-
+            # reference tmux ls and pop completed entries. Watchdog tracker is
+            # unregistered alongside so /dispatcher/health stays accurate.
+            try:
+                live_sessions = _list_tmux_sessions()
+                if live_sessions is not None:
+                    live_set = set(live_sessions)
+                    dead_keys = [
+                        k
+                        for k, v in list(_spawned.items())
+                        if v.get("backend") == "tmux"
+                        and getattr(v.get("handle"), "session_name", None) not in live_set
+                    ]
+                    for k in dead_keys:
+                        _spawned.pop(k, None)
+                        if _watchdog is not None:
+                            _watchdog.unregister(k)  # safe — pops with default None
+                        logger.info("dispatcher: GC'd completed session key=%s", k)
+            except Exception:  # noqa: BLE001 — GC must not break the reaper loop
+                logger.exception("dispatcher: _spawned GC raised")
             _component_status["reaper"] = "ok"
         except asyncio.CancelledError:
             _component_status["reaper"] = "stopped"

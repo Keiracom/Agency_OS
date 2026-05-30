@@ -682,6 +682,12 @@ if __name__ == "__main__":  # pragma: no cover
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
     import sys
 
-    brief = " ".join(sys.argv[1:]) or "test task from v1_chain_orchestrator __main__"
-    cid = dispatch({"id": "smoke-task-1", "brief": brief})
-    print(f"dispatched chain_id={cid}")
+    # --consumer: long-running NATS subscriber loop (systemd entry point for
+    # keiracom-v1-chain-consumer.service — Agency_OS-zr7e). All other argv
+    # forms fall through to the existing dispatch smoke for ad-hoc testing.
+    if len(sys.argv) > 1 and sys.argv[1] == "--consumer":
+        asyncio.run(run_consumer())
+    else:
+        brief = " ".join(sys.argv[1:]) or "test task from v1_chain_orchestrator __main__"
+        cid = dispatch({"id": "smoke-task-1", "brief": brief})
+        print(f"dispatched chain_id={cid}")

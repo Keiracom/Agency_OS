@@ -900,8 +900,40 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
     # conservative DEFAULT_PHYSICAL_CEILING (never fails open to "unlimited").
     can_spawn, ceiling_reason = check_physical_ceiling(len(_spawned))
     if not can_spawn:
-        logger.warning("physical ceiling: refusing spawn key=%s — %s", req.key, ceiling_reason)
-        raise HTTPException(status_code=503, detail=ceiling_reason)
+        # Async queue (Elliot 2026-05-30): instead of immediately 503ing when
+        # the physical ceiling is hit, poll every queue_poll_s up to
+        # queue_timeout_s for a slot to free. dispatcher_spawn is an `async def`
+        # FastAPI endpoint, so `await asyncio.sleep` yields the event loop —
+        # concurrent task completions can unregister their _spawned entries and
+        # release the slot. Reads len(_spawned) live on each poll; no new state
+        # required. 503 still raised on actual timeout. Env-overridable via
+        # DISPATCHER_QUEUE_TIMEOUT_S.
+        queue_timeout_s = int(os.environ.get("DISPATCHER_QUEUE_TIMEOUT_S", "300"))
+        queue_poll_s = 5
+        import time as _time  # noqa: PLC0415 — avoid shadowing the module-level time
+
+        deadline = _time.monotonic() + queue_timeout_s
+        while not can_spawn:
+            remaining = deadline - _time.monotonic()
+            if remaining <= 0:
+                logger.warning(
+                    "physical ceiling: queue timeout key=%s after %ds — %s",
+                    req.key,
+                    queue_timeout_s,
+                    ceiling_reason,
+                )
+                raise HTTPException(
+                    status_code=503,
+                    detail=f"spawn queue timeout ({queue_timeout_s}s): {ceiling_reason}",
+                )
+            logger.info(
+                "physical ceiling: queuing spawn key=%s (%d active, %.0fs remaining)",
+                req.key,
+                len(_spawned),
+                remaining,
+            )
+            await asyncio.sleep(queue_poll_s)
+            can_spawn, ceiling_reason = check_physical_ceiling(len(_spawned))
 
     manager = SessionManager(backend=backend)
     try:

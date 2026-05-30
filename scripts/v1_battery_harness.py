@@ -43,21 +43,19 @@ import sys
 import time
 import urllib.error
 import urllib.request
+import uuid
 from dataclasses import dataclass, field
 from pathlib import Path
 
 # ─── constants ────────────────────────────────────────────────────────────────
 
 DISPATCHER_URL = os.environ.get("DISPATCHER_URL", "http://127.0.0.1:4001")
-FACE_MODULE = "src.keiracom_system.chat.face"
-DEFAULT_WORKDIR = os.environ.get("DISPATCHER_AGENT_WORKDIR", "/home/elliotbot/clawd/Agency_OS")
 CHAIN_STATE_FILE = Path(os.environ.get("V1_CHAIN_STATE_FILE", "/tmp/v1_chain_state.json"))
 API_AGENT_NEEDLE = "api_agent_cold_start"
 CLI_AGENT_NEEDLE = "agent_cold_start"  # used by --baseline-only; gate inverts
 USD_TO_AUD = 1.55  # CLAUDE.md §LAW II — Australia First
 
 RUN_TIMEOUT_S = int(os.environ.get("V1_BATTERY_RUN_TIMEOUT_S", "600"))
-FACE_SPAWN_TIMEOUT_S = 30
 POLL_INTERVAL_S = 2.0
 HTTP_TIMEOUT_S = 10
 
@@ -227,40 +225,40 @@ def _load_chain_state() -> dict:
         return {}
 
 
-def trigger_face_run(brief: str) -> tuple[str | None, float, str]:
-    """Spawn Face as a subprocess with FACE_BRIEF; return (chain_id, started_monotonic, face_log).
+def trigger_chain_direct(brief: str) -> tuple[str | None, float, str]:
+    """Dispatch the V1 chain's first hop directly via v1_chain_orchestrator.dispatch().
+    Returns (chain_id, started_wall_clock, log_message).
 
-    Face publishes the initial task_dispatch envelope to keiracom.dispatch.aiden
-    and then exits (the chain continues in the consumers). Identification of the
-    new chain_id is by diff against the chain state file.
+    Replaces the prior Face-subprocess path (Atlas Agency_OS-battery-harness-direct-chain,
+    Elliot dispatch 2026-05-30): Face runs Gemini intent classification on the
+    brief, and for the battery's test briefs ("Add a docstring...", "Add a
+    test...") Face returns no_decisions_detected and exits without dispatching.
+    The chain state file never received a chain_id → every harness run logged
+    "Face did not produce a new chain_id".
 
-    Fail-open: any failure returns (None, started, log) so the run is marked FAIL.
+    The battery's purpose is verifying the chain Aiden→Max→Nova→(Orion+Atlas),
+    not Face's routing accuracy. Calling orch.dispatch() directly:
+      - Generates a fresh chain_id (uuid4) + task_id.
+      - Persists state to /tmp/v1_chain_state.json (CHAIN_STATE_FILE).
+      - POSTs to /dispatcher/spawn for the aiden_plan hop — identical to the
+        path Face was supposed to fire on a real decision.
+
+    Fail-open: any orch.dispatch error → (None, started, error log).
     """
-    pre_ids = set(_load_chain_state().keys())
-    env = {**os.environ, "FACE_BRIEF": brief}
-    # time.time() (Unix wall-clock seconds), NOT time.monotonic(): this value is
-    # passed to derive_metrics where it is subtracted from attribution-row ISO
-    # timestamps and the chain-state-file mtime — both of which are wall-clock.
-    # time.monotonic() has an arbitrary process-local epoch and cannot be
-    # correlated across process boundaries (Max HOLD on #1351).
+    # Lazy import — keeps the harness's stdlib-only import surface clean so the
+    # --dry-run pre-flight loads on CI hosts that don't have the chain module
+    # installed.
+    from src.keiracom_system.chain import v1_chain_orchestrator as orch  # noqa: PLC0415
+
+    # time.time() (wall-clock), NOT time.monotonic(): paired with attribution-row
+    # ISO timestamps + chain-state-file mtime in derive_metrics (Max HOLD #1351).
     started = time.time()
+    task_id = str(uuid.uuid4())
     try:
-        proc = subprocess.run(
-            [sys.executable, "-m", FACE_MODULE],
-            env=env,
-            capture_output=True,
-            text=True,
-            timeout=FACE_SPAWN_TIMEOUT_S,
-            cwd=DEFAULT_WORKDIR,
-            check=False,
-        )
-        log = (proc.stdout + proc.stderr)[-2000:]
-    except (subprocess.TimeoutExpired, OSError) as exc:
-        return None, started, f"Face subprocess failed: {type(exc).__name__}: {exc}"
-    post = _load_chain_state()
-    new_ids = [cid for cid in post if cid not in pre_ids]
-    chain_id = new_ids[0] if new_ids else None
-    return chain_id, started, log
+        chain_id = orch.dispatch({"id": task_id, "brief": brief})
+    except Exception as exc:  # noqa: BLE001 — harness must mark the run FAIL not crash
+        return None, started, f"orch.dispatch failed: {type(exc).__name__}: {exc}"
+    return chain_id, started, f"orch.dispatch ok chain_id={chain_id} task_id={task_id}"
 
 
 def wait_for_chain_complete(chain_id: str, timeout_s: int) -> dict:
@@ -490,7 +488,7 @@ def execute_run(plan: dict) -> RunResult:
     kind = plan["kind"]
     brief = plan["brief"]
     print(f"\n▶ running {label} ({kind})…", file=sys.stderr)
-    chain_id, started_ts, face_log = trigger_face_run(brief)
+    chain_id, started_ts, trigger_log = trigger_chain_direct(brief)
     if chain_id is None:
         return RunResult(
             label=label,
@@ -500,7 +498,7 @@ def execute_run(plan: dict) -> RunResult:
             status="FAIL",
             started_ts=started_ts,
             ended_ts=time.time(),  # wall-clock, paired with started_ts (also wall-clock) — Max HOLD on #1351
-            notes=[f"Face did not produce a new chain_id; tail: {face_log[-400:]!r}"],
+            notes=[f"direct chain dispatch failed; trigger_log={trigger_log[-400:]!r}"],
         )
     print(f"  chain_id={chain_id}", file=sys.stderr)
     # Optional crash injection.

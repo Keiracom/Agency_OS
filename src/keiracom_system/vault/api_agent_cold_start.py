@@ -161,7 +161,7 @@ def insert_attribution(
     cost_aud: float,
     latency_ms: float,
     rate_limit_retries: int = 0,
-    completion_status: str = "done",
+    completion_status: str = "success",
     conn: Any = None,
 ) -> None:
     """INSERT a row into public.keiracom_spawn_attribution. Fail-open.

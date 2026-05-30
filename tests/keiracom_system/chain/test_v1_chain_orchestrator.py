@@ -773,3 +773,157 @@ def test_publish_envelope_failopen_on_http_error(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
     ok = orch._publish_envelope({"chain_id": "x", "chain_step": "y", "brief": "z"}, "max")
     assert ok is False
+
+
+# ---------------------------------------------------------------------------
+# V1-battery Gate 1 — per-task A$10 spend ceiling
+# (Elliot dispatch 2026-05-30 ~11:35 AEST)
+# ---------------------------------------------------------------------------
+
+
+def test_query_task_cost_aud_returns_none_on_empty_task_id():
+    """Empty task_id → None (caller treats as 'couldn't check', fail-open)."""
+    assert orch._query_task_cost_aud("") is None
+
+
+def test_advance_step_halts_when_ceiling_breached(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    """SUM(cost_aud) > A$10 → chain halts: state.current_step='halted_ceiling_exceeded',
+    ceiling_tripped=True, breach posted, ZERO new dispatches.
+    """
+    captured = _capture_publishes(monkeypatch)
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+
+    chain_id = "chain-ceiling-breach"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": "t-runaway",
+            "brief": "runaway",
+            "started_ts": 0.0,
+            "current_step": "aiden_plan",
+            "steps_done": [],
+            "atom_ids": {},
+            "pending": [],
+        },
+    )
+
+    breach_calls: list[dict] = []
+
+    def fake_post_breach(entry, cid, total, per_hop, *, dispatcher_url=None):
+        breach_calls.append(
+            {"chain_id": cid, "total": total, "per_hop": per_hop, "task_id": entry.get("task_id")}
+        )
+
+    monkeypatch.setattr(orch, "_post_ceiling_breach", fake_post_breach)
+    # Simulate a query result over the A$10 ceiling.
+    monkeypatch.setattr(
+        orch,
+        "_query_task_cost_aud",
+        lambda _task_id: (
+            12.34,
+            [
+                {"callsign": "aiden", "chain_step": "aiden_plan", "cost_aud": 12.34},
+            ],
+        ),
+    )
+
+    envelopes = orch.advance_step(chain_id, "aiden_plan", "atom-runaway", clock=lambda: 5.0)
+
+    # Halt semantics — zero new dispatches, halt state recorded.
+    assert envelopes == []
+    assert captured == []
+    state = json.loads(state_file.read_text())
+    entry = state[chain_id]
+    assert entry["current_step"] == "halted_ceiling_exceeded"
+    assert entry["ceiling_tripped"] is True
+    assert entry["ceiling_total_aud"] == 12.34
+    assert entry["ceiling_per_hop"][0]["chain_step"] == "aiden_plan"
+    # Breach #ceo post must fire.
+    assert len(breach_calls) == 1
+    assert breach_calls[0]["chain_id"] == chain_id
+    assert breach_calls[0]["task_id"] == "t-runaway"
+
+
+def test_advance_step_proceeds_when_ceiling_not_breached(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """SUM(cost_aud) ≤ A$10 → chain continues normally (one envelope to max)."""
+    captured = _capture_publishes(monkeypatch)
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+
+    chain_id = "chain-under-ceiling"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": "t-cheap",
+            "brief": "cheap run",
+            "started_ts": 0.0,
+            "current_step": "aiden_plan",
+            "steps_done": [],
+            "atom_ids": {},
+            "pending": [],
+        },
+    )
+    monkeypatch.setattr(
+        orch,
+        "_query_task_cost_aud",
+        lambda _task_id: (
+            0.42,
+            [{"callsign": "aiden", "chain_step": "aiden_plan", "cost_aud": 0.42}],
+        ),
+    )
+    breach_fired = []
+    monkeypatch.setattr(
+        orch,
+        "_post_ceiling_breach",
+        lambda *a, **kw: breach_fired.append(True),
+    )
+
+    envelopes = orch.advance_step(chain_id, "aiden_plan", "atom-aiden", clock=lambda: 6.0)
+
+    assert len(envelopes) == 1
+    assert len(captured) == 1
+    assert captured[0][1] == "max"
+    assert not breach_fired
+    state = json.loads(state_file.read_text())
+    entry = state[chain_id]
+    assert entry["current_step"] == "max_challenge"
+    assert entry.get("ceiling_tripped") is not True
+
+
+def test_advance_step_fail_open_when_query_returns_none(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Query read failure (None) → chain proceeds (fleet breaker is fail-SAFE backstop)."""
+    captured = _capture_publishes(monkeypatch)
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+    chain_id = "chain-query-fail"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": "t-unknown",
+            "brief": "x",
+            "started_ts": 0.0,
+            "current_step": "aiden_plan",
+            "steps_done": [],
+            "atom_ids": {},
+            "pending": [],
+        },
+    )
+    monkeypatch.setattr(orch, "_query_task_cost_aud", lambda _task_id: None)
+    envelopes = orch.advance_step(chain_id, "aiden_plan", "atom-x", clock=lambda: 7.0)
+    # Fail-open: normal advance, NOT halted.
+    assert len(envelopes) == 1
+    assert len(captured) == 1
+    state = json.loads(state_file.read_text())
+    assert state[chain_id]["current_step"] == "max_challenge"
+    assert state[chain_id].get("ceiling_tripped") is not True

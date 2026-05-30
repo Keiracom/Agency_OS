@@ -337,7 +337,12 @@ def _publish_envelope(envelope: dict, role: str) -> bool:
         req = urllib.request.Request(
             url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
         )
-        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 — fixed loopback host
+        # 35s client timeout to accommodate dispatcher's async ceiling queue
+        # (PR #1361 — slot wait up to DISPATCHER_QUEUE_TIMEOUT_S default 300s).
+        # 35s = enough to clear one slot-wait cycle; client times out before
+        # the dispatcher's 300s ceiling timeout, so spurious queue timeouts
+        # don't masquerade as transport failures.
+        with urllib.request.urlopen(req, timeout=35) as resp:  # noqa: S310 — fixed loopback host
             status = resp.status
         log.info("v1_chain: /dispatcher/spawn role=%s key=%s status=%d", role, body["key"], status)
         return 200 <= status < 300

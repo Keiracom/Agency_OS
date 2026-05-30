@@ -468,9 +468,14 @@ def _container_spawn_kwargs(key: str, sk: dict[str, Any]) -> dict[str, Any]:
 # env -i clears PATH/HOME too, so the agent command couldn't even start — these
 # NON-SECRET operational vars are re-added. Credentials (DATABASE_URL, *_API_KEY,
 # …) are deliberately NOT whitelisted → scrubbed.
-# Carve-out (Elliot 2026-05-30, V1-battery unblock): ANTHROPIC_API_KEY is in
-# the passthrough until api_agent_cold_start migrates to vault-resolved creds;
-# the Anthropic SDK reads it from os.environ at spawn time.
+# Carve-out (Elliot 2026-05-30, V1-battery unblock): ANTHROPIC_API_KEY,
+# DATABASE_URL, and SUPABASE_DB_DSN are in the passthrough — all three are
+# Phase 1 exceptions until api_agent_cold_start migrates to vault-resolved
+# creds. The Anthropic SDK reads ANTHROPIC_API_KEY from os.environ at spawn
+# time; agent_cold_start._dsn() reads DATABASE_URL OR SUPABASE_DB_DSN for the
+# attribution INSERT connection. Without all three in the passthrough every
+# V1 chain spawn either crashes pre-API-call (no key) or silently drops the
+# attribution row (no DSN → ceiling check has nothing to sum).
 _TMUX_OPERATIONAL_PASSTHROUGH = (
     "PATH",
     "HOME",
@@ -479,6 +484,8 @@ _TMUX_OPERATIONAL_PASSTHROUGH = (
     "TERM",
     "USER",
     "ANTHROPIC_API_KEY",
+    "DATABASE_URL",
+    "SUPABASE_DB_DSN",
 )
 DEFAULT_AGENT_WORKDIR = os.environ.get(
     "DISPATCHER_AGENT_WORKDIR", "/home/elliotbot/clawd/Agency_OS"

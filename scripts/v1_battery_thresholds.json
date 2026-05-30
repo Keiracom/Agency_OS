@@ -1,0 +1,15 @@
+{
+  "_ratified": "2026-05-30 — Aiden+Max deliberation (Agency_OS-avii), Dave gate-set authority",
+  "_harness_keys": "cost_aud_max, latency_ms_max, cache_hit_pct_min, spawn_overhead_ms_max, ttf_signal_ms_max",
+  "_observation_metrics": "tokens_in, tokens_out, per_hop_latency_ms, memory_write_yn, recall_yn_relevance, output_correctness, deliberation_yn, crash_recovery, variance_cv_pct — collected by harness, human-judged post-run",
+  "cost_aud_max": 0.50,
+  "latency_ms_max": 300000,
+  "cache_hit_pct_min": 0,
+  "spawn_overhead_ms_max": 30000,
+  "ttf_signal_ms_max": 10000,
+  "_baseline_only": {
+    "api_vs_max_ratio_pass_pct": 95,
+    "api_vs_max_ratio_warn_pct": 90,
+    "note": "api_vs_max_ratio applies only when running --baseline-only; not a primary battery gate"
+  }
+}

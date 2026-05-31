@@ -57,6 +57,35 @@ def test_wait_for_prompt_returns_false_on_timeout():
     assert result is False
 
 
+def test_wait_for_prompt_polls_pane_then_times_out():
+    """HOLD 1 (Max) — exercise the polling timing race.
+
+    Earlier `returns_false_on_timeout` only proved the deadline check works
+    when time has already advanced past `deadline` on the FIRST while-check —
+    pane_content never gets called. That doesn't prove the loop actually
+    polls before timing out.
+
+    Here time advances in small increments so the while-loop iterates several
+    times, each iteration calling pane_content (returning no ❯), then crosses
+    the deadline. Asserts pane_content was actually polled before the False
+    return — proves the while-loop is doing real work, not just rubber-stamping
+    a stale deadline.
+    """
+    with patch("scripts.utils.tmux_send.pane_content", return_value="no prompt here") as pc, \
+         patch("scripts.utils.tmux_send.time") as mock_time:
+        # t0=0.0 sets deadline=30.0; subsequent values advance until past 30.0
+        mock_time.time.side_effect = [0.0, 0.5, 1.0, 1.5, 2.0, 30.5]
+        mock_time.sleep = MagicMock()
+        result = wait_for_prompt("test:0", timeout=30.0)
+    assert result is False
+    # The whole point: prove we polled at least twice before timing out.
+    # With the time side_effect above the loop iterates 4 times before exit.
+    assert pc.call_count >= 2, (
+        f"wait_for_prompt only called pane_content {pc.call_count}× — "
+        "loop returned False without actually polling, defeating the prompt-wait"
+    )
+
+
 # ─── WAKE_TIMEOUT_SEC is 2 cycles ─────────────────────────────────────────────
 
 def test_wake_timeout_is_at_least_two_timer_cycles():

@@ -34,7 +34,7 @@ WRITE_COMPACT = str(REPO / "scripts" / "orchestrator" / "write_compact_state.py"
 VENV_PYTHON = str(REPO / ".venv" / "bin" / "python3")
 
 ELLIOT_PANE = "elliottbot:0.0"
-WAKE_TIMEOUT_SEC = 600   # 10 min after wake sent — if still dead, escalate
+WAKE_TIMEOUT_SEC = 1200  # 20 min — two timer cycles before escalating (was 600 = single-shot)
 IDLE_TIMEOUT_MIN = 40    # min idle (no pane change) before wake without restart
 
 AGENTS = {
@@ -105,6 +105,17 @@ def send_pane(target: str, text: str, delay: float = 1.5) -> None:
         pass
 
 
+def wait_for_prompt(target: str, timeout: float = 30.0) -> bool:
+    """Poll until Claude Code's ❯ prompt is visible in the pane. Returns True if found."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        pane = pane_capture(target)
+        if "❯" in pane:
+            return True
+        time.sleep(1.0)
+    return False
+
+
 def ensure_compact_state() -> str:
     """Refresh compact state file. Returns content."""
     try:
@@ -129,17 +140,42 @@ def build_wake_prompt(state_path: str) -> str:
 
 
 def restart_elliot(state: dict, now: float) -> dict:
-    """Write compact state → /clear Elliot pane → inject wake prompt."""
-    compact = ensure_compact_state()
-    # /clear the wedged pane
-    send_pane(ELLIOT_PANE, "/clear", delay=4.0)
-    # Inject wake prompt pointing at the state file
+    """Write compact state → /clear Elliot pane → wait for ❯ → inject wake prompt.
+
+    Root-cause fix (2026-05-31): the Stop hook on /clear runs write_heartbeat.py
+    with an 8-second timeout. The old fixed 4-second delay sent the wake prompt
+    while the hook was still executing and /clear hadn't started a new context yet.
+    Claude Code resets terminal input when the new context starts, losing the
+    buffered wake prompt. The pane stayed at the empty ❯ screen for 10 minutes
+    and the watchdog escalated — 5 consecutive overnight failures.
+
+    Fix: after /clear, poll for the ❯ prompt (up to 30 seconds) before injecting
+    the wake prompt. This mirrors the inbox watcher's proven pattern and ensures
+    the Stop hook has finished and the new context is ready.
+    """
+    ensure_compact_state()
+    # /clear the wedged pane — Stop hook (write_heartbeat.py, 8s timeout) fires here
+    send_pane(ELLIOT_PANE, "/clear", delay=0)
+    # Wait for new ❯ prompt (Stop hook + new context must both complete first)
+    ready = wait_for_prompt(ELLIOT_PANE, timeout=30.0)
+    if not ready:
+        slack_ceo(
+            "[ELLIOT] Watchdog: /clear sent but ❯ prompt not seen after 30s — "
+            "pane may be hung. Skipping wake injection; will retry next cycle."
+        )
+        state["elliot_wake_sent"] = now
+        state["elliot_wake_reason"] = "context-full-clear-hung"
+        pane = pane_capture(ELLIOT_PANE)
+        state["elliot_last_hash"] = pane_hash(pane)
+        return state
+
+    # ❯ prompt confirmed — inject wake prompt now
     wake_prompt = build_wake_prompt(str(STATE_FILE))
-    send_pane(ELLIOT_PANE, wake_prompt, delay=1.0)
+    send_pane(ELLIOT_PANE, wake_prompt, delay=2.0)
 
     slack_ceo(
         "[ELLIOT] Context-cycle watchdog: 100% context detected. "
-        "Compact state written, session restarted. Monitoring for resume."
+        "Compact state written, /clear sent, ❯ confirmed, wake prompt injected."
     )
     state["elliot_wake_sent"] = now
     state["elliot_wake_reason"] = "context-full"
@@ -150,6 +186,14 @@ def restart_elliot(state: dict, now: float) -> dict:
 
 def wake_idle_elliot(state: dict, now: float) -> dict:
     """Send wake prompt to idle Elliot (no /clear — context is fine)."""
+    # For idle wake, ❯ should already be showing — verify before injecting
+    if not wait_for_prompt(ELLIOT_PANE, timeout=10.0):
+        # Pane doesn't have ❯ — might not be at an input prompt; skip this cycle
+        state["elliot_wake_sent"] = now
+        state["elliot_wake_reason"] = "idle-no-prompt"
+        pane = pane_capture(ELLIOT_PANE)
+        state["elliot_last_hash"] = pane_hash(pane)
+        return state
     wake_prompt = build_wake_prompt(str(STATE_FILE))
     send_pane(ELLIOT_PANE, wake_prompt, delay=1.0)
     state["elliot_wake_sent"] = now

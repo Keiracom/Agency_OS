@@ -111,6 +111,14 @@ def main() -> int:
         file_path=str(out_path),
     )
 
+    # Feed the context-watchdog's Fix C revive prompt with the task brief so
+    # that if the target agent later wedges, the revive includes "Last task: …"
+    # instead of falling back to "check bd ready". Fail-open inside helper.
+    with contextlib.suppress(Exception):
+        from scripts.orchestrator.context_watchdog import record_agent_task
+
+        record_agent_task(args.target, args.brief)
+
     print(str(out_path))
     return 0
 

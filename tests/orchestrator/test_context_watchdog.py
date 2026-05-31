@@ -224,3 +224,80 @@ def test_check_other_agents_passes_last_task_to_revive(cw, monkeypatch):
         "reason": "error-detected",
         "last_task": "KEI-42: wire foo",
     }
+
+
+# ---------------------------------------------------------------------------
+# record_agent_task — dispatch-time feed for Fix C
+# ---------------------------------------------------------------------------
+
+
+def test_record_agent_task_writes_last_task_into_state_file(cw, tmp_path, monkeypatch):
+    """record_agent_task persists `{name}_last_task` into the watchdog state
+    file. A subsequent load_state() round-trip returns the same value."""
+    state_file = tmp_path / "watchdog-state.json"
+    monkeypatch.setattr(cw, "WATCHDOG_STATE_FILE", state_file)
+
+    cw.record_agent_task("orion", "PR #1373 — wire last_task feed")
+
+    persisted = cw.load_state()
+    assert persisted["orion_last_task"] == "PR #1373 — wire last_task feed"
+
+
+def test_record_agent_task_preserves_other_state_keys(cw, tmp_path, monkeypatch):
+    """Writing one agent's last_task must not clobber unrelated state keys
+    (e.g. another agent's revive_sent timestamp)."""
+    state_file = tmp_path / "watchdog-state.json"
+    monkeypatch.setattr(cw, "WATCHDOG_STATE_FILE", state_file)
+    cw.save_state({"atlas_revive_sent": 123.45, "atlas_last_task": "old-atlas-task"})
+
+    cw.record_agent_task("orion", "orion task")
+
+    out = cw.load_state()
+    assert out["atlas_revive_sent"] == 123.45
+    assert out["atlas_last_task"] == "old-atlas-task"
+    assert out["orion_last_task"] == "orion task"
+
+
+def test_record_agent_task_squashes_newlines_and_caps_length(cw, tmp_path, monkeypatch):
+    """Multi-line briefs collapse to one tmux-safe line; >240 chars truncated."""
+    state_file = tmp_path / "watchdog-state.json"
+    monkeypatch.setattr(cw, "WATCHDOG_STATE_FILE", state_file)
+
+    long_brief = "Task header\n\nLine two with detail.\n" + ("x" * 500)
+    cw.record_agent_task("scout", long_brief)
+
+    stored = cw.load_state()["scout_last_task"]
+    assert "\n" not in stored
+    assert len(stored) == 240
+    assert stored.startswith("Task header Line two with detail.")
+
+
+def test_record_agent_task_no_op_on_blank_inputs(cw, tmp_path, monkeypatch):
+    """Empty name OR empty task → return without touching state file."""
+    state_file = tmp_path / "watchdog-state.json"
+    monkeypatch.setattr(cw, "WATCHDOG_STATE_FILE", state_file)
+
+    cw.record_agent_task("", "real task")
+    cw.record_agent_task("orion", "")
+    assert not state_file.exists()
+
+
+def test_record_then_revive_uses_persisted_last_task(cw, tmp_path, monkeypatch):
+    """End-to-end Fix C wire: record_agent_task → check_other_agents picks up
+    the persisted last_task and passes it into revive_agent."""
+    state_file = tmp_path / "watchdog-state.json"
+    monkeypatch.setattr(cw, "WATCHDOG_STATE_FILE", state_file)
+
+    cw.record_agent_task("aiden", "KEI-77: rebase PR after #1371")
+
+    received: dict = {}
+
+    def fake_revive(name, target, reason, last_task=""):
+        received["last_task"] = last_task
+
+    monkeypatch.setattr(cw, "AGENTS", {"aiden": "aiden:0.0"})
+    monkeypatch.setattr(cw, "pane_capture", lambda _t: "...\nError: oh no")
+    monkeypatch.setattr(cw, "revive_agent", fake_revive)
+
+    cw.check_other_agents(cw.load_state())
+    assert received["last_task"] == "KEI-77: rebase PR after #1371"

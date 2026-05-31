@@ -136,15 +136,17 @@ def test_positive_valid_evidence_completes_task(mod, monkeypatch, tmp_path, caps
     ev_file = tmp_path / "evidence.json"
     ev_file.write_text(json.dumps(_VALID_EVIDENCE))
 
-    # Step sequence (post KEI-90 Gate 3 addition):
+    # Step sequence (post Agency_OS-s5yo — bd_id→UUID resolution added by 6a3a01884):
     #  execute[0] = Gate 3 SELECT deployment, claimed_by → fetchone returns (False, 'aiden')
     #  execute[1] = hash-uniqueness SELECT  → fetchall returns []  (no collision)
-    #  execute[2] = INSERT task_verifications → fetchone not called
-    #  execute[3] = UPDATE tasks RETURNING → fetchone returns the done row
+    #  execute[2] = bd_id→UUID resolution SELECT → fetchone returns (uuid,)
+    #  execute[3] = INSERT task_verifications → fetchone not called
+    #  execute[4] = UPDATE tasks RETURNING → fetchone returns the done row
     cur = MultiStepCursor(
         step_responses=[
             (False, "aiden"),  # Gate 3: deployment=False → no-op return
             [],  # hash check fetchall → no prior rows
+            ("uuid-kei-89",),  # bd_id→UUID resolve fetchone
             None,  # INSERT (no return used)
             ("KEI-89", "Gate 2 evidence test", "done"),  # UPDATE RETURNING
         ]
@@ -160,15 +162,18 @@ def test_positive_valid_evidence_completes_task(mod, monkeypatch, tmp_path, caps
     rc = mod.main(["complete", "KEI-89", "--evidence", str(ev_file)])
     assert rc == 0, capsys.readouterr().err
 
-    # Four execute calls fired: Gate 3, hash check, INSERT task_verifications,
-    # UPDATE tasks. The KEI-106 linear-sync enqueue is gone — _enqueue_linear_sync
-    # is locked to a no-op under the Linear-read-only LAW (Dave 2026-05-20).
-    assert len(cur.executed) == 4
+    # Five execute calls fired: Gate 3, hash check, bd_id→UUID resolve, INSERT
+    # task_verifications, UPDATE tasks. The KEI-106 linear-sync enqueue is gone —
+    # _enqueue_linear_sync is locked to a no-op under the Linear-read-only LAW
+    # (Dave 2026-05-20).
+    assert len(cur.executed) == 5
 
     # INSERT contained the canonical JSON as test_output param
-    insert_sql, insert_params = cur.executed[2]
+    insert_sql, insert_params = cur.executed[3]
     assert "task_verifications" in insert_sql
-    assert insert_params[1] == "KEI-89"  # task_id
+    # task_id is the resolved Supabase UUID from the bd_id→UUID lookup
+    # (Aiden's fix 6a3a01884 — bd_id strings would FK-violate task_verifications.task_id)
+    assert insert_params[1] == "uuid-kei-89"  # resolved task_id
     assert insert_params[2] == "aiden"  # verified_by
     stored_output = insert_params[4]  # test_output
     round_tripped = json.loads(stored_output)
@@ -286,6 +291,7 @@ def test_positive_evidence_path_inserts_exactly_one_verification_row(
         step_responses=[
             (False, "aiden"),  # Gate 3: deployment=False → no-op return
             [],  # hash check
+            ("uuid-kei-89",),  # bd_id→UUID resolve fetchone
             None,  # INSERT
             ("KEI-89", "Side-effect test task", "done"),  # UPDATE RETURNING
         ]
@@ -343,6 +349,7 @@ def test_positive_dict_acceptance_items_coerced_to_text(mod, monkeypatch, tmp_pa
         step_responses=[
             (False, "nova"),  # Gate 3: deployment=False → no-op return
             [],
+            ("uuid-kei-y244",),  # bd_id→UUID resolve fetchone
             None,
             ("KEI-y244", "Dict regression task", "done"),
         ]
@@ -358,7 +365,7 @@ def test_positive_dict_acceptance_items_coerced_to_text(mod, monkeypatch, tmp_pa
     rc = mod.main(["complete", "KEI-y244", "--evidence", str(ev_file)])
     assert rc == 0, capsys.readouterr().err
 
-    _, insert_params = cur.executed[2]
+    _, insert_params = cur.executed[3]
     behavioral_test_param = insert_params[3]
     assert isinstance(behavioral_test_param, str), (
         f"behavioral_test must be str (text column); got {type(behavioral_test_param).__name__}"
@@ -390,6 +397,7 @@ def test_positive_dict_acceptance_items_without_criterion_falls_back_to_json(
         step_responses=[
             (False, "nova"),  # Gate 3: deployment=False → no-op return
             [],
+            ("uuid-kei-y244b",),  # bd_id→UUID resolve fetchone
             None,
             ("KEI-y244b", "Fallback task", "done"),
         ]
@@ -405,7 +413,7 @@ def test_positive_dict_acceptance_items_without_criterion_falls_back_to_json(
     rc = mod.main(["complete", "KEI-y244b", "--evidence", str(ev_file)])
     assert rc == 0, capsys.readouterr().err
 
-    _, insert_params = cur.executed[2]
+    _, insert_params = cur.executed[3]
     behavioral_test_param = insert_params[3]
     assert isinstance(behavioral_test_param, str)
     parsed = json.loads(behavioral_test_param)

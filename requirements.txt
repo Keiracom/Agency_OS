@@ -78,6 +78,13 @@ restate-sdk>=0.17.0,<0.18.0  # 0.17 removed restate.server.app — top-level res
 # === Memory ===
 mem0ai>=2.0.0,<3.0.0  # Mem0 2.x — requires filters={} wrapper, not top-level user_id
 
+# === Messaging (NATS) ===
+# nats-py: V1 chain handoff transport (keiracom.agent.handoff) + ops.failure
+# publisher. Tests in test_face / test_agent_cold_start / test_v1_chain_consumer
+# rely on it; previously imported lazily but the test collection eagerly evals
+# annotations. Declared here so CI's `pip install -r requirements.txt` resolves it.
+nats-py>=2.7,<3.0
+
 # === Observability — Phoenix Auditor (Phase 2) ===
 arize-phoenix-otel>=0.16.0,<1.0.0  # Phoenix OTLP tracer registration
 

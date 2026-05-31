@@ -88,6 +88,41 @@ alert_delivery_failure() {
 
 mkdir -p "$INBOX" "$PROCESSED"
 
+# ── jne8 pattern: wait-for-prompt + literal send + commit-verify ─────────────
+# Mirrors inbox_watcher.sh. Reference: Agency_OS-jne8 + watchdog resume fix
+# (2026-05-31). Root cause: bare send-keys+sleep+C-m does not always commit —
+# Enter races claude's render / permission prompts. Fix: send text with -l
+# (literal, no tmux key-name interpretation), then retry C-m until the probe
+# string (first 40 chars) is GONE from the bottom of the pane (= submitted).
+
+wait_for_prompt_local() {
+    local attempts="${1:-30}"
+    for _ in $(seq 1 "$attempts"); do
+        tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -q '❯' && return 0
+        sleep 2
+    done
+    return 1
+}
+
+inject_and_verify() {
+    local content="$1"
+    local probe attempt
+    tmux send-keys -t "$TMUX_TARGET" -l "$content" 2>/dev/null || return 1
+    sleep 0.4
+    probe="$(printf '%s' "$content" | head -c 40)"
+    for attempt in 1 2 3; do
+        tmux send-keys -t "$TMUX_TARGET" C-m 2>/dev/null
+        sleep 2
+        if ! tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -3 | grep -qF "$probe"; then
+            [ "$attempt" -gt 1 ] && echo "[relay-watcher-${CALLSIGN}] committed on C-m retry #$attempt"
+            return 0
+        fi
+        echo "[relay-watcher-${CALLSIGN}] C-m attempt $attempt did not commit; retrying"
+    done
+    return 1
+}
+# ─────────────────────────────────────────────────────────────────────────────
+
 echo "[relay-watcher-${CALLSIGN}] Started. Watching $INBOX → tmux candidates: ${TMUX_CANDIDATES[*]}"
 
 # H10 — also watch -e moved_to so we don't drop dispatches the Write tool
@@ -143,17 +178,8 @@ print(t)
                 fi
             fi
             echo "[relay-watcher-${CALLSIGN}] Text from Telegram: ${text:0:80}..."
-            # Wait for Claude prompt (❯) on the LAST line before injecting
-            for attempt in $(seq 1 60); do
-                prompt_ready=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -c '❯' || true)
-                if [ "$prompt_ready" -gt 0 ]; then
-                    break
-                fi
-                sleep 2
-            done
-            tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] $text"
-            sleep 0.5
-            tmux send-keys -t "$TMUX_TARGET" C-m
+            wait_for_prompt_local 60
+            inject_and_verify "[TG-${sender^^}] $text" || echo "[relay-watcher-${CALLSIGN}] WARNING: text inject did not commit"
         fi
 
     elif [ "$msg_type" = "photo" ]; then
@@ -162,12 +188,8 @@ print(t)
         sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
 
         echo "[relay-watcher-${CALLSIGN}] Photo from Telegram: $photo_path"
-        for attempt in $(seq 1 60); do
-            prompt_ready=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -c '❯' || true)
-            [ "$prompt_ready" -gt 0 ] && break; sleep 2
-        done
-        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a screenshot: $photo_path ${caption:+— $caption}"
-        sleep 0.5; tmux send-keys -t "$TMUX_TARGET" C-m
+        wait_for_prompt_local 60
+        inject_and_verify "[TG-${sender^^}] Dave sent a screenshot: $photo_path ${caption:+— $caption}" || echo "[relay-watcher-${CALLSIGN}] WARNING: photo inject did not commit"
 
     elif [ "$msg_type" = "document" ]; then
         file_path=$(python3 -c "import json; print(json.load(open('$fpath')).get('file_path',''))" 2>/dev/null)
@@ -175,12 +197,8 @@ print(t)
         sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender','unknown'))" 2>/dev/null)
 
         echo "[relay-watcher-${CALLSIGN}] Document from Telegram: $file_name"
-        for attempt in $(seq 1 60); do
-            prompt_ready=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -c '❯' || true)
-            [ "$prompt_ready" -gt 0 ] && break; sleep 2
-        done
-        tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] Dave sent a file: $file_path ($file_name)"
-        sleep 0.5; tmux send-keys -t "$TMUX_TARGET" C-m
+        wait_for_prompt_local 60
+        inject_and_verify "[TG-${sender^^}] Dave sent a file: $file_path ($file_name)" || echo "[relay-watcher-${CALLSIGN}] WARNING: document inject did not commit"
 
     elif [ "$msg_type" = "task_dispatch" ]; then
         text=$(python3 -c "
@@ -194,14 +212,8 @@ print(f'[DISPATCH FROM {sender.upper()}] {brief}{suffix}')
 " 2>/dev/null)
         if [ -n "$text" ]; then
             echo "[relay-watcher-${CALLSIGN}] Dispatch: ${text:0:80}..."
-            for attempt in $(seq 1 60); do
-                prompt_ready=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -c '❯' || true)
-                if [ "$prompt_ready" -gt 0 ]; then break; fi
-                sleep 2
-            done
-            tmux send-keys -t "$TMUX_TARGET" "$text"
-            sleep 0.5
-            tmux send-keys -t "$TMUX_TARGET" C-m
+            wait_for_prompt_local 60
+            inject_and_verify "$text" || echo "[relay-watcher-${CALLSIGN}] WARNING: dispatch inject did not commit"
         fi
 
     else
@@ -216,14 +228,8 @@ print(t)
         sender=$(python3 -c "import json; print(json.load(open('$fpath')).get('sender', json.load(open('$fpath')).get('from','unknown')))" 2>/dev/null)
         if [ -n "$text" ]; then
             echo "[relay-watcher-${CALLSIGN}] Unknown type '${msg_type}' from ${sender}: ${text:0:80}..."
-            for attempt in $(seq 1 60); do
-                prompt_ready=$(tmux capture-pane -t "$TMUX_TARGET" -p 2>/dev/null | tail -5 | grep -c '❯' || true)
-                if [ "$prompt_ready" -gt 0 ]; then break; fi
-                sleep 2
-            done
-            tmux send-keys -t "$TMUX_TARGET" "[TG-${sender^^}] $text"
-            sleep 0.5
-            tmux send-keys -t "$TMUX_TARGET" C-m
+            wait_for_prompt_local 60
+            inject_and_verify "[TG-${sender^^}] $text" || echo "[relay-watcher-${CALLSIGN}] WARNING: fallback inject did not commit"
         fi
     fi
 

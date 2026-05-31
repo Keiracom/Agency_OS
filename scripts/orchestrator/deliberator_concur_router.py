@@ -110,11 +110,11 @@ def dispatch_concur_round(topic: str, deliberators: list[str], divergences: list
         target = TMUX_TARGETS.get(cs)
         if not target:
             continue
-        import subprocess
-        try:
-            subprocess.run(["tmux", "send-keys", "-t", target, msg, "Enter"], check=False, timeout=5)
-        except Exception as e:
-            log.warning("dispatch fail for %s: %s", cs, e)
+        import sys as _sys
+        _sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+        from scripts.utils.tmux_send import safe_send
+        if not safe_send(target, msg):
+            log.warning("dispatch failed (commit unverified) for %s", cs)
 
 
 def alert_elliot_deadlock(topic: str, items: list[str]) -> None:

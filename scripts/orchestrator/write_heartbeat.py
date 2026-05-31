@@ -68,8 +68,8 @@ def _active_directives() -> list[dict]:
     try:
         import urllib.request
 
-        # PostgREST: like.* is the wildcard form; status filter on JSONB field.
-        q = "ceo_memory?key=like.ceo:directive_*&value->>status=eq.active&select=key,value&limit=3"
+        # PostgREST LIKE wildcard is % (URL-encoded as %25); status filter on JSONB field.
+        q = "ceo_memory?key=like.ceo:directive_%25&value->>status=eq.active&select=key,value&limit=3"
         req = urllib.request.Request(
             f"{url}/rest/v1/{q}",
             headers={

@@ -93,6 +93,29 @@ def save_state(state: dict) -> None:
     WATCHDOG_STATE_FILE.write_text(json.dumps(state))
 
 
+def record_agent_task(name: str, task_summary: str) -> None:
+    """Persist `state[f"{name}_last_task"]` so a subsequent watchdog revive
+    can tell the agent EXACTLY what it was working on (Fix C feed, 2026-05-31).
+
+    Called by dispatch producers (sign_dispatch.py, elliot_polling_loop) right
+    after a dispatch file lands in the agent's inbox. Best-effort: any failure
+    here is silent — losing the breadcrumb degrades to the `bd ready` fallback
+    in revive_agent(), it does NOT block the dispatch itself.
+
+    The summary is squashed to a single line and capped at 240 chars to fit a
+    `tmux send-keys` line without wrapping.
+    """
+    if not name or not task_summary:
+        return
+    summary = " ".join(task_summary.split())[:240]
+    try:
+        state = load_state()
+        state[f"{name}_last_task"] = summary
+        save_state(state)
+    except Exception:
+        pass
+
+
 def slack_ceo(msg: str) -> None:
     try:
         subprocess.run([VENV_PYTHON, SLACK_RELAY, "--channel", "ceo", "--text", msg],

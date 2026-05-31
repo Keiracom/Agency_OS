@@ -209,6 +209,14 @@ def _post_chain_complete(
     fired by the orchestrator and centralised in the dispatcher (cost lookup,
     multi-line formatting, Slack relay). Module-level so tests can monkeypatch.
 
+    Dedup (Agency_OS-wdcw) is RECEIVER-SIDE — the dispatcher's
+    /dispatcher/chain_complete endpoint consults a Supabase ledger
+    (keiracom_chain_complete_posted) and skips the Slack relay when this
+    chain_id was already posted. Receiver-side placement catches dup sources
+    from anywhere (NATS redeliver, dispatcher restart, manual retry) AND keeps
+    psycopg out of src/keiracom_system/ per boundary_matrix_v1 (the orchestrator
+    is in the MAL-scoped tree; the dispatcher is the supabase-layer caller).
+
     Fail-open: any error logged + swallowed — a notify failure must NEVER block
     advance_step or the state save.
     """

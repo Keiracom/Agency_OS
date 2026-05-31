@@ -70,13 +70,45 @@ Other gates in the same run:
 - `gate_git_commit`: `rc=0` (passed — the PR added commits, so HEAD has
   advanced versus HEAD~1).
 
-## Run 2 — planted gate removed (must be GREEN or skipped-only)
+## Run 2 — planted gate removed (GREEN) ✓
 
-- Follow-up commit on this same PR removed `gate_PLANTED_FAILURE` from
-  `.gates/manifest.json` (`phase_0_mechanism: []`).
-- CI run: _filled in by a third commit once Run 2 completes_
-- Expected result: success (or success with `rc=2` skips on real gates
-  whose config env is not yet wired).
+- Follow-up commit `f3715568` on this PR removed `gate_PLANTED_FAILURE`
+  from `.gates/manifest.json` (`phase_0_mechanism: []`).
+- CI run: https://github.com/Keiracom/Agency_OS/actions/runs/26711119658
+- Result: **success** (job conclusion = success)
+- Raw evidence (verbatim from CI job log):
+
+```
+::group::phase=phase_0_mechanism
+(empty — gate_PLANTED_FAILURE removed from manifest)
+::group::phase=phase_1_recall
+→ running gate=gate_recall
+{"gate":"gate_recall","status":"skipped","evidence":{"reason":"missing required env: HINDSIGHT_URL"},"ts":"2026-05-31T11:17:53Z"}
+← gate=gate_recall rc=2
+→ running gate=gate_atoms
+{"gate":"gate_atoms","status":"skipped","evidence":{"reason":"missing required env: DATABASE_URL or SUPABASE_DB_URL"},"ts":"2026-05-31T11:17:53Z"}
+← gate=gate_atoms rc=2
+::group::phase=phase_2_build
+→ running gate=gate_git_commit
+{"gate":"gate_git_commit","status":"pass","evidence":{"repo":"/home/runner/work/Agency_OS/Agency_OS","current_sha":"d1cd8f7c3eccb14ce2afc922c5a8d62be8d27d08","prior_sha":"0c619b167d320909be1b09143554018dbb87691c","advanced":true},"ts":"2026-05-31T11:17:53Z"}
+← gate=gate_git_commit rc=0
+::group::phase=phase_3_resilience
+→ running gate=gate_crash_recovery
+{"gate":"gate_crash_recovery","status":"skipped","evidence":{"reason":"GATE_CRASH_DISPATCH_CMD not set (chain dispatch helper required)"},"ts":"2026-05-31T11:17:53Z"}
+← gate=gate_crash_recovery rc=2
+```
+
+The job exited 0 (`conclusion: success`). Result honest:
+- `gate_git_commit`: PASSED (real check against the PR's commits).
+- `gate_recall`, `gate_atoms`, `gate_crash_recovery`: SKIPPED with explicit
+  `evidence.reason`. No fake passes — when config env is missing, the
+  mechanism says `skipped`, exit 2.
+
+## Gate Zero — VERIFIED
+
+Both runs landed. The mechanism caught the deliberate failure (Run 1)
+and produced an honest signal once the failure was removed (Run 2). The
+verification-gate mechanism is structurally enforcing "done = proven".
 
 ## What this proves
 

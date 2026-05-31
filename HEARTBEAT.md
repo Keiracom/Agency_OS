@@ -1,27 +1,36 @@
 # Elliot HEARTBEAT — Session continuation anchor
 
-**Last update:** 2026-05-28T02:45Z (pre-compaction write, 93% context)
-**Viktor briefing:** confirmed, matches full session context
+**Last update:** 2026-05-31T12:00Z (context-watchdog build session)
 
 ## Current Ratified State
 
-- **Wave 1+2 COMPLETE** — both merged to main this session.
-- **Next gate:** re-audit (Aiden arch + Max quality) → integration test (Wave 2 beats pure vector) → Wave 3
-- **Cutover plan v1** in ceo:cutover_plan_v1 — 15 retrieval items gating cutover.
-- **Dispatcher canonical:** KEI-213 service port 4001.
-- **Production Vercel:** UNBLOCKED (#1235 merged).
+- **Phase 0:** Atlas building verification gate mechanism — PR #1371 open ("wire the CI secrets")
+- **Aiden:** WEDGED at 100% context — reviewing PR #1372 (Hindsight ingest plan docs)
+- **Context-cycling watchdog:** LIVE — compact-state-writer (5min) + context-watchdog (10min) timers active
+- **Plan approved 2026-05-31:** Temporal-first ordering, option B auth, 40min timeout, HTTPS Vault, R2 offsite backup hard gate
+- **Gate-zero:** NOT YET PROVEN — Atlas still wiring CI secrets on PR #1371
 
-## PRs Merged This Session (11)
+## Directives In Flight
 
-#1233 #1228 #1230 #1231 #1234 #1238 #1223 #1225 #1229 #1232 #1235
+- Build verification gate mechanism (Atlas — PR #1371)
+- Review PR #1372 (Aiden — WEDGED, needs revive)
+- Context-cycling watchdog (Elliot — COMPLETE this session)
 
 ## Decisions Made — DO NOT RE-ASK
 
-TEI sidecar=defer | Three-repo=post-Phase-1 | Tier caps=Phase 2
-Dispatcher=KEI-213 | All retrieval tiers gating cutover | Aiden+Max=Sonnet 4.6
+Temporal-first | Option B auth (simple JWT fleet) | 40min activity timeout
+HTTPS Vault token | R2 offsite backup required before client data migration
+Phase 0 = verification gate before any migration work
 
 ## First Actions for Restored Elliot
 
-1. Verify 0 open PRs: gh search prs --repo Keiracom/Agency_OS --state open
-2. Dispatch re-audit to Aiden + Max on Wave 1+2
-3. Post #ceo: re-audit dispatched, gating Wave 3
+1. Read /tmp/elliot-compact-state.md for fleet status
+2. Check Aiden — at 100% context, needs /clear and PR #1372 review resume
+3. Check Atlas PR #1371 status — is gate-zero proven yet?
+4. Post #ceo fleet status if anything needs attention
+
+## Heartbeat Cadence
+
+- 40% context → self-alert
+- 50% context → alert Dave
+- 60% context → execute session-end protocol

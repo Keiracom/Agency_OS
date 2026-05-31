@@ -1,7 +1,7 @@
 # ROADMAP V2 — Keiracom Workforce
 
 Source of truth for V2 scope, phasing, and current status.
-Status block at the bottom is auto-rendered from `public.gate_ledger` by
+Status block at the bottom is auto-rendered from `public.gate_roadmap` by
 `scripts/roadmap_status.py` on every push to `main`. Do not edit the table
 inside the markers manually — your edit will be overwritten on the next push.
 
@@ -54,7 +54,7 @@ so a tenant install carries nothing that the tenant should not see.
   LiteLLM routes every LLM call; self-hosted Postgres carries the live
   workload.
 - **Components:** `vault_secrets`, `litellm_routing`,
-  `postgres_self_hosted`, `gate_ledger_migration` (META — this very
+  `postgres_self_hosted`, `gate_roadmap_migration` (META — this very
   table moving with the rest of the data), `roadmap_doc_relocation`
   (META — this doc moving to the product repo when it's carved out).
 - **Hard gate:** R2 offsite backup must be configured AND a restore must

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""roadmap_status.py — render the V2 roadmap STATUS block from public.gate_ledger.
+"""roadmap_status.py — render the V2 roadmap STATUS block from public.gate_roadmap.
 
 Dave directive 2026-05-31. Renders the current per-component status table that
 gets stitched into docs/ROADMAP_V2.md between the STATUS_BLOCK_START/END markers.
@@ -43,7 +43,7 @@ STATUS_EMOJI = {
 QUERY = """
 SELECT component, phase, subphase, proof_gate, status, owner,
        kei_link, blocker_text, last_verified
-  FROM public.gate_ledger
+  FROM public.gate_roadmap
  ORDER BY phase, component
 """
 
@@ -84,7 +84,7 @@ def _fmt_phase(phase: str | None, subphase: str | None) -> str:
 
 def _render_table(rows: list[tuple]) -> str:
     if not rows:
-        return "_No gate_ledger rows yet — populated as components ship._"
+        return "_No gate_roadmap rows yet — populated as components ship._"
     header = "| Component | Phase | Status | Owner | Last Verified | Gate |"
     sep = "| --- | --- | --- | --- | --- | --- |"
     lines = [header, sep]

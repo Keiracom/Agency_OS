@@ -50,6 +50,12 @@ sys.path.insert(0, str(REPO))
 from dotenv import load_dotenv
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
+from scripts.utils.tmux_send import (  # noqa: E402
+    pane_content as _pane_content_util,
+    safe_send,
+    wait_for_prompt,
+)
+
 
 def pane_capture(target: str) -> str:
     try:
@@ -95,25 +101,17 @@ def slack_ceo(msg: str) -> None:
         pass
 
 
-def send_pane(target: str, text: str, delay: float = 1.5) -> None:
-    try:
-        subprocess.run(["tmux", "send-keys", "-t", target, text, "Enter"],
-                       timeout=5, check=False)
-        if delay > 0:
-            time.sleep(delay)
-    except Exception:
-        pass
+# send_pane and wait_for_prompt are now imported from scripts.utils.tmux_send.
+# Thin wrappers kept for callers that pass delay= kwargs.
 
+def send_pane(target: str, text: str, delay: float = 0) -> bool:
+    """Verified pane injection via scripts.utils.tmux_send.safe_send.
 
-def wait_for_prompt(target: str, timeout: float = 30.0) -> bool:
-    """Poll until Claude Code's ❯ prompt is visible in the pane. Returns True if found."""
-    deadline = time.time() + timeout
-    while time.time() < deadline:
-        pane = pane_capture(target)
-        if "❯" in pane:
-            return True
-        time.sleep(1.0)
-    return False
+    delay= arg is accepted for backwards-compat but ignored — safe_send
+    manages its own settle/commit timing internally.
+    Returns True if message was confirmed submitted.
+    """
+    return safe_send(target, text, skip_prompt_wait=True)
 
 
 def ensure_compact_state() -> str:
@@ -203,13 +201,20 @@ def wake_idle_elliot(state: dict, now: float) -> dict:
     return state
 
 
-def revive_agent(name: str, target: str, reason: str) -> None:
+def revive_agent(name: str, target: str, reason: str, last_task: str = "") -> None:
     """Revive a non-Elliot stuck/context-full agent."""
-    send_pane(target, "/clear", delay=3.0)
-    send_pane(target, (
-        f"REVIVED by watchdog ({reason}). Read IDENTITY.md, "
+    # Send /clear (no prompt-wait needed — stuck agent is at ❯ already)
+    safe_send(target, "/clear", skip_prompt_wait=True, wait_prompt=0)
+    # Wait for new ❯ (Stop hook may delay the new context — same race as Elliot)
+    if not wait_for_prompt(target, timeout=30.0):
+        slack_ceo(f"[ELLIOT] Watchdog: {name} /clear hung (❯ not seen 30s). Revive skipped.")
+        return
+    task_hint = f" Last task: {last_task}." if last_task else ""
+    revive_msg = (
+        f"REVIVED by watchdog ({reason}).{task_hint} Read IDENTITY.md, "
         "check bd ready, resume last task. No paid chain runs without approval."
-    ), delay=0.5)
+    )
+    safe_send(target, revive_msg, skip_prompt_wait=True)
     slack_ceo(f"[ELLIOT] Watchdog revived {name} ({reason}).")
 
 

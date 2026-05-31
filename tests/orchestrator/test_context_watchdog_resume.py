@@ -31,16 +31,16 @@ from scripts.orchestrator.context_watchdog import (  # noqa: E402
 # ─── wait_for_prompt ──────────────────────────────────────────────────────────
 
 def test_wait_for_prompt_returns_true_immediately_when_prompt_visible():
-    with patch("scripts.orchestrator.context_watchdog.pane_capture") as cap:
-        cap.return_value = "some text\n❯ \n── status ──"
+    # wait_for_prompt is now from scripts.utils.tmux_send — patch pane_content there
+    with patch("scripts.utils.tmux_send.pane_content", return_value="some text\n❯ \n── status ──") as cap:
         assert wait_for_prompt("test:0", timeout=5.0) is True
         assert cap.call_count == 1
 
 
 def test_wait_for_prompt_retries_until_prompt_appears():
     responses = ["loading...", "still loading", "❯ ready"]
-    with patch("scripts.orchestrator.context_watchdog.pane_capture", side_effect=responses), \
-         patch("scripts.orchestrator.context_watchdog.time") as mock_time:
+    with patch("scripts.utils.tmux_send.pane_content", side_effect=responses), \
+         patch("scripts.utils.tmux_send.time") as mock_time:
         mock_time.time.side_effect = [0.0, 1.0, 2.0, 3.0, 99.0]
         mock_time.sleep = MagicMock()
         result = wait_for_prompt("test:0", timeout=10.0)
@@ -48,8 +48,8 @@ def test_wait_for_prompt_retries_until_prompt_appears():
 
 
 def test_wait_for_prompt_returns_false_on_timeout():
-    with patch("scripts.orchestrator.context_watchdog.pane_capture", return_value="no prompt here"), \
-         patch("scripts.orchestrator.context_watchdog.time") as mock_time:
+    with patch("scripts.utils.tmux_send.pane_content", return_value="no prompt here"), \
+         patch("scripts.utils.tmux_send.time") as mock_time:
         # Simulate time advancing past deadline immediately
         mock_time.time.side_effect = [0.0, 31.0]
         mock_time.sleep = MagicMock()

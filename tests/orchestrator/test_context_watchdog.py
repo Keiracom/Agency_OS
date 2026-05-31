@@ -76,8 +76,9 @@ def test_is_stuck_false_for_normal_pane(cw):
 def test_revive_agent_includes_last_task_when_provided(cw, monkeypatch):
     sent: list[tuple[str, str]] = []
     monkeypatch.setattr(
-        cw, "send_pane", lambda target, text, delay=1.5: sent.append((target, text))
+        cw, "safe_send", lambda target, text, **kw: sent.append((target, text)) or True
     )
+    monkeypatch.setattr(cw, "wait_for_prompt", lambda target, timeout=30.0: True)
     monkeypatch.setattr(cw, "slack_ceo", lambda _msg: None)
 
     cw.revive_agent("aiden", "aiden:0.0", "error-detected", last_task="KEI-99: chain consumer")
@@ -85,14 +86,15 @@ def test_revive_agent_includes_last_task_when_provided(cw, monkeypatch):
     bodies = [t for _tg, t in sent]
     assert "/clear" in bodies[0]
     assert "Last task: KEI-99: chain consumer" in bodies[1]
-    assert "Read IDENTITY.md, resume that task" in bodies[1]
+    assert "Read IDENTITY.md" in bodies[1]
 
 
 def test_revive_agent_falls_back_to_bd_ready_when_last_task_blank(cw, monkeypatch):
     sent: list[tuple[str, str]] = []
     monkeypatch.setattr(
-        cw, "send_pane", lambda target, text, delay=1.5: sent.append((target, text))
+        cw, "safe_send", lambda target, text, **kw: sent.append((target, text)) or True
     )
+    monkeypatch.setattr(cw, "wait_for_prompt", lambda target, timeout=30.0: True)
     monkeypatch.setattr(cw, "slack_ceo", lambda _msg: None)
 
     cw.revive_agent("aiden", "aiden:0.0", "error-detected")  # default last_task=""

@@ -247,6 +247,12 @@ def trigger_chain_direct(
 
     Fail-open: any orch.dispatch error → (None, started, error log).
     """
+    # harness invoked as `python3 scripts/…` puts scripts/ on sys.path; insert
+    # repo root so src.* imports resolve without PYTHONPATH=. prefix (required
+    # for CI battery smoke — Agency_OS-8t26).
+    _repo_root = str(Path(__file__).resolve().parents[1])
+    if _repo_root not in sys.path:
+        sys.path.insert(0, _repo_root)
     # Lazy import — keeps the harness's stdlib-only import surface clean so the
     # --dry-run pre-flight loads on CI hosts that don't have the chain module
     # installed.

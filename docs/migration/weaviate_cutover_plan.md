@@ -130,17 +130,19 @@ AND a live chain confirm before execution.
 
 ---
 
-## Verification gates
+## Gate specifications (Phase 1 build items)
 
-| Gate | Mechanism | Exits |
+These are gate specifications — the underlying script (`scripts/migration/hindsight_ingest.py`)
+is a Phase 1 build item (see Open follow-ups). Gates become executable once the script ships.
+
+| Gate | Specified mechanism | Expected exit |
 |---|---|---|
 | Ingest count match | `hindsight_ingest.py --verify --source X`: Hindsight row count ≥ Weaviate count for source X | 0 pass / 1 fail |
 | Recall signal | `--recall-probe`: semantic query returns ≥1 result with relevance_score > 0.0 | 0 pass / 1 fail |
 | Live chain recall hit | Chain attribution log shows recall_fired=true after DISPATCHER_SPAWN_RECALL_ENABLED=true | 0 pass / 1 fail |
 | Weaviate retired | Weaviate container not running AND Hindsight recall still returns results | 0 pass / 1 fail |
 
-All four gates must be green in the Phase 0 verification ledger (`gates/ledger.jsonl`)
-before Phase 1 migration work starts (per Phase 0 Verification Gate Mechanism).
+All four gate specifications must be implemented and green before Phase 1 migration work starts.
 
 ---
 

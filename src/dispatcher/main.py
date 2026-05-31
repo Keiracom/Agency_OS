@@ -1383,8 +1383,8 @@ class TaskCrashRetryRequest(BaseModel):
 
 
 def _db_dsn() -> str:
-    """Return a psycopg-compatible DSN from DATABASE_URL or SUPABASE_DB_URL."""
-    raw = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_URL", "")
+    """Return a psycopg-compatible DSN from DATABASE_URL or SUPABASE_DB_DSN."""
+    raw = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_DSN", "")
     return raw.replace("+asyncpg", "").replace("postgresql+asyncpg://", "postgresql://", 1)
 
 

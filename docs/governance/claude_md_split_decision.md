@@ -47,9 +47,9 @@ for product-repo agent context. It contains:
 | Persona definitions | same — kept verbatim, minus fleet callsign tags |
 | Dual-concur governance layer | same — 2-of-3 deliberator concur before merge |
 | GOV-12 (gates as code, not comments) | same — runtime enforcement required |
-| LAW V (50-line limit → spawn sub-agent) | same |
-| LAW VI (skills-first) | same |
-| LAW VIII (GitHub visibility) | same |
+| 50-line limit → spawn sub-agent | same |
+| Skills-first operations (use skill → MCP → exec hierarchy) | same |
+| GitHub visibility requirement (all work pushed before reporting complete) | same |
 
 **What is product-specific (authored fresh):**
 

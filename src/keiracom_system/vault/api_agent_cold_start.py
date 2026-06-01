@@ -225,7 +225,7 @@ def insert_attribution(
                     str(uuid.uuid4()),
                     "v1_chain",
                     chain_id,
-                    _CHAIN_STEP_TO_TASK_TYPE.get(chain_step, "unknown"),
+                    _resolve_task_type(chain_step),
                     callsign,
                     _MODEL,
                     int(input_tokens),
@@ -346,6 +346,19 @@ def _build_system_param(persona: str, persona_token_count: int):
     return persona
 
 
+def _resolve_task_type(chain_step: str) -> str:
+    """Map chain_step → TASK_TYPES workload class (single source of truth).
+
+    Used by BOTH the spawn_recall query (run()) and the attribution INSERT
+    (insert_attribution). Resolving once here keeps the fallback consistent
+    when CHAIN_STEP is absent — previously the recall path defaulted to
+    "build" while the DB write defaulted to "unknown", which left the two
+    callers reading different task_type values for the same hop (Max review
+    HOLD #1383).
+    """
+    return _CHAIN_STEP_TO_TASK_TYPE.get(chain_step, "unknown")
+
+
 def _build_recall_block(*, task_type: str, brief: str) -> str:
     """L2 Hindsight recall block for this hop's prompt (Wave 3 / spawn_recall).
 
@@ -372,30 +385,40 @@ def _build_recall_block(*, task_type: str, brief: str) -> str:
 
 
 def _build_messages_param(brief: str, recall_block: str):
-    """Wrap user content with cache_control on the recall_block when present.
+    """Wrap user content with optional cache_control on the recall_block prefix.
 
     Anthropic SDK accepts each message's ``content`` as either str OR a list of
-    block dicts; the list form carries cache_control. The recall_block depends
-    only on (task_type, brief) so within a chain it changes per hop, but on a
-    warm replay of the SAME task it is byte-identical across cold/warm — that
-    is exactly what cache_control here buys us. Empty recall → plain string
-    content (no wire-format change vs the pre-recall baseline).
+    block dicts; the list form carries cache_control. cache_control on the
+    recall prefix is only useful when the prefix would actually cache — i.e.
+    Anthropic's ≥1,024-token minimum-cacheable-prefix floor (Sonnet 4.x docs).
+    Same guard as the system path uses for personas: estimate tokens at
+    ~4 chars/token, skip the cache_control breakpoint when under-floor.
+
+    The recall_block is KEI-55-budget-capped at 500 tokens (spawn_recall.py
+    MAX_TOKENS) so in the current configuration the guard always fires false
+    and cache_control is omitted; if the KEI-55 ceiling grows past 1,024 the
+    breakpoint switches on automatically without further changes here.
+
+    Caching is also bounded by the 5-min prompt-cache TTL AND by the fact
+    that Hindsight grows continuously — within one TTL window with a stable
+    corpus, the same (task_type, brief) yields the same recall bytes; across
+    refreshes or longer gaps, results drift and the cache lapses. cache_control
+    here is best-effort warm-replay help, not a stable-state guarantee.
+
+    Empty recall → plain string content (no wire-format change vs the
+    pre-recall baseline).
     """
-    if recall_block:
-        return [
-            {
-                "role": "user",
-                "content": [
-                    {
-                        "type": "text",
-                        "text": recall_block,
-                        "cache_control": {"type": "ephemeral"},
-                    },
-                    {"type": "text", "text": brief},
-                ],
-            }
-        ]
-    return [{"role": "user", "content": brief}]
+    if not recall_block:
+        return [{"role": "user", "content": brief}]
+    recall_block_dict: dict = {"type": "text", "text": recall_block}
+    if len(recall_block) // 4 >= _PROMPT_CACHE_MIN_TOKENS:
+        recall_block_dict["cache_control"] = {"type": "ephemeral"}
+    return [
+        {
+            "role": "user",
+            "content": [recall_block_dict, {"type": "text", "text": brief}],
+        }
+    ]
 
 
 def call_anthropic(
@@ -502,6 +525,11 @@ def run() -> int:
     chain_step = _env("CHAIN_STEP") or _env("AGENT_CHAIN_STEP")
     chain_id = _env("AGENT_CHAIN_ID")
     task_id = _env("AGENT_TASK_ID")
+    # AGENT_ATOM_ID (prior step's atom_id) is intentionally NOT threaded into
+    # the recall query — build_spawn_context_block takes (task_type, brief) only;
+    # atom-anchored recall (lookup-by-prior-atom rather than topical query) is a
+    # separate retrieval mode out of scope for this PR. The dispatcher still
+    # passes AGENT_ATOM_ID through as an env var for future readers.
     brief = _env("AGENT_BRIEF")
     if not callsign or not brief:
         logger.error(
@@ -524,8 +552,10 @@ def run() -> int:
     # context (deliberation / build / pr_review). recall_block_len log gives the
     # battery harness a signal to distinguish "recall path live, corpus empty"
     # from "recall path silently failed" — both yield "" but only the latter is
-    # a bug worth alerting on.
-    task_type = _CHAIN_STEP_TO_TASK_TYPE.get(chain_step, "build")
+    # a bug worth alerting on. task_type resolution is shared with
+    # insert_attribution via _resolve_task_type so both callers see the same
+    # value (Max review HOLD #1383).
+    task_type = _resolve_task_type(chain_step)
     recall_block = _build_recall_block(task_type=task_type, brief=brief)
     logger.info(
         "api_agent_cold_start: recall_block_len=%d task_type=%s callsign=%s chain_step=%s",

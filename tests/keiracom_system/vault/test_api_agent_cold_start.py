@@ -728,21 +728,39 @@ def test_build_recall_block_failopen_on_import_error(monkeypatch: pytest.MonkeyP
     assert aacs._build_recall_block(task_type="build", brief="anything") == ""
 
 
-def test_build_messages_param_with_recall_uses_cache_control():
-    """Non-empty recall_block → list-of-blocks user content with cache_control
-    on the recall block. This is the prefix that caches across warm replays
-    of the same task."""
+def test_build_messages_param_small_recall_skips_cache_control():
+    """Non-empty recall_block under the 1,024-token Anthropic minimum-cacheable-
+    prefix floor (estimated at ~4 chars/token) → list-of-blocks user content with
+    NO cache_control breakpoint. This is the production case today: spawn_recall
+    KEI-55-caps the block at 500 tokens (~2,000 chars), well below the floor —
+    setting cache_control would be a no-op the SDK silently ignores."""
     result = aacs._build_messages_param("the brief", "RECALL_TEXT")
     assert len(result) == 1
     assert result[0]["role"] == "user"
     content = result[0]["content"]
     assert isinstance(content, list)
-    assert content[0] == {
-        "type": "text",
-        "text": "RECALL_TEXT",
-        "cache_control": {"type": "ephemeral"},
-    }
+    # Recall block present as a structured text block — but WITHOUT cache_control.
+    assert content[0] == {"type": "text", "text": "RECALL_TEXT"}
+    assert "cache_control" not in content[0]
     assert content[1] == {"type": "text", "text": "the brief"}
+
+
+def test_build_messages_param_over_floor_recall_gets_cache_control():
+    """When recall_block exceeds the 1,024-token cacheable-prefix floor (≥4,096
+    chars at ~4 chars/token) the cache_control: ephemeral breakpoint is applied.
+    This guards the forward-compat case where the KEI-55 budget ceiling grows
+    past 1,024 tokens — the code switches caching on without further changes."""
+    big_recall = "x" * (aacs._PROMPT_CACHE_MIN_TOKENS * 4)  # exactly at the floor
+    result = aacs._build_messages_param("the brief", big_recall)
+    content = result[0]["content"]
+    assert content[0]["text"] == big_recall
+    assert content[0]["cache_control"] == {"type": "ephemeral"}
+    # Brief block is the second block, still uncached.
+    assert content[1] == {"type": "text", "text": "the brief"}
+    # And one char under the floor → no breakpoint (sanity check on the boundary).
+    edge = "x" * (aacs._PROMPT_CACHE_MIN_TOKENS * 4 - 1)
+    edge_content = aacs._build_messages_param("the brief", edge)[0]["content"]
+    assert "cache_control" not in edge_content[0]
 
 
 def test_build_messages_param_without_recall_returns_plain_string():
@@ -753,7 +771,8 @@ def test_build_messages_param_without_recall_returns_plain_string():
 
 def test_call_anthropic_threads_recall_block_into_messages(monkeypatch: pytest.MonkeyPatch):
     """End-to-end: call_anthropic(recall_block='...') → SDK call sees the
-    structured user content with cache_control on the recall block."""
+    structured user content with the recall block as a separate text block.
+    Under-floor recall → no cache_control on the block (production case today)."""
     captured: dict = {}
 
     class _FakeContent:
@@ -788,7 +807,7 @@ def test_call_anthropic_threads_recall_block_into_messages(monkeypatch: pytest.M
     msgs = captured["messages"]
     assert isinstance(msgs[0]["content"], list)
     assert msgs[0]["content"][0]["text"] == "RECALL_TEXT"
-    assert msgs[0]["content"][0]["cache_control"] == {"type": "ephemeral"}
+    assert "cache_control" not in msgs[0]["content"][0]
     assert msgs[0]["content"][1]["text"] == "BRIEF"
 
 
@@ -872,6 +891,65 @@ def test_run_builds_recall_block_and_passes_to_call_anthropic(monkeypatch: pytes
     assert recall_calls == [{"task_type": "deliberation", "brief": "do the thing"}]
     # And the resulting block was threaded into call_anthropic.
     assert capture["recall_block"] == "RECALL_FROM_FLEET_DECISIONS"
+
+
+def test_resolve_task_type_maps_known_steps_and_falls_back_to_unknown():
+    """Single source of truth for chain_step → task_type. Shared by run()
+    (recall query) AND insert_attribution (DB write) — both callers MUST see
+    the same value or attribution + recall drift (Max review HOLD #1383)."""
+    assert aacs._resolve_task_type("aiden_plan") == "deliberation"
+    assert aacs._resolve_task_type("max_challenge") == "deliberation"
+    assert aacs._resolve_task_type("nova_build") == "build"
+    assert aacs._resolve_task_type("orion_spec") == "pr_review"
+    assert aacs._resolve_task_type("atlas_safety") == "pr_review"
+    # Absent / unknown → "unknown" (matches DB CHECK enum and the prior
+    # insert_attribution fallback). The recall path now also gets "unknown"
+    # instead of the old "build" — consistent across both callers.
+    assert aacs._resolve_task_type("") == "unknown"
+    assert aacs._resolve_task_type("nonexistent_step") == "unknown"
+
+
+def test_run_absent_chain_step_uses_unknown_for_recall_and_attribution(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """When CHAIN_STEP is absent, BOTH _build_recall_block and insert_attribution
+    must see task_type='unknown'. Previously run() defaulted recall to 'build'
+    while insert_attribution defaulted to 'unknown' — Max review HOLD #1383."""
+    _seed_env(monkeypatch, CHAIN_STEP="")
+    monkeypatch.setattr(aacs, "fetch_persona", lambda _c: ("PROMPT", 500))
+
+    recall_task_type: dict = {}
+
+    def fake_build_recall(*, task_type: str, brief: str) -> str:
+        recall_task_type["value"] = task_type
+        return ""
+
+    monkeypatch.setattr(aacs, "_build_recall_block", fake_build_recall)
+    monkeypatch.setattr(aacs, "call_anthropic", lambda *_a, **_kw: ("OK", 0, 0, 0, 0, 0))
+
+    insert_calls: list[dict] = []
+    monkeypatch.setattr(aacs, "insert_attribution", lambda **kw: insert_calls.append(kw))
+
+    async def fake_classify(*_a, **_kw):
+        return types.SimpleNamespace(atom_ids=[])
+
+    fake_ec = types.ModuleType("src.keiracom_system.chat.exit_cycle")
+    fake_ec.classify_and_save = fake_classify
+    monkeypatch.setitem(sys.modules, "src.keiracom_system.chat.exit_cycle", fake_ec)
+
+    fake_acs_mod = types.ModuleType("src.keiracom_system.vault.agent_cold_start")
+    fake_acs_mod._publish_handoff = lambda **_kw: True
+    fake_acs_mod._connect = lambda: MagicMock()
+    monkeypatch.setitem(sys.modules, "src.keiracom_system.vault.agent_cold_start", fake_acs_mod)
+
+    assert aacs.run() == 0
+    assert recall_task_type["value"] == "unknown"
+    # insert_attribution receives chain_step="" — but _resolve_task_type
+    # inside it also yields "unknown", so DB sees the same value as recall.
+    assert insert_calls[0]["chain_step"] == "?"  # absent CHAIN_STEP → "?" placeholder
+    # Sanity: confirm the resolver agrees on the actual chain_step value
+    # passed to insert_attribution (the "?" placeholder).
+    assert aacs._resolve_task_type(insert_calls[0]["chain_step"]) == "unknown"
 
 
 def test_run_empty_recall_block_still_proceeds(monkeypatch: pytest.MonkeyPatch):

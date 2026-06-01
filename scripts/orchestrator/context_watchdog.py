@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -74,9 +75,165 @@ def is_context_full(pane: str) -> bool:
     return "100% context used" in pane or "Usage credits required" in pane
 
 
-def is_stuck(pane: str) -> bool:
-    indicators = ["Error:", "APIError:", "ConnectionError", "TimeoutError", "Traceback"]
-    return any(s in pane for s in indicators)
+# Permission-prompt vs genuine-stall split (Dave approved 2026-06-01).
+# Old is_stuck() conflated the two and /cleared agents waiting on a
+# routine read-only tool — destroying their context. The split lets us
+# auto-approve safe tools, escalate unknown tools, and only /clear on
+# real failure (Error:, Traceback, etc.). ⏵⏵ and 'bypass permiss' are
+# permission-prompt-only; the Allow+Deny pane pattern stays under
+# is_genuinely_stuck (the loose-substring check is unreliable as a
+# permission signal in isolation).
+
+PERMISSION_PROMPT_TOKENS = ("⏵⏵", "bypass permiss")
+GENUINE_STALL_INDICATORS = (
+    "Error:", "APIError:", "ConnectionError", "TimeoutError", "Traceback",
+)
+TOOL_CALL_PREFIXES = ("● Bash(", "● Read(", "● Write(")
+AUTO_APPROVE_PATTERNS = [
+    # git — read + routine write on feature branches
+    "git log", "git status", "git diff", "git branch", "git show", "git grep",
+    "git add", "git commit", "git fetch", "git pull", "git stash", "git push",
+    "git checkout", "git rev-parse",
+    # GitHub CLI — read
+    "gh pr view", "gh pr list", "gh pr checks", "gh pr diff",
+    "gh issue view", "gh issue list",
+    "gh run view", "gh run list", "gh api ",
+    # GitHub CLI — routine write ops
+    "gh pr comment", "gh pr create", "gh pr merge",  # merge path also verified by is_merge_with_dual_concur
+    # tmux read ops
+    "tmux capture-pane", "tmux list-sessions", "tmux list-panes", "tmux list-windows",
+    # Local scripts — diagnostic, test, lint (no external API spend)
+    "python3 scripts/", "python3 -m pytest", "python3 -B -m", "python3 -c ",
+    "python3 <<", "pytest", "ruff ", "mypy ",
+    # Beads / bd task ops
+    "bd ready", "bd show", "bd close", "bd claim", "bd update", "bd create",
+    # File + environment ops
+    "cat ", "ls ", "find ", "grep ", "head ", "tail ", "wc ", "echo ",
+    "source ", "env ", "which ", "type ",
+]
+ESCALATION_COOLDOWN_SEC = 300  # 5 min — anti-spam window for unknown-tool escalations
+PR_NUMBER_RE = re.compile(r"·\s*PR\s*#(\d+)\s*·")
+
+
+def is_permission_prompt(pane: str) -> bool:
+    """True iff the pane is hung on a Claude Code permission prompt."""
+    return any(tok in pane for tok in PERMISSION_PROMPT_TOKENS)
+
+
+def is_genuinely_stuck(pane: str) -> bool:
+    """True iff the pane shows a real failure (not a permission prompt)."""
+    if any(s in pane for s in GENUINE_STALL_INDICATORS):
+        return True
+    return "Allow" in pane and "Deny" in pane
+
+
+def extract_pending_tool(pane: str) -> str | None:
+    """Return the most recent tool-call line above the ⏵⏵ marker, capped at 200 chars.
+
+    Returns None if the pane lacks a ⏵⏵ marker or no recognised tool call
+    appears above it.
+    """
+    lines = pane.splitlines()
+    chevron_idx = None
+    for i in range(len(lines) - 1, -1, -1):
+        if "⏵⏵" in lines[i]:
+            chevron_idx = i
+            break
+    if chevron_idx is None:
+        return None
+    for i in range(chevron_idx - 1, -1, -1):
+        line = lines[i]
+        if any(prefix in line for prefix in TOOL_CALL_PREFIXES):
+            return line.strip()[:200]
+    return None
+
+
+def extract_pr_number(pane: str) -> int | None:
+    """Pull the active PR number from a `· PR #NNNN ·` status-line marker."""
+    m = PR_NUMBER_RE.search(pane)
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except ValueError:
+        return None
+
+
+def is_auto_approvable(tool_str: str) -> bool:
+    """True iff `tool_str` contains any AUTO_APPROVE_PATTERNS substring."""
+    if not tool_str:
+        return False
+    return any(pat in tool_str for pat in AUTO_APPROVE_PATTERNS)
+
+
+def is_merge_with_dual_concur(tool_str: str, pr_number: int | None) -> bool:
+    """True iff the pending tool is `gh pr merge` AND the PR shows 2+ REVIEW:approve.
+
+    Best-effort: any gh failure (missing auth, network, JSON parse) returns
+    False so the request escalates to Dave rather than being silently approved.
+    """
+    if not tool_str or "gh pr merge" not in tool_str or pr_number is None:
+        return False
+    try:
+        r = subprocess.run(
+            ["gh", "pr", "view", str(pr_number), "--json", "comments", "-q",
+             ".comments[].body"],
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+        if r.returncode != 0:
+            return False
+        approve_lines = [ln for ln in r.stdout.splitlines() if "REVIEW:approve" in ln]
+        return len(approve_lines) >= 2
+    except Exception:
+        return False
+
+
+def send_tab(target: str) -> None:
+    """Send a single Tab keystroke to a tmux pane (advances past a Claude prompt)."""
+    try:
+        subprocess.run(["tmux", "send-keys", "-t", target, "Tab"],
+                       timeout=5, check=False)
+    except Exception:
+        pass
+
+
+def handle_permission_prompt(name: str, target: str, pane: str, state: dict) -> dict:
+    """Dispatch a permission prompt silently — auto-approve or send Tab.
+
+    NEVER /clears the pane. NEVER tells Dave — permission prompts are Elliot's
+    job to handle, not noise for Dave to read.
+    """
+    now = time.time()
+    tool_str = extract_pending_tool(pane)
+    pr_number = extract_pr_number(pane)
+
+    if tool_str is None:
+        # Can't identify tool — send Tab anyway (best-effort unblock) and log only.
+        last_sent = state.get(f"{name}_tab_sent_at", 0)
+        if now - last_sent >= ESCALATION_COOLDOWN_SEC:
+            send_tab(target)
+            tail_lines = [ln.strip() for ln in pane.splitlines() if ln.strip()][-3:]
+            print(f"[watchdog] tab-sent {name} (tool unidentified): {' | '.join(tail_lines)[:120]}")
+            state[f"{name}_tab_sent_at"] = now
+        return state
+
+    if is_auto_approvable(tool_str):
+        send_tab(target)
+        print(f"[watchdog] auto-approved {name}: {tool_str[:80]}")
+        return state
+
+    if is_merge_with_dual_concur(tool_str, pr_number):
+        send_tab(target)
+        print(f"[watchdog] auto-approved merge {name} PR#{pr_number} (dual concur verified)")
+        return state
+
+    # Unknown tool not in safe list — send Tab (unblock) and log. Not Dave's problem.
+    last_sent = state.get(f"{name}_tab_sent_at", 0)
+    if now - last_sent >= ESCALATION_COOLDOWN_SEC:
+        send_tab(target)
+        print(f"[watchdog] tab-sent {name} (unknown tool): {tool_str[:120]}")
+        state[f"{name}_tab_sent_at"] = now
+    return state
 
 
 def load_state() -> dict:
@@ -90,6 +247,29 @@ def load_state() -> dict:
 
 def save_state(state: dict) -> None:
     WATCHDOG_STATE_FILE.write_text(json.dumps(state))
+
+
+def record_agent_task(name: str, task_summary: str) -> None:
+    """Persist `state[f"{name}_last_task"]` so a subsequent watchdog revive
+    can tell the agent EXACTLY what it was working on (Fix C feed, 2026-05-31).
+
+    Called by dispatch producers (sign_dispatch.py, elliot_polling_loop) right
+    after a dispatch file lands in the agent's inbox. Best-effort: any failure
+    here is silent — losing the breadcrumb degrades to the `bd ready` fallback
+    in revive_agent(), it does NOT block the dispatch itself.
+
+    The summary is squashed to a single line and capped at 240 chars to fit a
+    `tmux send-keys` line without wrapping.
+    """
+    if not name or not task_summary:
+        return
+    summary = " ".join(task_summary.split())[:240]
+    try:
+        state = load_state()
+        state[f"{name}_last_task"] = summary
+        save_state(state)
+    except Exception:
+        pass
 
 
 def slack_ceo(msg: str) -> None:
@@ -202,12 +382,17 @@ def wake_idle_elliot(state: dict, now: float) -> dict:
 
 
 def revive_agent(name: str, target: str, reason: str, last_task: str = "") -> None:
-    """Revive a non-Elliot stuck/context-full agent."""
+    """Revive a non-Elliot stuck/context-full agent.
+
+    `last_task` (when Elliot writes state[f"{name}_last_task"] at dispatch
+    time) tells the revived agent EXACTLY what to resume — falls back to
+    `bd ready` when blank.
+    """
     # Send /clear (no prompt-wait needed — stuck agent is at ❯ already)
     safe_send(target, "/clear", skip_prompt_wait=True, wait_prompt=0)
     # Wait for new ❯ (Stop hook may delay the new context — same race as Elliot)
     if not wait_for_prompt(target, timeout=30.0):
-        slack_ceo(f"[ELLIOT] Watchdog: {name} /clear hung (❯ not seen 30s). Revive skipped.")
+        print(f"[watchdog] {name} /clear hung (❯ not seen 30s). Revive skipped.")
         return
     task_hint = f" Last task: {last_task}." if last_task else ""
     revive_msg = (
@@ -215,29 +400,59 @@ def revive_agent(name: str, target: str, reason: str, last_task: str = "") -> No
         "check bd ready, resume last task. No paid chain runs without approval."
     )
     safe_send(target, revive_msg, skip_prompt_wait=True)
-    slack_ceo(f"[ELLIOT] Watchdog revived {name} ({reason}).")
+    print(f"[watchdog] revived {name} ({reason})")
 
 
 def check_other_agents(state: dict) -> dict:
-    """Check non-Elliot agents for context-full or stuck."""
-    revived = []
+    """Check non-Elliot agents for context-full or stuck.
+
+    Two-cycle verification for revives (Dave failure mode 2026-05-30):
+      cycle N   : detect → revive → record state[f"{name}_revive_sent"] = now.
+      cycle N+1 : if pane hash CHANGED → revive worked, clear revive_sent.
+                  if pane unchanged AND (now - revive_sent) > WAKE_TIMEOUT_SEC
+                  → escalate to #ceo + reset revive_sent (avoid spam loop).
+                  if pane unchanged AND still within timeout → wait, no re-revive.
+    Mirrors the existing Elliot escalation pattern at the top of main().
+    """
+    now = time.time()
     for name, target in AGENTS.items():
         pane = pane_capture(target)
         if not pane:
             continue
         h = pane_hash(pane)
-        key = f"{name}_last_hash"
+        key_hash = f"{name}_last_hash"
         key_ts = f"{name}_last_change"
-        prev_hash = state.get(key, "")
+        key_revive = f"{name}_revive_sent"
+        prev_hash = state.get(key_hash, "")
         if h != prev_hash:
-            state[key] = h
-            state[key_ts] = time.time()
+            state[key_hash] = h
+            state[key_ts] = now
+            # Pane moved → any prior revive worked; clear the in-flight flag.
+            state[key_revive] = 0
+
+        # Post-revive verification (Fix B). Mirrors Elliot's wake_sent check.
+        revive_sent = state.get(key_revive, 0)
+        if revive_sent and (now - revive_sent) > WAKE_TIMEOUT_SEC:
+            # Expired AND pane hash still unchanged → revive FAILED. Log only.
+            if h == state.get(key_hash, ""):
+                print(f"[watchdog] {name} revive FAILED — pane unchanged {WAKE_TIMEOUT_SEC // 60}min after restart.")
+                state[key_revive] = 0  # reset to avoid spam loop
+            continue  # don't double-revive in the same cycle
+
+        # Don't re-fire revive while a prior revive is still in-flight.
+        if revive_sent:
+            continue
+
+        # Permission prompt handling removed: all agents run --dangerously-skip-permissions
+        # so prompts physically cannot fire. No pattern-matching needed.
+
+        last_task = state.get(f"{name}_last_task", "")
         if is_context_full(pane):
-            revive_agent(name, target, "context-full")
-            revived.append(name)
-        elif is_stuck(pane):
-            revive_agent(name, target, "error-detected")
-            revived.append(name)
+            revive_agent(name, target, "context-full", last_task=last_task)
+            state[key_revive] = now
+        elif is_genuinely_stuck(pane):
+            revive_agent(name, target, "error-detected", last_task=last_task)
+            state[key_revive] = now
     return state
 
 
@@ -260,6 +475,7 @@ def main() -> None:
 
     wake_sent = state.get("elliot_wake_sent", 0)
 
+    # Permission prompt handling removed: Elliot runs --dangerously-skip-permissions.
     if is_context_full(elliot_pane):
         # Problem A: context full → compact+restart, then wake/resume
         state = restart_elliot(state, now)
@@ -279,6 +495,8 @@ def main() -> None:
 
     # ── Other agents ─────────────────────────────────────────────────────
     state = check_other_agents(state)
+
+    state["cycle_count"] = state.get("cycle_count", 0) + 1
 
     save_state(state)
     print(f"[{datetime.now(UTC).strftime('%H:%M UTC')}] watchdog cycle complete")

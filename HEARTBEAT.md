@@ -1,33 +1,36 @@
 # Elliot HEARTBEAT — Session continuation anchor
 
-**Last update:** 2026-06-01T10:15Z — Architecture SSOT capture posted
+**Last update:** 2026-06-01T20:57Z
 
-## !! HOLD — DO NOT PROCEED WITH PHASE 1 !!
+## PHASE 1 — Active (constraints apply)
 
-`ceo:hold:phase1_battery_gate` in ceo_memory. Phase 1 gated until Dave lifts it.
+- temporal_chain crash-recovery proof MUST pass before dispatcher_retirement
+- Dispatcher stays up until temporal_chain proven
+- Enforcement layer NOT in place until meg5 (2026-06-15) + u7ds (2026-06-22)
+- General fleet stays on Claude Max OAuth (NOT permanent API path migration)
 
-## Architecture SSOT — key facts (captured 2026-06-01)
+## Completed — DO NOT RE-RAISE
 
-- **Canonical doc:** docs/architecture/keiracom_architecture_v2_inventory.md (WORKING DRAFT)
-- **Go sidecar:** STANDALONE binary at infra/keiracom_system/go_sidecar/ — scaffold only, go.sum=0 bytes, NOT built
-- **MCP tier filtering:** BUILT — src/keiracom_system/mcp/tier_router.py + server.py (PR #1136)
-- **Temporal enforcement middleware:** RATIFIED, NOT IN CODE. temp.contract_doc ELLIOT OWES before build.
-- **gate_roadmap:** proof-gate LEDGER only (14 rows, infrastructure milestones). NOT full arch map.
-- **Atoms/recall:** 0 rows everywhere. HINDSIGHT_URL unset. Corpus empty. Recall dead.
+- PR #1389 MERGED (1e4a03b08) — Nova/Orion/Atlas personas rebuilt to production depth (1136/924/1043 tokens). Migration live in Supabase.
+- PR #1388 MERGED — kept on main (Dave decision 2026-06-01).
+- Agency_OS-xjtn: IN_PROGRESS — build done, proof gate pending Dave confirm.
 
-## Current Ratified State
+## Open Gates — Awaiting Dave Response
 
-- **Phase 0:** CLOSED
-- **Phase 1:** ON HOLD — awaiting Dave decision (PR #1388 merge accident + battery not yet run)
-- **PR #1388:** Merged (accident — hold was dropped in context cycle). Dave deciding revert or keep.
+1. Agency_OS-xjtn proof gate: two chain runs (Case A real artifact, Case B empty→Orion REJECTS). Claude Max flat-rate, no incremental cost. Dave confirm needed.
+2. Dispatcher crash-injection proof (Scout on hold): needs dispatcher.service start + A$0.25 auth. Dave "go" needed.
+3. Temporal crash-recovery Option B: build (~50 lines, Atlas) before proof. Dave sequencing call needed.
 
-## Decisions Made — DO NOT RE-ASK
+## Architecture SSOT
 
-Temporal-first | Option B auth | 40min timeout | HTTPS Vault | R2 backup hard gate
+- Temporal server: 45.76.114.137:7233 UP
+- Dispatcher: active (running) since 2026-06-01 06:59 UTC
+- DISPATCHER_AGENT_COMMAND: src.keiracom_system.vault.agent_cold_start (verify api_ prefix before spawning)
+- Work-loop bridge + consumer: active since 2026-05-29
 
-## Resume instructions (for context-cycle restart)
-1. Read IDENTITY.md and this file.
-2. Read ceo_memory key `ceo:hold:phase1_battery_gate` — HOLD IS ACTIVE.
-3. NO Phase 1 work, NO paid chain runs until Dave lifts hold.
-4. Check #ceo for Dave's response to the architecture SSOT capture.
-5. Post real task status per agent to #ceo on resume.
+## Resume Instructions
+
+1. Read IDENTITY.md and this file only.
+2. Run fleet sweep: `bd ready` + `ls /tmp/telegram-relay-*/outbox/`
+3. Dispatch cleared work — no paid chain runs without Dave confirm.
+4. Post #ceo ONLY on real state change — NOT on idle watchdog cycles.

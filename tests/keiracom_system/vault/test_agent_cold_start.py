@@ -731,3 +731,38 @@ def test_fetch_task_hits_db_when_agent_brief_absent(monkeypatch):
     result = acs.fetch_task("t-db", conn=conn)
     assert result is not None
     assert result["description"] == "DB Desc"
+
+
+def test_claim_task_short_circuits_when_agent_brief_set(monkeypatch):
+    """AGENT_BRIEF → claim_task returns True without any DB call."""
+    monkeypatch.setenv("AGENT_BRIEF", "Run the review.")
+    # No conn passed — any real DB call would raise (no DSN)
+    assert acs.claim_task("task-xjtn-1", "nova") is True
+
+
+def test_finalize_task_short_circuits_when_agent_brief_set(monkeypatch):
+    """AGENT_BRIEF → finalize_task is a no-op (no FK-violating INSERT)."""
+    monkeypatch.setenv("AGENT_BRIEF", "Run the review.")
+    # No conn passed — any real DB call would raise (no DSN)
+    acs.finalize_task("task-xjtn-1", 0, None)  # must not raise
+
+
+def test_run_reaches_run_agent_when_agent_brief_set(monkeypatch):
+    """run() with AGENT_BRIEF set must call run_agent — the full brief-fallback path."""
+    monkeypatch.setenv("AGENT_TASK_ID", "task-xjtn-1")
+    monkeypatch.setenv("AGENT_BRIEF", "Run the V1 chain proof gate end to end.")
+    monkeypatch.setattr(acs.sys, "argv", ["agent_cold_start"])
+    agent_called = {}
+    acs.run(
+        resolve=lambda: None,
+        # fetch and claim use real impls (they short-circuit on AGENT_BRIEF)
+        agent=lambda prompt, **_kw: agent_called.update(prompt=prompt) or 0,
+        finalize=lambda *a, **kw: None,  # real impl also no-ops, but stub for isolation
+        notify=lambda *a, **kw: None,
+        save_atoms=lambda *a, **kw: None,
+        spawn_recall=lambda _t: "",
+    )
+    assert agent_called, (
+        "run_agent was never called — AGENT_BRIEF chain spawn is a no-op (Orion G1)"
+    )
+    assert "proof gate" in agent_called["prompt"]

@@ -107,7 +107,9 @@ def fetch_task(task_id: str, *, conn: Any = None) -> dict | None:
     if brief:
         return {
             "id": task_id,
-            "title": os.environ.get("AGENT_TASK_TITLE", ""),
+            "title": os.environ.get(
+                "AGENT_TASK_TITLE", ""
+            ),  # not in dispatcher passthrough → always "" for chain spawns
             "description": brief,
             "priority": None,
             "acceptance_criteria": None,
@@ -129,7 +131,14 @@ def fetch_task(task_id: str, *, conn: Any = None) -> dict | None:
 
 
 def claim_task(task_id: str, callsign: str | None, *, conn: Any = None) -> bool:
-    """Atomic available→active claim. True iff this agent won the claim."""
+    """Atomic available→active claim. True iff this agent won the claim.
+
+    Short-circuits to True when AGENT_BRIEF is set — the task is synthetic
+    (no public.tasks row), so the UPDATE WHERE status='available' returns
+    rowcount=0 and claim would incorrectly abort the chain spawn.
+    """
+    if os.environ.get("AGENT_BRIEF", "").strip():
+        return True
     own = conn is None
     conn = conn or _connect()
     try:
@@ -230,7 +239,13 @@ def finalize_task(
     raises unless evidence exists — acceptance_criteria NULL/empty does NOT bypass
     the gate (Aiden catch). Without this, a NULL-acceptance task crashes on the
     UPDATE and stays stuck 'active'.
+
+    Short-circuits (no-op) when AGENT_BRIEF is set — the task is synthetic
+    (no public.tasks row), so the task_verifications INSERT would raise a
+    ForeignKeyViolation and the tasks UPDATE would silently update 0 rows.
     """
+    if os.environ.get("AGENT_BRIEF", "").strip():
+        return
     own = conn is None
     conn = conn or _connect()
     status = "done" if rc == 0 else "blocked"

@@ -20,6 +20,12 @@ if [[ -z "$phase" ]]; then
     echo "check_phase_ready: usage: $0 <phase>" >&2
     exit 64
 fi
+# Whitelist-validate phase before it gets interpolated into SQL below.
+# Existing phase names (phase_0_mechanism, phase_1_recall, …) already match.
+if [[ ! "$phase" =~ ^[a-zA-Z0-9_]+$ ]]; then
+    echo "check_phase_ready: invalid phase '${phase}' (expected [a-zA-Z0-9_]+)" >&2
+    exit 64
+fi
 
 DSN="${DATABASE_URL:-${SUPABASE_DB_URL:-}}"
 if [[ -z "$DSN" ]]; then
@@ -52,6 +58,11 @@ passing=()
 
 while IFS= read -r gate_id; do
     [[ -z "$gate_id" ]] && continue
+    # Whitelist-validate gate_id pulled from the manifest before it lands in SQL.
+    if [[ ! "$gate_id" =~ ^[a-zA-Z0-9_]+$ ]]; then
+        echo "check_phase_ready: invalid gate_id '${gate_id}' (expected [a-zA-Z0-9_]+)" >&2
+        exit 64
+    fi
     latest_status=$(psql "$DSN" -tAc \
         "SELECT status FROM public.gate_ledger
          WHERE gate_id = '${gate_id}' AND phase = '${phase}'

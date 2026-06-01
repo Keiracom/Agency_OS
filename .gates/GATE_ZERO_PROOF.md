@@ -138,24 +138,3 @@ verification-gate mechanism is structurally enforcing "done = proven".
    No agent prose can flip it.
 3. **Rehearsal is locked behind every phase passing**: `rehearsal_ready.sh`
    iterates the manifest's phases and aborts if any gate is fail/pending.
-
-## What this proves
-
-- A gate that exits nonzero **stops** the CI job. The mechanism cannot be
-  bypassed by an agent claiming "done" in prose.
-- A gate removal from the manifest takes effect on the next CI run — gates
-  are data, not code, so they can be added/retired without touching the
-  workflow.
-- The PR author does not write the ledger row. GitHub Actions does, via
-  `scripts/gates/verify.sh`. Routing-violation check fires if a future
-  gate ever emits `evidence.agent == PR_AUTHOR`.
-
-## Permanent invariants the mechanism enforces
-
-1. **Done = proven**: a gate that exits 0 with honest JSON evidence is the
-   sole acceptable definition of done for any task that has a gate.
-2. **Phase advancement is data-driven**: `check_phase_ready.sh <phase>`
-   reads `gate_ledger` for the latest status of each gate in that phase.
-   No agent prose can flip it.
-3. **Rehearsal is locked behind every phase passing**: `rehearsal_ready.sh`
-   iterates the manifest's phases and aborts if any gate is fail/pending.

@@ -30,6 +30,19 @@ if [[ -z "$gate_id" ]]; then
     exit 64
 fi
 
+# Whitelist-validate gate_id + phase up-front. Both get interpolated into the
+# INSERT below; the gate_id also forms a script path on disk. Rejecting
+# anything outside [a-zA-Z0-9_]+ stops SQL injection AND path-traversal in
+# one place. Existing gate IDs and phase names all match — no behaviour change.
+if [[ ! "$gate_id" =~ ^[a-zA-Z0-9_]+$ ]]; then
+    echo "verify.sh: invalid gate_id '${gate_id}' (expected [a-zA-Z0-9_]+)" >&2
+    exit 64
+fi
+if [[ ! "$phase" =~ ^[a-zA-Z0-9_]+$ ]]; then
+    echo "verify.sh: invalid phase '${phase}' (expected [a-zA-Z0-9_]+)" >&2
+    exit 64
+fi
+
 dir="$(cd "$(dirname "$0")" && pwd)"
 script="${dir}/${gate_id}.sh"
 if [[ ! -x "$script" ]]; then

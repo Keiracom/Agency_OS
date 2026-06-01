@@ -51,6 +51,19 @@ logger = logging.getLogger(__name__)
 AGENT_WORKDIR = os.environ.get("DISPATCHER_AGENT_WORKDIR", "/home/elliotbot/clawd/Agency_OS")
 _DISPATCHER_URL = os.environ.get("DISPATCHER_URL", "http://127.0.0.1:4001")
 CLAUDE_BIN = os.environ.get("CLAUDE_BIN", "claude")
+# xjtn — callsign → (role, variant) for /dispatcher/persona. Mirrors
+# api_agent_cold_start.CALLSIGN_TO_PERSONA so the CLI path injects the same
+# persona_bank prompt the SDK path uses. Kept local (vs imported) to avoid
+# coupling the CLI cold-start to the SDK module.
+_CALLSIGN_TO_PERSONA: dict[str, tuple[str, str]] = {
+    "aiden": ("deliberator", "aiden"),
+    "max": ("deliberator", "max"),
+    "nova": ("worker", "nova"),
+    "orion": ("reviewer", "orion"),
+    "atlas": ("reviewer", "atlas"),
+    "face": ("face", "face"),
+}
+_PERSONA_FETCH_TIMEOUT_S = 2.0
 # NB: public.tasks has NO task_type column — task_type is derived from tags and
 # reaches the agent via the AGENT_TASK_TYPE env var (injected by the dispatcher).
 _TASK_COLS = ("id", "title", "description", "priority", "acceptance_criteria")
@@ -136,9 +149,59 @@ def compose_prompt(task: dict) -> str:
     return "\n\n".join(parts)
 
 
-def run_agent(prompt: str, *, popen: Callable[..., Any] = subprocess.Popen) -> int:
-    """Spawn a fresh headless ``claude`` subprocess for this task (D2). Returns its rc."""
+def fetch_persona_prompt(
+    callsign: str | None, *, dispatcher_url: str = _DISPATCHER_URL
+) -> str | None:
+    """xjtn — GET /dispatcher/persona for this callsign; return prompt_text or None.
+
+    Fail-open by design: missing callsign, unknown mapping, network error, 4xx/5xx,
+    or empty prompt_text all return None and the caller proceeds without
+    --append-system-prompt. Bounded by _PERSONA_FETCH_TIMEOUT_S (no retry —
+    blocking the cold-start on persona fetch is a worse failure than running with
+    no persona). api_agent_cold_start.fetch_persona retries for 60s because the
+    SDK path *requires* a persona; here it is an enhancement.
+    """
+    if not callsign:
+        return None
+    mapping = _CALLSIGN_TO_PERSONA.get(callsign)
+    if mapping is None:
+        logger.warning("agent_cold_start: no persona mapping for callsign=%s", callsign)
+        return None
+    role, variant = mapping
+    url = (
+        f"{dispatcher_url.rstrip('/')}/dispatcher/persona"
+        f"?role={role}&tier=standard&variant={variant}"
+    )
+    try:
+        with urllib.request.urlopen(url, timeout=_PERSONA_FETCH_TIMEOUT_S) as resp:  # noqa: S310
+            payload = json.loads(resp.read())
+        prompt = payload.get("prompt_text")
+        if isinstance(prompt, str) and prompt.strip():
+            return prompt
+        logger.warning("agent_cold_start: persona endpoint returned empty prompt_text")
+        return None
+    except (urllib.error.URLError, OSError, json.JSONDecodeError) as exc:
+        logger.warning("agent_cold_start: persona fetch failed (fail-open): %s", exc)
+        return None
+
+
+def run_agent(
+    prompt: str,
+    *,
+    popen: Callable[..., Any] = subprocess.Popen,
+    fetch_persona: Callable[[str | None], str | None] = fetch_persona_prompt,
+) -> int:
+    """Spawn a fresh headless ``claude`` subprocess for this task (D2). Returns its rc.
+
+    xjtn: when AGENT_CALLSIGN resolves to a persona_bank entry, the prompt text
+    is appended to claude's system prompt via --append-system-prompt so the
+    worker actually inherits its role identity (Nova artifact-discipline /
+    Orion+Atlas two-phase review). Fail-open — see fetch_persona_prompt.
+    """
     cmd = [CLAUDE_BIN, "-p", prompt, "--dangerously-skip-permissions"]
+    persona_prompt = fetch_persona(os.environ.get("AGENT_CALLSIGN"))
+    if persona_prompt:
+        cmd.extend(["--append-system-prompt", persona_prompt])
     proc = popen(cmd, cwd=AGENT_WORKDIR)
     return proc.wait()
 

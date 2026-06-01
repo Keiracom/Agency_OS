@@ -76,7 +76,14 @@ def is_context_full(pane: str) -> bool:
 
 def is_stuck(pane: str) -> bool:
     indicators = ["Error:", "APIError:", "ConnectionError", "TimeoutError", "Traceback"]
-    return any(s in pane for s in indicators)
+    if any(s in pane for s in indicators):
+        return True
+    # Permission-prompt detection (Dave-identified failure mode 2026-05-30):
+    # tmux pane hung on a Claude permission prompt → silent stall the watchdog
+    # previously could not see. Three independent signals; any one is enough.
+    if "⏵⏵" in pane or "bypass permiss" in pane:
+        return True
+    return "Allow" in pane and "Deny" in pane
 
 
 def load_state() -> dict:
@@ -90,6 +97,29 @@ def load_state() -> dict:
 
 def save_state(state: dict) -> None:
     WATCHDOG_STATE_FILE.write_text(json.dumps(state))
+
+
+def record_agent_task(name: str, task_summary: str) -> None:
+    """Persist `state[f"{name}_last_task"]` so a subsequent watchdog revive
+    can tell the agent EXACTLY what it was working on (Fix C feed, 2026-05-31).
+
+    Called by dispatch producers (sign_dispatch.py, elliot_polling_loop) right
+    after a dispatch file lands in the agent's inbox. Best-effort: any failure
+    here is silent — losing the breadcrumb degrades to the `bd ready` fallback
+    in revive_agent(), it does NOT block the dispatch itself.
+
+    The summary is squashed to a single line and capped at 240 chars to fit a
+    `tmux send-keys` line without wrapping.
+    """
+    if not name or not task_summary:
+        return
+    summary = " ".join(task_summary.split())[:240]
+    try:
+        state = load_state()
+        state[f"{name}_last_task"] = summary
+        save_state(state)
+    except Exception:
+        pass
 
 
 def slack_ceo(msg: str) -> None:
@@ -202,7 +232,12 @@ def wake_idle_elliot(state: dict, now: float) -> dict:
 
 
 def revive_agent(name: str, target: str, reason: str, last_task: str = "") -> None:
-    """Revive a non-Elliot stuck/context-full agent."""
+    """Revive a non-Elliot stuck/context-full agent.
+
+    `last_task` (when Elliot writes state[f"{name}_last_task"] at dispatch
+    time) tells the revived agent EXACTLY what to resume — falls back to
+    `bd ready` when blank.
+    """
     # Send /clear (no prompt-wait needed — stuck agent is at ❯ already)
     safe_send(target, "/clear", skip_prompt_wait=True, wait_prompt=0)
     # Wait for new ❯ (Stop hook may delay the new context — same race as Elliot)
@@ -219,25 +254,55 @@ def revive_agent(name: str, target: str, reason: str, last_task: str = "") -> No
 
 
 def check_other_agents(state: dict) -> dict:
-    """Check non-Elliot agents for context-full or stuck."""
-    revived = []
+    """Check non-Elliot agents for context-full or stuck.
+
+    Two-cycle verification for revives (Dave failure mode 2026-05-30):
+      cycle N   : detect → revive → record state[f"{name}_revive_sent"] = now.
+      cycle N+1 : if pane hash CHANGED → revive worked, clear revive_sent.
+                  if pane unchanged AND (now - revive_sent) > WAKE_TIMEOUT_SEC
+                  → escalate to #ceo + reset revive_sent (avoid spam loop).
+                  if pane unchanged AND still within timeout → wait, no re-revive.
+    Mirrors the existing Elliot escalation pattern at the top of main().
+    """
+    now = time.time()
     for name, target in AGENTS.items():
         pane = pane_capture(target)
         if not pane:
             continue
         h = pane_hash(pane)
-        key = f"{name}_last_hash"
+        key_hash = f"{name}_last_hash"
         key_ts = f"{name}_last_change"
-        prev_hash = state.get(key, "")
+        key_revive = f"{name}_revive_sent"
+        prev_hash = state.get(key_hash, "")
         if h != prev_hash:
-            state[key] = h
-            state[key_ts] = time.time()
+            state[key_hash] = h
+            state[key_ts] = now
+            # Pane moved → any prior revive worked; clear the in-flight flag.
+            state[key_revive] = 0
+
+        # Post-revive verification (Fix B). Mirrors Elliot's wake_sent check.
+        revive_sent = state.get(key_revive, 0)
+        if revive_sent and (now - revive_sent) > WAKE_TIMEOUT_SEC:
+            # Expired AND pane hash still unchanged → revive FAILED.
+            if h == state.get(key_hash, ""):
+                slack_ceo(
+                    f"[ELLIOT] Watchdog: {name} revive FAILED — pane unchanged "
+                    f"{WAKE_TIMEOUT_SEC // 60}min after restart. Task work may be lost."
+                )
+                state[key_revive] = 0  # reset to avoid spam loop
+            continue  # don't double-revive in the same cycle
+
+        # Don't re-fire revive while a prior revive is still in-flight.
+        if revive_sent:
+            continue
+
+        last_task = state.get(f"{name}_last_task", "")
         if is_context_full(pane):
-            revive_agent(name, target, "context-full")
-            revived.append(name)
+            revive_agent(name, target, "context-full", last_task=last_task)
+            state[key_revive] = now
         elif is_stuck(pane):
-            revive_agent(name, target, "error-detected")
-            revived.append(name)
+            revive_agent(name, target, "error-detected", last_task=last_task)
+            state[key_revive] = now
     return state
 
 

@@ -18,7 +18,11 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[2]
-STATE_FILE = Path("/tmp/elliot-compact-state.md")
+STATE_FILE = Path(os.environ.get("ELLIOT_COMPACT_STATE_PATH") or "/tmp/elliot-compact-state.md")
+
+PHASE_KEY = "ceo:gate_skip_enforced_rule_v1"
+PHASE_FIELD = "phase_1_status"
+PHASE_FALLBACK = "phase unknown — check ceo_memory"
 
 AGENTS = {
     "atlas": "atlas:0",
@@ -56,6 +60,44 @@ def open_prs() -> list[str]:
         return [f"#{p['number']} {p['title'][:55]}" for p in json.loads(r.stdout)]
     except Exception:
         return []
+
+
+def current_phase() -> str:
+    """Live ceo_memory query for the current phase status (Defect 1 fix
+    2026-05-31). Replaces the previous hardcoded "V2 migration — Phase 0"
+    literal. Returns the `phase_1_status` JSONB field from the
+    `ceo:gate_skip_enforced_rule_v1` row, prefixed with "Phase 1 — " so the
+    watchdog-served context window makes the phase number explicit.
+
+    Falls back to `PHASE_FALLBACK` on any error (DSN missing, HTTP failure,
+    row missing, field missing). Never raises — this is invoked from the
+    compact-state hot path and must not block.
+    """
+    url = os.environ.get("SUPABASE_URL", "").rstrip("/")
+    key = os.environ.get("SUPABASE_SERVICE_KEY", "")
+    if not url or not key:
+        return PHASE_FALLBACK
+    try:
+        import urllib.request
+        req = urllib.request.Request(
+            f"{url}/rest/v1/ceo_memory?key=eq.{PHASE_KEY}&select=value",
+            headers={
+                "apikey": key,
+                "Authorization": f"Bearer {key}",
+                "Accept": "application/json",
+            },
+        )
+        with urllib.request.urlopen(req, timeout=3) as r:
+            rows = json.loads(r.read())
+        if not rows:
+            return PHASE_FALLBACK
+        value = rows[0].get("value") or {}
+        status = value.get(PHASE_FIELD)
+        if not status:
+            return PHASE_FALLBACK
+        return f"Phase 1 — {status}"
+    except Exception:
+        return PHASE_FALLBACK
 
 
 def last_directive() -> str:
@@ -98,6 +140,7 @@ def backup_to_supabase(content: str, ts: str) -> None:
 def main() -> None:
     ts = datetime.now(UTC).strftime("%Y-%m-%d %H:%M UTC")
     directive = last_directive()
+    phase = current_phase()
 
     fleet_rows = []
     for name, pane in AGENTS.items():
@@ -113,7 +156,7 @@ def main() -> None:
         heartbeat = hb_path.read_text()[:800]
 
     content = f"""# Elliot Compact State — {ts}
-**Directive counter:** {directive} | **Phase:** V2 migration — Phase 0 (verification gate) in progress
+**Directive counter:** {directive} | **Phase:** {phase}
 
 ## Fleet status
 | Agent | Pane tail |

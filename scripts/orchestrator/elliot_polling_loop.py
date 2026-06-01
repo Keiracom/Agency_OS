@@ -1112,6 +1112,16 @@ def _write_inbox_dispatch(callsign: str, text: str) -> None:
         target.write_text(json.dumps(payload, indent=2))
     except OSError as exc:
         logger.warning("inbox write %s failed: %s", target, exc)
+        return
+
+    # Feed Fix C — record this dispatch as the agent's last_task so a future
+    # watchdog revive can resume it specifically. Best-effort; never blocks.
+    try:
+        from scripts.orchestrator.context_watchdog import record_agent_task
+
+        record_agent_task(callsign, text)
+    except Exception as exc:  # pragma: no cover — pure safety net
+        logger.warning("record_agent_task(%s) failed: %s", callsign, exc)
 
 
 def send_dispatch(channel: str, text: str) -> None:

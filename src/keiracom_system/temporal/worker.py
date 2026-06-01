@@ -26,6 +26,7 @@ import signal
 from .audit_activity import emit_audit_event
 from .client import DEFAULT_NAMESPACE, DEFAULT_TASK_QUEUE, from_env
 from .fleet_supervisor_workflow import FleetSupervisorWorkflow
+from .v1_chain_workflow import V1ChainWorkflow, run_chain_step
 
 log = logging.getLogger(__name__)
 
@@ -46,7 +47,7 @@ async def run() -> None:
     task_queue = os.environ.get("TEMPORAL_TASK_QUEUE", DEFAULT_TASK_QUEUE)
     namespace = os.environ.get("TEMPORAL_NAMESPACE", DEFAULT_NAMESPACE)
     log.info(
-        "worker starting: namespace=%s task_queue=%s addr=%s workflows=[FleetSupervisorWorkflow] activities=[emit_audit_event]",
+        "worker starting: namespace=%s task_queue=%s addr=%s workflows=[FleetSupervisorWorkflow,V1ChainWorkflow] activities=[emit_audit_event,run_chain_step]",
         namespace,
         task_queue,
         os.environ.get("TEMPORAL_ADDR"),
@@ -55,8 +56,8 @@ async def run() -> None:
     worker = Worker(
         client,
         task_queue=task_queue,
-        workflows=[FleetSupervisorWorkflow],
-        activities=[emit_audit_event],
+        workflows=[FleetSupervisorWorkflow, V1ChainWorkflow],
+        activities=[emit_audit_event, run_chain_step],
     )
 
     stop_event = asyncio.Event()
@@ -71,7 +72,7 @@ async def run() -> None:
 
     async def _heartbeat() -> None:
         while not stop_event.is_set():
-            log.info("worker: alive (1 workflow + 1 activity registered)")
+            log.info("worker: alive (2 workflows + 2 activities registered)")
             try:
                 await asyncio.wait_for(stop_event.wait(), timeout=60.0)
             except TimeoutError:

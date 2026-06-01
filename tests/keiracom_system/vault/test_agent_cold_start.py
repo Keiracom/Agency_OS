@@ -704,3 +704,65 @@ def test_recall_spawn_context_fail_open_returns_empty_on_error(monkeypatch):
     monkeypatch.setattr(sr, "build_spawn_context_block", boom)
 
     assert acs._recall_spawn_context({"id": "t-x", "task_type": "build"}) == ""
+
+
+# ---- AGENT_BRIEF env fallback (brief-fallback patch) -----------------------
+
+
+def test_fetch_task_returns_synthetic_dict_when_agent_brief_set(monkeypatch):
+    """AGENT_BRIEF in env → return synthetic task dict without any DB call."""
+    monkeypatch.setenv("AGENT_BRIEF", "Run the review checklist end to end.")
+    monkeypatch.setenv("AGENT_TASK_TITLE", "V1 chain proof gate")
+    # conn is NOT passed — any real DB call would error here (no DSN set)
+    result = acs.fetch_task("task-xjtn-1")
+    assert result == {
+        "id": "task-xjtn-1",
+        "title": "V1 chain proof gate",
+        "description": "Run the review checklist end to end.",
+        "priority": None,
+        "acceptance_criteria": None,
+    }
+
+
+def test_fetch_task_hits_db_when_agent_brief_absent(monkeypatch):
+    """Without AGENT_BRIEF, fetch_task uses the DB path (existing behaviour)."""
+    monkeypatch.delenv("AGENT_BRIEF", raising=False)
+    conn, _cur = _fake_conn(fetchone=("t-db", "DB Title", "DB Desc", None, None))
+    result = acs.fetch_task("t-db", conn=conn)
+    assert result is not None
+    assert result["description"] == "DB Desc"
+
+
+def test_claim_task_short_circuits_when_agent_brief_set(monkeypatch):
+    """AGENT_BRIEF → claim_task returns True without any DB call."""
+    monkeypatch.setenv("AGENT_BRIEF", "Run the review.")
+    # No conn passed — any real DB call would raise (no DSN)
+    assert acs.claim_task("task-xjtn-1", "nova") is True
+
+
+def test_finalize_task_short_circuits_when_agent_brief_set(monkeypatch):
+    """AGENT_BRIEF → finalize_task is a no-op (no FK-violating INSERT)."""
+    monkeypatch.setenv("AGENT_BRIEF", "Run the review.")
+    # No conn passed — any real DB call would raise (no DSN)
+    acs.finalize_task("task-xjtn-1", 0, None)  # must not raise
+
+
+def test_run_reaches_run_agent_when_agent_brief_set(monkeypatch):
+    """run() with AGENT_BRIEF set must call run_agent — the full brief-fallback path."""
+    monkeypatch.setenv("AGENT_TASK_ID", "task-xjtn-1")
+    monkeypatch.setenv("AGENT_BRIEF", "Run the V1 chain proof gate end to end.")
+    monkeypatch.setattr(acs.sys, "argv", ["agent_cold_start"])
+    agent_called = {}
+    acs.run(
+        resolve=lambda: None,
+        # fetch and claim use real impls (they short-circuit on AGENT_BRIEF)
+        agent=lambda prompt, **_kw: agent_called.update(prompt=prompt) or 0,
+        finalize=lambda *a, **kw: None,  # real impl also no-ops, but stub for isolation
+        notify=lambda *a, **kw: None,
+        save_atoms=lambda *a, **kw: None,
+        spawn_recall=lambda _t: "",
+    )
+    assert agent_called, (
+        "run_agent was never called — AGENT_BRIEF chain spawn is a no-op (Orion G1)"
+    )
+    assert "proof gate" in agent_called["prompt"]

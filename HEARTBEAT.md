@@ -1,22 +1,22 @@
 # Elliot HEARTBEAT — Session continuation anchor
 
-**Last update:** 2026-06-01T08:10Z (context-cycle resume)
+**Last update:** 2026-06-01T09:00Z (context-cycle resume)
 
 ## Current Ratified State
 
-- **Phase 0:** CLOSED 2026-05-31 (CI run 26711089656 sealed proof — gate_mechanism live)
-- **Phase 1 (Temporal chain):** NEXT — not yet started, waiting for Dave direction
-- **Context-cycling watchdog:** LIVE — PRs #1376 (Elliot) + #1381 (Orion) + #1385 (Atlas) all merged on main
-- **Plan approved 2026-05-31:** Temporal-first ordering, option B auth, 40min timeout, HTTPS Vault, R2 offsite backup hard gate
-- **Fleet:** All agents idle at prompt — no active tasks
+- **Phase 0:** CLOSED 2026-05-31
+- **Phase 1 (Temporal chain):** IN PROGRESS — PR #1388 Aiden fixing CI failures (ruff + mem0 rebase)
+- **Context-cycling watchdog:** LIVE
+- **Plan approved 2026-05-31:** Temporal-first, option B auth, 40min timeout, HTTPS Vault, R2 backup hard gate
 
 ## Directives In Flight
 
-- PR #1387 fix(test): mem0 cap-warning June rollover — CI green, dispatched Aiden + Atlas for 2-of-3 review
+- PR #1387: MERGED 2026-06-01T08:58Z (mem0 cap-warning fix)
+- PR #1388 [AIDEN] feat(temporal): V1 chain — CI failing (ruff lint + mem0 rebase needed). Aiden dispatched to fix.
 
 ## Decisions Made — DO NOT RE-ASK
 
-Temporal-first | Option B auth (simple JWT fleet) | 40min
+Temporal-first | Option B auth (simple JWT fleet) | 40min timeout | HTTPS Vault | R2 offsite backup hard gate
 
 ## Resume instructions (for context-cycle restart)
 1. Read IDENTITY.md and this file only — do NOT reload full history.

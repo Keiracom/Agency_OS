@@ -682,6 +682,231 @@ def test_call_anthropic_uses_cached_system_when_persona_over_threshold(
     assert captured["system"] == "SMALL_PERSONA"
 
 
+# ---------------------------------------------------------------------------
+# spawn_recall wiring (Gap 1 — fleet_decisions L2 injection)
+# ---------------------------------------------------------------------------
+
+
+def test_build_recall_block_delegates_to_spawn_recall(monkeypatch: pytest.MonkeyPatch):
+    """_build_recall_block calls spawn_recall.build_spawn_context_block with
+    (task_type, task_brief) and returns its output verbatim."""
+    captured: dict = {}
+
+    def fake_build(*, task_type: str, task_brief: str) -> str:
+        captured["task_type"] = task_type
+        captured["task_brief"] = task_brief
+        return "Prior context from memory:\n- [fleet_decisions · ...] excerpt"
+
+    fake_mod = types.ModuleType("src.retrieval.spawn_recall")
+    fake_mod.build_spawn_context_block = fake_build
+    monkeypatch.setitem(sys.modules, "src.retrieval.spawn_recall", fake_mod)
+
+    result = aacs._build_recall_block(task_type="deliberation", brief="plan the migration")
+    assert result.startswith("Prior context from memory:")
+    assert captured == {"task_type": "deliberation", "task_brief": "plan the migration"}
+
+
+def test_build_recall_block_failopen_on_spawn_recall_exception(monkeypatch: pytest.MonkeyPatch):
+    """Any exception in build_spawn_context_block (retrieval outage, Weaviate
+    down, missing dep) → return "" so the chain hop proceeds without recall.
+    A recall outage MUST NEVER block a spawn."""
+
+    def fake_build(*, task_type: str, task_brief: str) -> str:
+        raise RuntimeError("Weaviate unreachable")
+
+    fake_mod = types.ModuleType("src.retrieval.spawn_recall")
+    fake_mod.build_spawn_context_block = fake_build
+    monkeypatch.setitem(sys.modules, "src.retrieval.spawn_recall", fake_mod)
+
+    assert aacs._build_recall_block(task_type="build", brief="anything") == ""
+
+
+def test_build_recall_block_failopen_on_import_error(monkeypatch: pytest.MonkeyPatch):
+    """spawn_recall import failure (module missing in test env) → return ""."""
+    monkeypatch.setitem(sys.modules, "src.retrieval.spawn_recall", None)
+    # Setting to None makes the import attempt raise ImportError.
+    assert aacs._build_recall_block(task_type="build", brief="anything") == ""
+
+
+def test_build_messages_param_with_recall_uses_cache_control():
+    """Non-empty recall_block → list-of-blocks user content with cache_control
+    on the recall block. This is the prefix that caches across warm replays
+    of the same task."""
+    result = aacs._build_messages_param("the brief", "RECALL_TEXT")
+    assert len(result) == 1
+    assert result[0]["role"] == "user"
+    content = result[0]["content"]
+    assert isinstance(content, list)
+    assert content[0] == {
+        "type": "text",
+        "text": "RECALL_TEXT",
+        "cache_control": {"type": "ephemeral"},
+    }
+    assert content[1] == {"type": "text", "text": "the brief"}
+
+
+def test_build_messages_param_without_recall_returns_plain_string():
+    """Empty recall_block → plain string content (no wire-format change vs the
+    pre-recall baseline; preserves byte-identical legacy behaviour)."""
+    assert aacs._build_messages_param("the brief", "") == [{"role": "user", "content": "the brief"}]
+
+
+def test_call_anthropic_threads_recall_block_into_messages(monkeypatch: pytest.MonkeyPatch):
+    """End-to-end: call_anthropic(recall_block='...') → SDK call sees the
+    structured user content with cache_control on the recall block."""
+    captured: dict = {}
+
+    class _FakeContent:
+        def __init__(self, text):
+            self.text = text
+
+    class _FakeUsage:
+        input_tokens = 5
+        output_tokens = 3
+        cache_creation_input_tokens = 0
+        cache_read_input_tokens = 0
+
+    class _FakeResponse:
+        content = [_FakeContent("OK")]
+        usage = _FakeUsage()
+
+    class _FakeClient:
+        def __init__(self, *, api_key):
+            self.messages = self
+
+        def create(self, **kwargs):
+            captured["messages"] = kwargs.get("messages")
+            return _FakeResponse()
+
+    fake_anthropic = types.ModuleType("anthropic")
+    fake_anthropic.Anthropic = _FakeClient
+    fake_anthropic.APIStatusError = Exception
+    fake_anthropic.RateLimitError = Exception
+    monkeypatch.setitem(sys.modules, "anthropic", fake_anthropic)
+
+    aacs.call_anthropic("KEY", "SYS", "BRIEF", recall_block="RECALL_TEXT")
+    msgs = captured["messages"]
+    assert isinstance(msgs[0]["content"], list)
+    assert msgs[0]["content"][0]["text"] == "RECALL_TEXT"
+    assert msgs[0]["content"][0]["cache_control"] == {"type": "ephemeral"}
+    assert msgs[0]["content"][1]["text"] == "BRIEF"
+
+
+def test_call_anthropic_no_recall_block_preserves_plain_messages(monkeypatch: pytest.MonkeyPatch):
+    """Backwards-compat: no recall_block (or empty string) → plain string content
+    matching the pre-recall behaviour the rest of the test suite asserts on."""
+    captured: dict = {}
+
+    class _FakeUsage:
+        input_tokens = 1
+        output_tokens = 1
+
+    class _FakeResponse:
+        content = [types.SimpleNamespace(text="OK")]
+        usage = _FakeUsage()
+
+    class _FakeClient:
+        def __init__(self, *, api_key):
+            self.messages = self
+
+        def create(self, **kwargs):
+            captured["messages"] = kwargs.get("messages")
+            return _FakeResponse()
+
+    fake_anthropic = types.ModuleType("anthropic")
+    fake_anthropic.Anthropic = _FakeClient
+    fake_anthropic.APIStatusError = Exception
+    fake_anthropic.RateLimitError = Exception
+    monkeypatch.setitem(sys.modules, "anthropic", fake_anthropic)
+
+    aacs.call_anthropic("KEY", "SYS", "BRIEF")
+    assert captured["messages"] == [{"role": "user", "content": "BRIEF"}]
+
+
+def test_run_builds_recall_block_and_passes_to_call_anthropic(monkeypatch: pytest.MonkeyPatch):
+    """The whole reason for this PR: run() must call _build_recall_block with the
+    chain_step → task_type mapping AND thread the resulting recall_block through
+    to call_anthropic. Without this wiring, fleet_decisions is never queried and
+    cache_hit_pct stays at 0 because there is nothing shared to cache between
+    cold and warm runs.
+    """
+    _seed_env(monkeypatch, CHAIN_STEP="aiden_plan")
+    monkeypatch.setattr(aacs, "fetch_persona", lambda _c: ("PROMPT", 500))
+
+    # Build a recall block keyed on (task_type, brief).
+    recall_calls: list[dict] = []
+
+    def fake_build_recall(*, task_type: str, brief: str) -> str:
+        recall_calls.append({"task_type": task_type, "brief": brief})
+        return "RECALL_FROM_FLEET_DECISIONS"
+
+    monkeypatch.setattr(aacs, "_build_recall_block", fake_build_recall)
+
+    # Capture what call_anthropic received as recall_block.
+    capture: dict = {}
+
+    def fake_call(api_key, persona, brief, **kwargs):
+        capture["recall_block"] = kwargs.get("recall_block")
+        capture["callsign"] = kwargs.get("callsign")
+        return ("REPLY", 10, 20, 0, 0, 0)
+
+    monkeypatch.setattr(aacs, "call_anthropic", fake_call)
+    monkeypatch.setattr(aacs, "insert_attribution", lambda **_kw: None)
+
+    # Mock classify_and_save + handoff so run() reaches return 0.
+    async def fake_classify(*_a, **_kw):
+        return types.SimpleNamespace(atom_ids=[])
+
+    fake_ec = types.ModuleType("src.keiracom_system.chat.exit_cycle")
+    fake_ec.classify_and_save = fake_classify
+    monkeypatch.setitem(sys.modules, "src.keiracom_system.chat.exit_cycle", fake_ec)
+
+    fake_acs_mod = types.ModuleType("src.keiracom_system.vault.agent_cold_start")
+    fake_acs_mod._publish_handoff = lambda **_kw: True
+    fake_acs_mod._connect = lambda: MagicMock()
+    monkeypatch.setitem(sys.modules, "src.keiracom_system.vault.agent_cold_start", fake_acs_mod)
+
+    assert aacs.run() == 0
+    # _build_recall_block called exactly once with the chain_step's mapped
+    # task_type ("aiden_plan" → "deliberation") and the env's AGENT_BRIEF.
+    assert recall_calls == [{"task_type": "deliberation", "brief": "do the thing"}]
+    # And the resulting block was threaded into call_anthropic.
+    assert capture["recall_block"] == "RECALL_FROM_FLEET_DECISIONS"
+
+
+def test_run_empty_recall_block_still_proceeds(monkeypatch: pytest.MonkeyPatch):
+    """Fail-open path: when _build_recall_block returns "" (retrieval outage,
+    empty corpus), run() still calls call_anthropic with recall_block="" and
+    completes normally. A recall outage MUST NEVER block the chain hop."""
+    _seed_env(monkeypatch, CHAIN_STEP="nova_build")
+    monkeypatch.setattr(aacs, "fetch_persona", lambda _c: ("PROMPT", 500))
+    monkeypatch.setattr(aacs, "_build_recall_block", lambda **_kw: "")
+
+    capture: dict = {}
+
+    def fake_call(api_key, persona, brief, **kwargs):
+        capture["recall_block"] = kwargs.get("recall_block")
+        return ("REPLY", 10, 20, 0, 0, 0)
+
+    monkeypatch.setattr(aacs, "call_anthropic", fake_call)
+    monkeypatch.setattr(aacs, "insert_attribution", lambda **_kw: None)
+
+    async def fake_classify(*_a, **_kw):
+        return types.SimpleNamespace(atom_ids=[])
+
+    fake_ec = types.ModuleType("src.keiracom_system.chat.exit_cycle")
+    fake_ec.classify_and_save = fake_classify
+    monkeypatch.setitem(sys.modules, "src.keiracom_system.chat.exit_cycle", fake_ec)
+
+    fake_acs_mod = types.ModuleType("src.keiracom_system.vault.agent_cold_start")
+    fake_acs_mod._publish_handoff = lambda **_kw: True
+    fake_acs_mod._connect = lambda: MagicMock()
+    monkeypatch.setitem(sys.modules, "src.keiracom_system.vault.agent_cold_start", fake_acs_mod)
+
+    assert aacs.run() == 0
+    assert capture["recall_block"] == ""
+
+
 def test_call_anthropic_does_not_retry_non_retriable_400(monkeypatch: pytest.MonkeyPatch):
     """400 (bad request) is not in the retriable set — immediate raise, no publish."""
     state = _install_fake_anthropic_with_statuses(monkeypatch, [400])

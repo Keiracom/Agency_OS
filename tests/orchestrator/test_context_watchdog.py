@@ -1,9 +1,11 @@
-"""Unit tests for scripts.orchestrator.context_watchdog — three Dave-identified
-fixes (2026-05-30):
+"""Unit tests for scripts.orchestrator.context_watchdog — Dave-identified fixes:
 
-  Fix A — permission-prompt detection in is_stuck().
-  Fix B — post-revive verification + escalation in check_other_agents().
-  Fix C — richer revive_agent() prompt that includes last_task when known.
+  Fix A (2026-05-30) — permission-prompt detection.
+  Fix B (2026-05-30) — post-revive verification + escalation in check_other_agents().
+  Fix C (2026-05-30) — richer revive_agent() prompt that includes last_task when known.
+  Permission-vs-stall split (2026-06-01) — is_permission_prompt /
+    is_genuinely_stuck handled by separate code paths; permission prompts
+    auto-approve (read-only + dual-concur merges) or escalate, never /clear.
 
 Pattern: monkeypatch the side-effecting seams (pane_capture, send_pane,
 slack_ceo) so no real tmux / Slack is reached. Out of scope per the dispatch:
@@ -32,40 +34,57 @@ def cw():
 
 
 # ---------------------------------------------------------------------------
-# Fix A — is_stuck() detects permission-prompt stalls
+# Permission-vs-stall split (2026-06-01): ⏵⏵ + 'bypass permiss' moved out of
+# is_stuck() into is_permission_prompt(). is_genuinely_stuck() keeps the real
+# failure indicators + the Allow/Deny dialog pattern.
 # ---------------------------------------------------------------------------
 
 
-def test_is_stuck_returns_true_for_double_chevron_prompt(cw):
+def test_is_permission_prompt_returns_true_for_double_chevron(cw):
     """Claude permission prompt: '⏵⏵' indicator (skip-permissions mode trigger)."""
-    assert cw.is_stuck("waiting on tool call\n⏵⏵ Approve?") is True
+    assert cw.is_permission_prompt("waiting on tool call\n⏵⏵ Approve?") is True
 
 
-def test_is_stuck_returns_true_for_bypass_permiss_hint(cw):
+def test_is_permission_prompt_returns_true_for_bypass_permiss_hint(cw):
     """Claude permission prompt: 'bypass permiss' substring."""
-    assert cw.is_stuck("Press tab to bypass permissions") is True
+    assert cw.is_permission_prompt("Press tab to bypass permissions") is True
 
 
-def test_is_stuck_returns_true_when_allow_and_deny_both_present(cw):
-    """Generic permission dialog: both 'Allow' and 'Deny' buttons visible."""
-    assert cw.is_stuck("Run command? [Allow] [Deny]") is True
+def test_is_permission_prompt_false_for_normal_pane(cw):
+    """Pane with no permission tokens → not a permission prompt."""
+    assert cw.is_permission_prompt("> running task\nstep 3/5 complete") is False
 
 
-def test_is_stuck_false_when_only_allow_or_only_deny(cw):
-    """Defensive — incidental 'Allow' or 'Deny' alone is not a permission prompt."""
-    assert cw.is_stuck("DENY: access refused") is False  # no 'Allow'
-    assert cw.is_stuck("allowlist updated") is False  # 'allow' lowercase doesn't match 'Allow'
+def test_is_genuinely_stuck_does_not_fire_on_chevron(cw):
+    """⏵⏵ is a permission prompt, NOT a genuine stall — kept off /clear path."""
+    assert cw.is_genuinely_stuck("waiting on tool call\n⏵⏵ Approve?") is False
 
 
-def test_is_stuck_still_detects_existing_error_indicators(cw):
-    """Regression: pre-existing indicators still fire after the prompt-detection patch."""
+def test_is_genuinely_stuck_does_not_fire_on_bypass_permiss(cw):
+    """'bypass permiss' is a permission prompt, NOT a genuine stall."""
+    assert cw.is_genuinely_stuck("Press tab to bypass permissions") is False
+
+
+def test_is_genuinely_stuck_returns_true_when_allow_and_deny_both_present(cw):
+    """Generic Allow/Deny dialog stays on the stall path per dispatch verbatim."""
+    assert cw.is_genuinely_stuck("Run command? [Allow] [Deny]") is True
+
+
+def test_is_genuinely_stuck_false_when_only_allow_or_only_deny(cw):
+    """Defensive — incidental 'Allow' or 'Deny' alone is not a stall signal."""
+    assert cw.is_genuinely_stuck("DENY: access refused") is False  # no 'Allow'
+    assert cw.is_genuinely_stuck("allowlist updated") is False  # case-sensitive
+
+
+def test_is_genuinely_stuck_still_detects_existing_error_indicators(cw):
+    """Regression: pre-existing indicators still fire on the genuine-stall path."""
     for token in ("Error:", "APIError:", "ConnectionError", "TimeoutError", "Traceback"):
-        assert cw.is_stuck(f"...some output...\n{token} something") is True
+        assert cw.is_genuinely_stuck(f"...some output...\n{token} something") is True
 
 
-def test_is_stuck_false_for_normal_pane(cw):
+def test_is_genuinely_stuck_false_for_normal_pane(cw):
     """A working pane (no prompts, no errors) → not stuck."""
-    assert cw.is_stuck("> running task\nstep 3/5 complete") is False
+    assert cw.is_genuinely_stuck("> running task\nstep 3/5 complete") is False
 
 
 # ---------------------------------------------------------------------------
@@ -118,8 +137,12 @@ def _stub_one_agent(cw, monkeypatch, *, pane_text: str):
 
 
 def test_check_other_agents_sets_revive_sent_after_reviving(cw, monkeypatch):
-    """is_stuck pane → revive fires → state[name_revive_sent] set to ~now."""
-    _stub_one_agent(cw, monkeypatch, pane_text="...\n⏵⏵ Allow?")
+    """is_genuinely_stuck pane → revive fires → state[name_revive_sent] set to ~now.
+
+    Post-2026-06-01 split: ⏵⏵ panes now go to handle_permission_prompt (no /clear);
+    only real-failure panes (Error:/Traceback/etc.) take the revive path.
+    """
+    _stub_one_agent(cw, monkeypatch, pane_text="Error: chain consumer crashed")
     before = time.time()
     state = cw.check_other_agents({})
     after = time.time()
@@ -303,3 +326,108 @@ def test_record_then_revive_uses_persisted_last_task(cw, tmp_path, monkeypatch):
 
     cw.check_other_agents(cw.load_state())
     assert received["last_task"] == "KEI-77: rebase PR after #1371"
+
+
+# ---------------------------------------------------------------------------
+# Permission-vs-stall split (2026-06-01): handle_permission_prompt dispatch
+# ---------------------------------------------------------------------------
+
+
+def _perm_pane(tool_call: str, pr: int | None = None) -> str:
+    """Build a synthetic pane: tool-call line + ⏵⏵ marker (+ optional PR status)."""
+    parts = [f"● {tool_call}", "⏵⏵ Approve?"]
+    if pr is not None:
+        parts.append(f"· PR #{pr} · orion/feature ·")
+    return "\n".join(parts)
+
+
+def test_permission_prompt_does_not_trigger_clear(cw, monkeypatch):
+    """check_other_agents must take the permission-prompt path, NOT revive_agent."""
+    revive_calls: list = []
+    monkeypatch.setattr(cw, "AGENTS", {"aiden": "aiden:0.0"})
+    monkeypatch.setattr(cw, "pane_capture", lambda _t: _perm_pane("Bash(git log)"))
+    monkeypatch.setattr(cw, "revive_agent", lambda *a, **kw: revive_calls.append(a))
+    monkeypatch.setattr(cw, "send_tab", lambda _t: None)
+    monkeypatch.setattr(cw, "slack_ceo", lambda _m: None)
+
+    cw.check_other_agents({})
+    assert revive_calls == []
+
+
+def test_auto_approve_sends_tab_for_git_log(cw, monkeypatch):
+    """git log is in AUTO_APPROVE_PATTERNS → Tab keystroke, no Slack escalation."""
+    tabs: list[str] = []
+    slack: list[str] = []
+    monkeypatch.setattr(cw, "send_tab", lambda t: tabs.append(t))
+    monkeypatch.setattr(cw, "slack_ceo", lambda m: slack.append(m))
+
+    pane = _perm_pane("Bash(git log --oneline -5)")
+    cw.handle_permission_prompt("aiden", "aiden:0.0", pane, {})
+
+    assert tabs == ["aiden:0.0"]
+    assert slack == []
+
+
+def test_auto_approve_sends_tab_for_gh_pr_view(cw, monkeypatch):
+    """gh pr view is in AUTO_APPROVE_PATTERNS → Tab keystroke."""
+    tabs: list[str] = []
+    monkeypatch.setattr(cw, "send_tab", lambda t: tabs.append(t))
+    monkeypatch.setattr(cw, "slack_ceo", lambda _m: None)
+
+    pane = _perm_pane("Bash(gh pr view 1375 --json comments)")
+    cw.handle_permission_prompt("orion", "orion:0.0", pane, {})
+
+    assert tabs == ["orion:0.0"]
+
+
+def test_unknown_tool_escalates_not_clears(cw, monkeypatch):
+    """Unknown tool → slack_ceo called; send_tab / revive_agent NOT called."""
+    tabs: list[str] = []
+    slack: list[str] = []
+    monkeypatch.setattr(cw, "send_tab", lambda t: tabs.append(t))
+    monkeypatch.setattr(cw, "slack_ceo", lambda m: slack.append(m))
+    monkeypatch.setattr(cw, "revive_agent", lambda *a, **kw: pytest.fail("revive_agent must not run"))
+
+    pane = _perm_pane("Bash(rm -rf /tmp/foo)")
+    state = cw.handle_permission_prompt("aiden", "aiden:0.0", pane, {})
+
+    assert tabs == []
+    assert len(slack) == 1
+    assert "needs permission" in slack[0]
+    assert "rm -rf /tmp/foo" in slack[0]
+    assert state["aiden_escalated_at"] > 0
+
+
+def test_escalation_anti_spam(cw, monkeypatch):
+    """Two cycles within 5 min for same unknown tool → slack_ceo called only once."""
+    slack: list[str] = []
+    monkeypatch.setattr(cw, "send_tab", lambda _t: None)
+    monkeypatch.setattr(cw, "slack_ceo", lambda m: slack.append(m))
+
+    pane = _perm_pane("Bash(unknown-binary --foo)")
+    state = cw.handle_permission_prompt("aiden", "aiden:0.0", pane, {})
+    assert len(slack) == 1
+
+    # Second cycle right after — escalated_at is now within the cooldown window.
+    state = cw.handle_permission_prompt("aiden", "aiden:0.0", pane, state)
+    assert len(slack) == 1, "anti-spam cooldown should suppress the second escalation"
+
+
+def test_merge_with_dual_concur_auto_approves(cw, monkeypatch):
+    """gh pr merge + 2+ REVIEW:approve in PR comments → Tab keystroke."""
+    tabs: list[str] = []
+    slack: list[str] = []
+    monkeypatch.setattr(cw, "send_tab", lambda t: tabs.append(t))
+    monkeypatch.setattr(cw, "slack_ceo", lambda m: slack.append(m))
+
+    class _R:
+        returncode = 0
+        stdout = "[REVIEW:approve:aiden] looks good\n[REVIEW:approve:max] LGTM\n"
+
+    monkeypatch.setattr(cw.subprocess, "run", lambda *a, **kw: _R())
+
+    pane = _perm_pane("Bash(gh pr merge 1375 --squash --admin)", pr=1375)
+    cw.handle_permission_prompt("elliot", "elliottbot:0.0", pane, {})
+
+    assert tabs == ["elliottbot:0.0"]
+    assert slack == []

@@ -20,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
 import subprocess
 import sys
 import time
@@ -74,16 +75,152 @@ def is_context_full(pane: str) -> bool:
     return "100% context used" in pane or "Usage credits required" in pane
 
 
-def is_stuck(pane: str) -> bool:
-    indicators = ["Error:", "APIError:", "ConnectionError", "TimeoutError", "Traceback"]
-    if any(s in pane for s in indicators):
-        return True
-    # Permission-prompt detection (Dave-identified failure mode 2026-05-30):
-    # tmux pane hung on a Claude permission prompt → silent stall the watchdog
-    # previously could not see. Three independent signals; any one is enough.
-    if "⏵⏵" in pane or "bypass permiss" in pane:
+# Permission-prompt vs genuine-stall split (Dave approved 2026-06-01).
+# Old is_stuck() conflated the two and /cleared agents waiting on a
+# routine read-only tool — destroying their context. The split lets us
+# auto-approve safe tools, escalate unknown tools, and only /clear on
+# real failure (Error:, Traceback, etc.). ⏵⏵ and 'bypass permiss' are
+# permission-prompt-only; the Allow+Deny pane pattern stays under
+# is_genuinely_stuck (the loose-substring check is unreliable as a
+# permission signal in isolation).
+
+PERMISSION_PROMPT_TOKENS = ("⏵⏵", "bypass permiss")
+GENUINE_STALL_INDICATORS = (
+    "Error:", "APIError:", "ConnectionError", "TimeoutError", "Traceback",
+)
+TOOL_CALL_PREFIXES = ("● Bash(", "● Read(", "● Write(")
+AUTO_APPROVE_PATTERNS = [
+    "git log", "git status", "git diff", "git branch", "git show", "git grep",
+    "git add", "git commit",
+    "gh pr view", "gh pr list", "gh pr checks", "gh pr diff",
+    "gh issue view", "gh issue list",
+    "gh pr comment",
+    "tmux capture-pane",
+]
+ESCALATION_COOLDOWN_SEC = 300  # 5 min — anti-spam window for unknown-tool escalations
+PR_NUMBER_RE = re.compile(r"·\s*PR\s*#(\d+)\s*·")
+
+
+def is_permission_prompt(pane: str) -> bool:
+    """True iff the pane is hung on a Claude Code permission prompt."""
+    return any(tok in pane for tok in PERMISSION_PROMPT_TOKENS)
+
+
+def is_genuinely_stuck(pane: str) -> bool:
+    """True iff the pane shows a real failure (not a permission prompt)."""
+    if any(s in pane for s in GENUINE_STALL_INDICATORS):
         return True
     return "Allow" in pane and "Deny" in pane
+
+
+def extract_pending_tool(pane: str) -> str | None:
+    """Return the most recent tool-call line above the ⏵⏵ marker, capped at 200 chars.
+
+    Returns None if the pane lacks a ⏵⏵ marker or no recognised tool call
+    appears above it.
+    """
+    lines = pane.splitlines()
+    chevron_idx = None
+    for i in range(len(lines) - 1, -1, -1):
+        if "⏵⏵" in lines[i]:
+            chevron_idx = i
+            break
+    if chevron_idx is None:
+        return None
+    for i in range(chevron_idx - 1, -1, -1):
+        line = lines[i]
+        if any(prefix in line for prefix in TOOL_CALL_PREFIXES):
+            return line.strip()[:200]
+    return None
+
+
+def extract_pr_number(pane: str) -> int | None:
+    """Pull the active PR number from a `· PR #NNNN ·` status-line marker."""
+    m = PR_NUMBER_RE.search(pane)
+    if not m:
+        return None
+    try:
+        return int(m.group(1))
+    except ValueError:
+        return None
+
+
+def is_auto_approvable(tool_str: str) -> bool:
+    """True iff `tool_str` contains any AUTO_APPROVE_PATTERNS substring."""
+    if not tool_str:
+        return False
+    return any(pat in tool_str for pat in AUTO_APPROVE_PATTERNS)
+
+
+def is_merge_with_dual_concur(tool_str: str, pr_number: int | None) -> bool:
+    """True iff the pending tool is `gh pr merge` AND the PR shows 2+ REVIEW:approve.
+
+    Best-effort: any gh failure (missing auth, network, JSON parse) returns
+    False so the request escalates to Dave rather than being silently approved.
+    """
+    if not tool_str or "gh pr merge" not in tool_str or pr_number is None:
+        return False
+    try:
+        r = subprocess.run(
+            ["gh", "pr", "view", str(pr_number), "--json", "comments", "-q",
+             ".comments[].body"],
+            capture_output=True, text=True, timeout=15, check=False,
+        )
+        if r.returncode != 0:
+            return False
+        approve_lines = [ln for ln in r.stdout.splitlines() if "REVIEW:approve" in ln]
+        return len(approve_lines) >= 2
+    except Exception:
+        return False
+
+
+def send_tab(target: str) -> None:
+    """Send a single Tab keystroke to a tmux pane (advances past a Claude prompt)."""
+    try:
+        subprocess.run(["tmux", "send-keys", "-t", target, "Tab"],
+                       timeout=5, check=False)
+    except Exception:
+        pass
+
+
+def handle_permission_prompt(name: str, target: str, pane: str, state: dict) -> dict:
+    """Dispatch a permission prompt: auto-approve safe tools, escalate unknowns.
+
+    NEVER /clears the pane — the agent is waiting on a decision, not stalled.
+    Anti-spam: if we escalated within ESCALATION_COOLDOWN_SEC, skip re-escalation.
+    """
+    now = time.time()
+    tool_str = extract_pending_tool(pane)
+    pr_number = extract_pr_number(pane)
+    if tool_str is None:
+        last_escalated = state.get(f"{name}_escalated_at", 0)
+        if now - last_escalated >= ESCALATION_COOLDOWN_SEC:
+            slack_ceo(
+                f"[ELLIOT] Watchdog: {name} hung on permission prompt but tool "
+                "call could not be identified. Approve manually or kill."
+            )
+            state[f"{name}_escalated_at"] = now
+        return state
+
+    if is_auto_approvable(tool_str):
+        send_tab(target)
+        print(f"[watchdog] auto-approved {name}: {tool_str[:80]}")
+        return state
+
+    if is_merge_with_dual_concur(tool_str, pr_number):
+        send_tab(target)
+        print(f"[watchdog] auto-approved merge {name} PR#{pr_number} (dual concur verified)")
+        return state
+
+    last_escalated = state.get(f"{name}_escalated_at", 0)
+    if now - last_escalated < ESCALATION_COOLDOWN_SEC:
+        return state
+    slack_ceo(
+        f"[ELLIOT] Watchdog: {name} needs permission for: {tool_str[:120]}\n"
+        "Approve? (agent will wait — NOT being cleared)"
+    )
+    state[f"{name}_escalated_at"] = now
+    return state
 
 
 def load_state() -> dict:
@@ -296,11 +433,17 @@ def check_other_agents(state: dict) -> dict:
         if revive_sent:
             continue
 
+        # Permission prompts come BEFORE genuine-stall: the agent is waiting on
+        # a tool-call decision, not crashed. /clear here would destroy context.
+        if is_permission_prompt(pane):
+            state = handle_permission_prompt(name, target, pane, state)
+            continue
+
         last_task = state.get(f"{name}_last_task", "")
         if is_context_full(pane):
             revive_agent(name, target, "context-full", last_task=last_task)
             state[key_revive] = now
-        elif is_stuck(pane):
+        elif is_genuinely_stuck(pane):
             revive_agent(name, target, "error-detected", last_task=last_task)
             state[key_revive] = now
     return state
@@ -325,7 +468,11 @@ def main() -> None:
 
     wake_sent = state.get("elliot_wake_sent", 0)
 
-    if is_context_full(elliot_pane):
+    # Permission prompts come BEFORE context-full: a hung tool-call decision
+    # must not trigger /clear (mirrors the check_other_agents ordering).
+    if is_permission_prompt(elliot_pane):
+        state = handle_permission_prompt("elliot", ELLIOT_PANE, elliot_pane, state)
+    elif is_context_full(elliot_pane):
         # Problem A: context full → compact+restart, then wake/resume
         state = restart_elliot(state, now)
     elif wake_sent and (now - wake_sent) > WAKE_TIMEOUT_SEC:

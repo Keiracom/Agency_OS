@@ -20,10 +20,11 @@ progress. Cancellation is in a finally block to prevent task leak on timeout.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import os
 import time
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import timedelta
 from uuid import uuid4
 
@@ -137,10 +138,8 @@ async def run_chain_step(inp: ChainStepInput) -> ChainStepOutput:
     async def _heartbeat() -> None:
         while True:
             if activity is not None:
-                try:
+                with contextlib.suppress(Exception):
                     activity.heartbeat(f"running {inp.chain_step}")
-                except Exception:  # noqa: BLE001 — activity context may be gone on shutdown
-                    pass
             await asyncio.sleep(30)
 
     hb_task = asyncio.create_task(_heartbeat())
@@ -183,10 +182,8 @@ async def run_chain_step(inp: ChainStepInput) -> ChainStepOutput:
 
     finally:
         hb_task.cancel()
-        try:
+        with contextlib.suppress(asyncio.CancelledError):
             await hb_task
-        except asyncio.CancelledError:
-            pass
 
     # Bookkeeping — fail-open; chain hop already completed its work.
     try:

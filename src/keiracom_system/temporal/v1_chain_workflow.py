@@ -75,7 +75,7 @@ class ChainStepOutput:
 @dataclass
 class ChainWorkflowInput:
     task_id: str
-    chain_id: str = ""   # defaults to task_id when empty (resolved in workflow.run)
+    chain_id: str = ""  # defaults to task_id when empty (resolved in workflow.run)
     brief: str = ""
     dry_run: bool = False
 

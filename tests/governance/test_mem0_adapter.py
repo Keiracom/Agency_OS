@@ -8,6 +8,7 @@ import importlib
 import json
 import os
 import sys
+from datetime import datetime, timezone
 from types import ModuleType
 from unittest.mock import MagicMock, patch
 
@@ -152,7 +153,7 @@ def test_cap_warning_fires_at_80_percent_add(log_path, monkeypatch, caplog):
     monkeypatch.setenv("MEM0_API_KEY", "test-key-12345")
     mod, _ = _load_mod_with_mock_client(log_path)
 
-    period = "2026-05"
+    period = datetime.now(timezone.utc).strftime("%Y-%m")
     with open(log_path, "w") as fh:
         fh.write(
             json.dumps(
@@ -179,7 +180,7 @@ def test_cap_warning_fires_at_80_percent_search(log_path, monkeypatch, caplog):
     monkeypatch.setenv("MEM0_API_KEY", "test-key-12345")
     mod, _ = _load_mod_with_mock_client(log_path)
 
-    period = "2026-05"
+    period = datetime.now(timezone.utc).strftime("%Y-%m")
     with open(log_path, "w") as fh:
         fh.write(
             json.dumps(

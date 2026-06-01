@@ -97,7 +97,21 @@ def _connect() -> Any:
 
 
 def fetch_task(task_id: str, *, conn: Any = None) -> dict | None:
-    """Fetch the public.tasks row for task_id. None if absent."""
+    """Fetch the public.tasks row for task_id. None if absent.
+
+    If AGENT_BRIEF is set (injected by the dispatcher for chain spawns that
+    pass the brief inline), return a synthetic task dict without hitting the
+    DB — mirrors the SDK path's AGENT_BRIEF behaviour.
+    """
+    brief = os.environ.get("AGENT_BRIEF", "").strip()
+    if brief:
+        return {
+            "id": task_id,
+            "title": os.environ.get("AGENT_TASK_TITLE", ""),
+            "description": brief,
+            "priority": None,
+            "acceptance_criteria": None,
+        }
     own = conn is None
     conn = conn or _connect()
     try:

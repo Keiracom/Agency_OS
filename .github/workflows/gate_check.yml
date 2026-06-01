@@ -1,0 +1,99 @@
+name: Verification Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+    inputs:
+      phase:
+        description: 'Specific phase to run (default: all)'
+        required: false
+        default: ''
+
+jobs:
+  gate-check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    env:
+      # GitHub Actions runs this — not the PR author. That is the routing
+      # guarantee from Dave's directive (the agent that merged the PR is
+      # NOT the one running this job).
+      CI_RUN_ID: ${{ github.run_id }}
+      PR_NUMBER: ${{ github.event.pull_request.number || '' }}
+      PR_AUTHOR: ${{ github.event.pull_request.user.login || github.actor }}
+      # Secrets — populate in repo settings. Absent secrets mean dependent
+      # gates emit `skipped` rather than fake pass. The PLANTED_FAILURE
+      # proof needs NO secrets — it fails unconditionally.
+      DATABASE_URL: ${{ secrets.GATE_LEDGER_DATABASE_URL }}
+      HINDSIGHT_URL: ${{ secrets.HINDSIGHT_URL }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2  # gate_git_commit needs HEAD~1 for first-run fallback
+
+      - name: Install runtime deps
+        run: |
+          set -euo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+              jq curl postgresql-client tmux
+          jq --version
+          psql --version
+
+      - name: Make gate scripts executable
+        run: chmod +x scripts/gates/*.sh
+
+      - name: Run gates from manifest
+        id: run_gates
+        run: |
+          set +e
+          manifest=".gates/manifest.json"
+          if [[ ! -f "$manifest" ]]; then
+              echo "gate_check: manifest missing — nothing to run" >&2
+              exit 65
+          fi
+
+          requested_phase="${{ github.event.inputs.phase }}"
+          if [[ -n "$requested_phase" ]]; then
+              phases="$requested_phase"
+          else
+              phases=$(jq -r '.phases | keys[]' "$manifest")
+          fi
+
+          overall_rc=0
+          declare -a results
+
+          while IFS= read -r phase; do
+              [[ -z "$phase" ]] && continue
+              echo "::group::phase=${phase}"
+              while IFS= read -r gate_id; do
+                  [[ -z "$gate_id" ]] && continue
+                  echo "→ running gate=${gate_id}"
+                  scripts/gates/verify.sh "$gate_id" "$phase"
+                  rc=$?
+                  echo "← gate=${gate_id} rc=${rc}"
+                  if [[ $rc -eq 0 ]]; then
+                      results+=("$phase/$gate_id: pass")
+                  elif [[ $rc -eq 1 ]]; then
+                      results+=("$phase/$gate_id: FAIL")
+                      overall_rc=1
+                  elif [[ $rc -eq 2 ]]; then
+                      results+=("$phase/$gate_id: skipped")
+                  else
+                      results+=("$phase/$gate_id: ERROR rc=$rc")
+                      overall_rc=1
+                  fi
+              done < <(jq -r --arg p "$phase" '.phases[$p] // [] | .[]' "$manifest")
+              echo "::endgroup::"
+          done <<<"$phases"
+
+          echo ""
+          echo "==== gate_check summary ===="
+          printf '  %s\n' "${results[@]}"
+          echo "==========================="
+          exit $overall_rc

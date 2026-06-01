@@ -1,0 +1,17 @@
+{
+  "schema_version": "1",
+  "comment": "Active gates per phase. CI's gate_check.yml reads this; check_phase_ready.sh and rehearsal_ready.sh do too. Adding a gate id here makes it part of the verification mechanism. Removing it disables enforcement (do not remove without Dave review).",
+  "phases": {
+    "phase_0_mechanism": [],
+    "phase_1_recall": [
+      "gate_recall",
+      "gate_atoms"
+    ],
+    "phase_2_build": [
+      "gate_git_commit"
+    ],
+    "phase_3_resilience": [
+      "gate_crash_recovery"
+    ]
+  }
+}

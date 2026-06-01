@@ -60,32 +60,43 @@ Agents are Claude Code sessions running under fixed callsigns. Deliberation tier
 
 ## Agent loop architecture (V1 chain)
 
-The runtime execution loop — distinct from the callsign org chart above — moves every request through a fixed chain: **Face → Aiden + Max (deliberate) → Worker → Orion + Atlas (review) → done.** The roles run as separate ephemeral spawns and never share in-process state; each exits after its turn and hands off through **AtomV1 pointers** carried over NATS, with the atoms themselves living in Hindsight.
+The runtime execution loop — distinct from the callsign org chart above — moves every request through a fixed chain of four roles: **Chat → Deliberator → Worker → Reviewer → done.** The roles run as separate ephemeral spawns and never share in-process state; each exits after its turn and hands off through **AtomV1 pointers** carried over NATS, with the atoms themselves living in Hindsight.
 
 ```mermaid
 flowchart LR
-    User([Dave / #ceo]) --> Face[Face<br/>customer-facing]
-    Face --> Aiden[Aiden<br/>deliberate]
-    Aiden --> Max[Max<br/>challenge]
-    Max -->|CONCUR| Worker[Worker<br/>execute]
-    Worker --> Orion[Orion · spec]
-    Worker --> Atlas[Atlas · safety]
-    Orion --> Gate{DUAL CONCUR}
-    Atlas --> Gate
+    User([Dave / #ceo]) --> Chat[Chat<br/>customer-facing]
+    Chat --> D1[Deliberator 1<br/>Aiden · plan]
+    D1 --> D2[Deliberator 2<br/>Max · challenge]
+    D2 -->|DUAL CONCUR| Worker[Worker<br/>execute]
+    Worker --> R1[Reviewer 1<br/>Orion · spec]
+    Worker --> R2[Reviewer 2<br/>Atlas · safety]
+    R1 --> Gate{DUAL CONCUR}
+    R2 --> Gate
     Gate -->|done| Slack([Result → Slack])
     Worker -.->|AtomV1 on exit| H[(Hindsight<br/>fleet_decisions)]
     H -.->|atom recall at spawn| Worker
 ```
 
-**Face** — the customer-facing ephemeral agent. It receives Dave's intent from Slack (a `claude-haiku-4-5` agent spawns per `#ceo` message via Socket Mode, rate-capped at 10 spawns/hour via Valkey), classifies it as *answer / dispatch / clarify*, dispatches build work to Aiden, and reports completion back to Dave. It presents one recommendation, never a pros-and-cons list.
+### Role quick reference
 
-**Deliberators (Aiden + Max)** — two agents that must agree before any work is dispatched. **Aiden** (Deliberator 1, architect) produces a structured KEI work plan and is biased toward action. **Max** (Deliberator 2, challenger) stress-tests that KEI and returns CONCUR or BLOCK with one sentence per gap — he will not rubber-stamp. Both must CONCUR before the Worker is dispatched.
+| Role | Code name | Token ceiling | Callsign(s) | Responsibility | Hand-off signal |
+|------|-----------|:---:|---|---|---|
+| Chat | `chat` | 4 000 | Face (ephemeral haiku) | Receive Dave's intent from Slack; classify as *answer / dispatch / clarify*; report completion back | Dispatches KEI to Deliberator 1; closes loop to Slack on done |
+| Deliberator | `deliberator` | 20 000 | Aiden (plan), Max (challenge) | Produce a structured KEI work plan (D1) and stress-test it (D2); return CONCUR or BLOCK with one reason per gap | Both must CONCUR before Worker is dispatched |
+| Worker | `builder` | 12 000 | Orion, Atlas, Scout, Nova (any) | Fetch KEI from Hindsight; build / write / fix; write AtomV1 atom on exit; signal Reviewers | AtomV1 atom written + `task_complete` posted to dispatcher |
+| Reviewer | `reviewer` | 8 000 | Orion (spec), Atlas (safety) | Verify output against KEI line by line (R1) and check production readiness — regressions, edge cases, data integrity (R2) | Both must CONCUR before merge/completion |
 
-**Worker** — the executor. It receives an atom pointer, fetches the KEI from Hindsight, builds/writes/fixes, writes an AtomV1 atom on exit, and signals the reviewers. Operationally each Worker is an ephemeral spawn off the work-loop: a Postgres `trg_tasks_unblock_dependents` trigger publishes `task_id + callsign + tenant_id` to the Valkey `keiracom:tasks:available` queue; the consumer checks the tenant's tier ceiling and, if under the concurrent-spawn limit, calls `POST /dispatcher/spawn` (overflow is requeued, never dropped; a Valkey lock prevents duplicate spawns). Each spawn is hydrated by a 4-layer context contract — L1 system prompt, L2 Hindsight recall, L3 Valkey spend gate, L4 dispatcher wiring — fail-open at every layer.
+### Role details
 
-**Reviewers (Orion + Atlas)** — dual concur before anything is marked complete. **Orion** (Reviewer 1, spec) verifies the output against the KEI line by line. **Atlas** (Reviewer 2, quality + safety) checks production readiness — regressions, edge cases, data integrity. Each returns CONCUR or REJECT; **both** must CONCUR before merge/completion — neither concurs alone. Runtime and governance PRs ride this same dual-concur gate (the orchestrator-merge-after-NATS-concur pattern) before an admin squash-merge.
+**Chat** — a `claude-haiku-4-5` agent spawns per `#ceo` message via Socket Mode, rate-capped at 10 spawns/hour via Valkey. It classifies the message, dispatches build work, and presents one recommendation back to Dave — never a pros-and-cons list. Code path: dispatcher detects `from == "dave"` → role tag `chat` → 4 000-token ceiling.
 
-**Hand-off via AtomV1 pointers** — roles do not pass state in process. An exiting agent writes its decision as an AtomV1 atom to the Hindsight `fleet_decisions` bank; NATS then carries the `task_id + atom_id` to the next agent, which recalls the atom at spawn (~100–150 tokens, no repeated preamble). Postgres carries operational state and the task-unblock triggers; Hindsight carries all knowledge — there is no intermediate store. All agent invocations run on the Anthropic API, and results return to Slack via the dispatcher `task_complete` endpoint plus `slack_relay.py`. Each role's prompt is served at spawn from the `public.persona_bank` table (5 rows — face/aiden/max/orion/atlas) via `GET /dispatcher/persona`. Post-cutover, `ceo_memory` is an audit log and admin target — not a pipeline step.
+**Deliberator** — two agents that must agree before any Worker is dispatched. **Aiden** (D1, architect) is biased toward action and produces the structured plan. **Max** (D2, challenger) returns CONCUR or BLOCK with one sentence per gap — he will not rubber-stamp. Both CONCUR = Worker dispatched; either BLOCK = plan revised.
+
+**Worker** — the executor. It receives an atom pointer, fetches the KEI from Hindsight, builds/writes/fixes, writes an AtomV1 atom on exit, and signals the Reviewers. Operationally: a Postgres `trg_tasks_unblock_dependents` trigger publishes `task_id + callsign + tenant_id` to the Valkey `keiracom:tasks:available` queue; the consumer checks the tenant's tier ceiling and, if under the concurrent-spawn limit, calls `POST /dispatcher/spawn` (overflow requeued, never dropped; Valkey lock prevents duplicate spawns). Each spawn is hydrated by a 4-layer context contract — L1 system prompt, L2 Hindsight recall, L3 Valkey spend gate, L4 dispatcher wiring — fail-open at every layer.
+
+**Reviewer** — dual concur before anything is marked complete. **Orion** (R1, spec) verifies the output against the KEI line by line. **Atlas** (R2, quality + safety) checks production readiness — regressions, edge cases, data integrity. Each returns CONCUR or REJECT; **both** must CONCUR before merge/completion. Runtime and governance PRs ride this same gate (orchestrator-merge-after-NATS-concur) before an admin squash-merge.
+
+**Hand-off via AtomV1 pointers** — roles do not pass state in-process. An exiting agent writes its decision as an AtomV1 atom to the Hindsight `fleet_decisions` bank; NATS carries `task_id + atom_id` to the next spawn, which recalls the atom at startup (~100–150 tokens, no repeated preamble). Postgres carries operational state and the task-unblock triggers; Hindsight carries all knowledge — there is no intermediate store. Results return to Slack via the dispatcher `task_complete` endpoint plus `slack_relay.py`. Each role's system prompt is served at spawn from `public.persona_bank` via `GET /dispatcher/persona`. Token ceilings are enforced at spawn time by `src/relay/context_budget.py`.
 
 ---
 

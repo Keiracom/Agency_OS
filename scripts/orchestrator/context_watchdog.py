@@ -90,12 +90,26 @@ GENUINE_STALL_INDICATORS = (
 )
 TOOL_CALL_PREFIXES = ("● Bash(", "● Read(", "● Write(")
 AUTO_APPROVE_PATTERNS = [
+    # git — read + routine write on feature branches
     "git log", "git status", "git diff", "git branch", "git show", "git grep",
-    "git add", "git commit",
+    "git add", "git commit", "git fetch", "git pull", "git stash", "git push",
+    "git checkout", "git rev-parse",
+    # GitHub CLI — read
     "gh pr view", "gh pr list", "gh pr checks", "gh pr diff",
     "gh issue view", "gh issue list",
-    "gh pr comment",
-    "tmux capture-pane",
+    "gh run view", "gh run list", "gh api ",
+    # GitHub CLI — routine write ops
+    "gh pr comment", "gh pr create", "gh pr merge",
+    # tmux read ops
+    "tmux capture-pane", "tmux list-sessions", "tmux list-panes", "tmux list-windows",
+    # Local scripts — diagnostic, test, lint (no external API spend)
+    "python3 scripts/", "python3 -m pytest", "python3 -B -m", "python3 -c ",
+    "python3 <<", "pytest", "ruff ", "mypy ",
+    # Beads / bd task ops
+    "bd ready", "bd show", "bd close", "bd claim", "bd update", "bd create",
+    # File + environment ops
+    "cat ", "ls ", "find ", "grep ", "head ", "tail ", "wc ", "echo ",
+    "source ", "env ", "which ", "type ",
 ]
 ESCALATION_COOLDOWN_SEC = 300  # 5 min — anti-spam window for unknown-tool escalations
 PR_NUMBER_RE = re.compile(r"·\s*PR\s*#(\d+)\s*·")
@@ -195,9 +209,15 @@ def handle_permission_prompt(name: str, target: str, pane: str, state: dict) -> 
     if tool_str is None:
         last_escalated = state.get(f"{name}_escalated_at", 0)
         if now - last_escalated >= ESCALATION_COOLDOWN_SEC:
+            # Surface the last 3 non-empty pane lines so the recipient can
+            # judge the prompt without a tmux attach. Capped at 200 chars to
+            # stay readable in #ceo.
+            tail_lines = [ln.strip() for ln in pane.splitlines() if ln.strip()][-3:]
+            pane_tail = " | ".join(tail_lines)
             slack_ceo(
-                f"[ELLIOT] Watchdog: {name} hung on permission prompt but tool "
-                "call could not be identified. Approve manually or kill."
+                f"[ELLIOT] Watchdog: {name} — permission prompt, tool unidentified.\n"
+                f"Pane tail: {pane_tail[:200]}\n"
+                "Agent is waiting — NOT being cleared. Approve manually if needed."
             )
             state[f"{name}_escalated_at"] = now
         return state

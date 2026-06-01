@@ -531,6 +531,34 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
   # ============================================
+  # Temporal Crash Recovery Gate (V1 Chain)
+  # ============================================
+  crash-recovery-gate:
+    name: Crash Recovery Gate (Temporal)
+    runs-on: ubuntu-latest
+    needs: [backend-test]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install uv
+          uv pip install --system -r requirements.txt
+
+      - name: Run crash recovery gate
+        env:
+          GATE_CRASH_DISPATCH_CMD: ${{ secrets.GATE_CRASH_DISPATCH_CMD }}
+          TEMPORAL_ADDR: ${{ secrets.TEMPORAL_ADDR }}
+          KEIRACOM_TEMPORAL_INTEGRATION: ${{ secrets.KEIRACOM_TEMPORAL_INTEGRATION }}
+        run: |
+          pytest tests/keiracom_system/temporal/test_v1_chain_crash_recovery.py -v
+
+  # ============================================
   # Notify on failure
   # ============================================
   notify-failure:

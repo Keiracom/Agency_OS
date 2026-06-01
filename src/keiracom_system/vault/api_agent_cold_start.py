@@ -17,8 +17,12 @@ Flow (per chain hop):
   3. GET /dispatcher/persona?role=<role_type>&tier=standard&variant=<variant>
      with bounded retry (Nova's worker persona may land in parallel — Elliot
      directive 2026-05-29 — so retry up to 60s instead of failing fast).
+  3b. Build the L2 Hindsight recall block via spawn_recall.build_spawn_context_block
+     (task_type derived from chain_step, brief from AGENT_BRIEF). Fail-open: any
+     retrieval error → "" so the spawn proceeds without prior context.
   4. anthropic.Anthropic(...).messages.create(model='claude-sonnet-4-6',
-     max_tokens=8096, system=<persona>, messages=[{role:'user', content:brief}]).
+     max_tokens=8096, system=<persona with cache_control>,
+     messages=[{role:'user', content:[<recall_block with cache_control>, <brief>]}]).
   5. Record latency_ms; compute cost_usd = (in*3 + out*15) / 1e6 and
      cost_aud = cost_usd * 1.55 (LAW II — both columns stored so zqni reads AUD
      directly from the table without re-multiplying).
@@ -221,7 +225,7 @@ def insert_attribution(
                     str(uuid.uuid4()),
                     "v1_chain",
                     chain_id,
-                    _CHAIN_STEP_TO_TASK_TYPE.get(chain_step, "unknown"),
+                    _resolve_task_type(chain_step),
                     callsign,
                     _MODEL,
                     int(input_tokens),
@@ -342,6 +346,81 @@ def _build_system_param(persona: str, persona_token_count: int):
     return persona
 
 
+def _resolve_task_type(chain_step: str) -> str:
+    """Map chain_step → TASK_TYPES workload class (single source of truth).
+
+    Used by BOTH the spawn_recall query (run()) and the attribution INSERT
+    (insert_attribution). Resolving once here keeps the fallback consistent
+    when CHAIN_STEP is absent — previously the recall path defaulted to
+    "build" while the DB write defaulted to "unknown", which left the two
+    callers reading different task_type values for the same hop (Max review
+    HOLD #1383).
+    """
+    return _CHAIN_STEP_TO_TASK_TYPE.get(chain_step, "unknown")
+
+
+def _build_recall_block(*, task_type: str, brief: str) -> str:
+    """L2 Hindsight recall block for this hop's prompt (Wave 3 / spawn_recall).
+
+    Delegates to src.retrieval.spawn_recall.build_spawn_context_block, which
+    queries fleet_decisions (the L2 store the c66k backfill populates) and
+    returns a KEI-55-budget-capped text block. Without this call, the chain
+    hop's user message is just the raw brief — no prior context, no recall,
+    cache_hit_pct = 0 on warm replays because there is nothing shared to cache.
+
+    Fail-open by contract: any exception (retrieval outage, agent_query missing,
+    Weaviate down) → return "" so the spawn proceeds without recall rather than
+    blocking. Caller (run()) logs the resulting length so the harness can
+    distinguish "recall path live, corpus empty" from "recall path raised".
+    """
+    try:
+        from src.retrieval.spawn_recall import (  # noqa: PLC0415 — lazy, optional dep
+            build_spawn_context_block,
+        )
+
+        return build_spawn_context_block(task_type=task_type, task_brief=brief)
+    except Exception:  # noqa: BLE001 — recall must never block a chain hop
+        logger.warning("api_agent_cold_start: spawn_recall failed (non-fatal)", exc_info=True)
+        return ""
+
+
+def _build_messages_param(brief: str, recall_block: str):
+    """Wrap user content with optional cache_control on the recall_block prefix.
+
+    Anthropic SDK accepts each message's ``content`` as either str OR a list of
+    block dicts; the list form carries cache_control. cache_control on the
+    recall prefix is only useful when the prefix would actually cache — i.e.
+    Anthropic's ≥1,024-token minimum-cacheable-prefix floor (Sonnet 4.x docs).
+    Same guard as the system path uses for personas: estimate tokens at
+    ~4 chars/token, skip the cache_control breakpoint when under-floor.
+
+    The recall_block is KEI-55-budget-capped at 500 tokens (spawn_recall.py
+    MAX_TOKENS) so in the current configuration the guard always fires false
+    and cache_control is omitted; if the KEI-55 ceiling grows past 1,024 the
+    breakpoint switches on automatically without further changes here.
+
+    Caching is also bounded by the 5-min prompt-cache TTL AND by the fact
+    that Hindsight grows continuously — within one TTL window with a stable
+    corpus, the same (task_type, brief) yields the same recall bytes; across
+    refreshes or longer gaps, results drift and the cache lapses. cache_control
+    here is best-effort warm-replay help, not a stable-state guarantee.
+
+    Empty recall → plain string content (no wire-format change vs the
+    pre-recall baseline).
+    """
+    if not recall_block:
+        return [{"role": "user", "content": brief}]
+    recall_block_dict: dict = {"type": "text", "text": recall_block}
+    if len(recall_block) // 4 >= _PROMPT_CACHE_MIN_TOKENS:
+        recall_block_dict["cache_control"] = {"type": "ephemeral"}
+    return [
+        {
+            "role": "user",
+            "content": [recall_block_dict, {"type": "text", "text": brief}],
+        }
+    ]
+
+
 def call_anthropic(
     api_key: str,
     system: str,
@@ -350,6 +429,7 @@ def call_anthropic(
     task_id: str = "",
     callsign: str = "",
     persona_token_count: int = 0,
+    recall_block: str = "",
 ) -> tuple[str, int, int, int, int, int]:
     """Anthropic messages.create with 429/529 retry. Returns (text, in_tok, out_tok, retries).
 
@@ -370,6 +450,7 @@ def call_anthropic(
 
     client = anthropic.Anthropic(api_key=api_key)
     system_param = _build_system_param(system, persona_token_count)
+    messages_param = _build_messages_param(brief, recall_block)
     retries = 0
     last_exc: Exception | None = None
     for attempt in range(_RATE_LIMIT_MAX_ATTEMPTS):
@@ -378,7 +459,7 @@ def call_anthropic(
                 model=_MODEL,
                 max_tokens=_MAX_TOKENS,
                 system=system_param,
-                messages=[{"role": "user", "content": brief}],
+                messages=messages_param,
             )
             text = response.content[0].text if response.content else ""
             # Anthropic SDK exposes cache tokens on usage when prompt caching
@@ -444,10 +525,11 @@ def run() -> int:
     chain_step = _env("CHAIN_STEP") or _env("AGENT_CHAIN_STEP")
     chain_id = _env("AGENT_CHAIN_ID")
     task_id = _env("AGENT_TASK_ID")
-    # Note: AGENT_ATOM_ID (prior step's atom) is read by the persona's L2 recall
-    # at spawn time, not by this entrypoint directly; we don't thread it into
-    # the user message here. Leaving the env var pass-through to the dispatcher
-    # so persona/recall layers can use it.
+    # AGENT_ATOM_ID (prior step's atom_id) is intentionally NOT threaded into
+    # the recall query — build_spawn_context_block takes (task_type, brief) only;
+    # atom-anchored recall (lookup-by-prior-atom rather than topical query) is a
+    # separate retrieval mode out of scope for this PR. The dispatcher still
+    # passes AGENT_ATOM_ID through as an env var for future readers.
     brief = _env("AGENT_BRIEF")
     if not callsign or not brief:
         logger.error(
@@ -461,6 +543,27 @@ def run() -> int:
     if not persona_result:
         return RC_PERSONA_FAILED
     persona, persona_token_count = persona_result
+
+    # L2 Hindsight recall — fleet_decisions lookup (c66k backfill: 333 ceo_memory
+    # + 225 supporting atoms). Without this, every hop's user message is just the
+    # raw brief and cache_hit_pct stays at 0 because there is nothing shared to
+    # cache between cold and warm runs. task_type drives the recall query's
+    # workload-class filter so each chain position retrieves topically relevant
+    # context (deliberation / build / pr_review). recall_block_len log gives the
+    # battery harness a signal to distinguish "recall path live, corpus empty"
+    # from "recall path silently failed" — both yield "" but only the latter is
+    # a bug worth alerting on. task_type resolution is shared with
+    # insert_attribution via _resolve_task_type so both callers see the same
+    # value (Max review HOLD #1383).
+    task_type = _resolve_task_type(chain_step)
+    recall_block = _build_recall_block(task_type=task_type, brief=brief)
+    logger.info(
+        "api_agent_cold_start: recall_block_len=%d task_type=%s callsign=%s chain_step=%s",
+        len(recall_block),
+        task_type,
+        callsign,
+        chain_step or "?",
+    )
 
     spawned_at = time.time()
     try:
@@ -478,6 +581,7 @@ def run() -> int:
             task_id=task_id,
             callsign=callsign,
             persona_token_count=persona_token_count,
+            recall_block=recall_block,
         )
     except ImportError:
         logger.exception("api_agent_cold_start: anthropic SDK not installed")

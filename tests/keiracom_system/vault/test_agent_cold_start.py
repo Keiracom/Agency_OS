@@ -94,10 +94,101 @@ def test_run_agent_spawns_headless_claude():
         proc.wait.return_value = 0
         return proc
 
-    rc = acs.run_agent("PROMPT", popen=fake_popen)
+    # No persona → cmd stays at the baseline four args (preserves pre-xjtn shape).
+    rc = acs.run_agent("PROMPT", popen=fake_popen, fetch_persona=lambda _cs: None)
     assert rc == 0
     assert captured["cmd"] == [acs.CLAUDE_BIN, "-p", "PROMPT", "--dangerously-skip-permissions"]
     assert captured["cwd"] == acs.AGENT_WORKDIR
+
+
+def test_run_agent_appends_persona_when_fetch_returns_prompt(monkeypatch):
+    # xjtn: when /dispatcher/persona returns a prompt for AGENT_CALLSIGN, the
+    # claude CLI is invoked with --append-system-prompt <prompt> so the worker
+    # inherits its persona_bank identity (Nova artifact-discipline etc.).
+    monkeypatch.setenv("AGENT_CALLSIGN", "nova")
+    captured = {}
+
+    def fake_popen(cmd, cwd=None):
+        captured["cmd"] = cmd
+        proc = MagicMock()
+        proc.wait.return_value = 0
+        return proc
+
+    persona = "You are NOVA, the V1 chain execution worker."
+    rc = acs.run_agent(
+        "PROMPT", popen=fake_popen, fetch_persona=lambda cs: persona if cs == "nova" else None
+    )
+    assert rc == 0
+    assert captured["cmd"] == [
+        acs.CLAUDE_BIN,
+        "-p",
+        "PROMPT",
+        "--dangerously-skip-permissions",
+        "--append-system-prompt",
+        persona,
+    ]
+
+
+def test_run_agent_fail_open_when_persona_fetch_returns_none(monkeypatch):
+    # xjtn fail-open: persona unreachable / empty must NOT block spawn — cmd
+    # keeps the baseline shape and the agent runs without a persona prefix.
+    monkeypatch.setenv("AGENT_CALLSIGN", "nova")
+    captured = {}
+
+    def fake_popen(cmd, cwd=None):
+        captured["cmd"] = cmd
+        proc = MagicMock()
+        proc.wait.return_value = 0
+        return proc
+
+    rc = acs.run_agent("PROMPT", popen=fake_popen, fetch_persona=lambda _cs: None)
+    assert rc == 0
+    assert "--append-system-prompt" not in captured["cmd"]
+    assert captured["cmd"] == [acs.CLAUDE_BIN, "-p", "PROMPT", "--dangerously-skip-permissions"]
+
+
+def test_fetch_persona_prompt_returns_none_when_callsign_unset():
+    # Direct unit: no callsign env → return None without making any network call.
+    assert acs.fetch_persona_prompt(None) is None
+    assert acs.fetch_persona_prompt("") is None
+
+
+def test_fetch_persona_prompt_returns_none_for_unknown_callsign():
+    # Unknown callsign in CALLSIGN_TO_PERSONA → log warning + return None, no fetch.
+    assert acs.fetch_persona_prompt("unknown_callsign_xyz") is None
+
+
+def test_fetch_persona_prompt_returns_prompt_on_200(monkeypatch):
+    # Happy path: dispatcher returns {prompt_text: "...", token_count: N} → prompt returned.
+    class _FakeResp:
+        def __init__(self, body):
+            self._body = body
+
+        def read(self):
+            return self._body
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+    body = json.dumps({"prompt_text": "PERSONA-TEXT", "token_count": 42}).encode()
+    monkeypatch.setattr(
+        acs.urllib.request,
+        "urlopen",
+        lambda *a, **kw: _FakeResp(body),  # noqa: ARG005
+    )
+    assert acs.fetch_persona_prompt("nova") == "PERSONA-TEXT"
+
+
+def test_fetch_persona_prompt_fail_open_on_network_error(monkeypatch):
+    # Network error → log warning + return None, never raise.
+    def _raise(*_a, **_kw):
+        raise OSError("connection refused")
+
+    monkeypatch.setattr(acs.urllib.request, "urlopen", _raise)
+    assert acs.fetch_persona_prompt("nova") is None
 
 
 def test_finalize_done_without_acceptance_inserts_generic_verification():
@@ -258,7 +349,9 @@ def test_notify_complete_suppressed_when_chain_step_is_intermediate(monkeypatch,
     with caplog.at_level(logging.INFO, logger="src.keiracom_system.vault.agent_cold_start"):
         acs.notify_complete("t-int", "aiden", "Plan KEI-1", "done", 0)
     assert called == []  # urlopen never invoked
-    assert any("suppressed" in rec.message and "aiden_plan" in rec.message for rec in caplog.records)
+    assert any(
+        "suppressed" in rec.message and "aiden_plan" in rec.message for rec in caplog.records
+    )
 
 
 def test_notify_complete_posts_when_chain_step_is_complete(monkeypatch):

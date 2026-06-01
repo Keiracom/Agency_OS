@@ -94,7 +94,7 @@ AUTO_APPROVE_PATTERNS = [
     "git add", "git commit",
     "gh pr view", "gh pr list", "gh pr checks", "gh pr diff",
     "gh issue view", "gh issue list",
-    "gh pr comment",
+    "gh pr comment", "gh pr create",
     "tmux capture-pane",
 ]
 ESCALATION_COOLDOWN_SEC = 300  # 5 min — anti-spam window for unknown-tool escalations
@@ -195,9 +195,15 @@ def handle_permission_prompt(name: str, target: str, pane: str, state: dict) -> 
     if tool_str is None:
         last_escalated = state.get(f"{name}_escalated_at", 0)
         if now - last_escalated >= ESCALATION_COOLDOWN_SEC:
+            # Surface the last 3 non-empty pane lines so the recipient can
+            # judge the prompt without a tmux attach. Capped at 200 chars to
+            # stay readable in #ceo.
+            tail_lines = [ln.strip() for ln in pane.splitlines() if ln.strip()][-3:]
+            pane_tail = " | ".join(tail_lines)
             slack_ceo(
-                f"[ELLIOT] Watchdog: {name} hung on permission prompt but tool "
-                "call could not be identified. Approve manually or kill."
+                f"[ELLIOT] Watchdog: {name} — tool unidentified. "
+                f"Pane tail: {pane_tail[:200]}\n"
+                "Agent is waiting — NOT being cleared. Approve manually if needed."
             )
             state[f"{name}_escalated_at"] = now
         return state

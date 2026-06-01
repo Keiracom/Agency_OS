@@ -386,7 +386,9 @@ def test_unknown_tool_escalates_not_clears(cw, monkeypatch):
     slack: list[str] = []
     monkeypatch.setattr(cw, "send_tab", lambda t: tabs.append(t))
     monkeypatch.setattr(cw, "slack_ceo", lambda m: slack.append(m))
-    monkeypatch.setattr(cw, "revive_agent", lambda *a, **kw: pytest.fail("revive_agent must not run"))
+    monkeypatch.setattr(
+        cw, "revive_agent", lambda *a, **kw: pytest.fail("revive_agent must not run")
+    )
 
     pane = _perm_pane("Bash(rm -rf /tmp/foo)")
     state = cw.handle_permission_prompt("aiden", "aiden:0.0", pane, {})
@@ -431,3 +433,67 @@ def test_merge_with_dual_concur_auto_approves(cw, monkeypatch):
 
     assert tabs == ["elliottbot:0.0"]
     assert slack == []
+
+
+def test_auto_approve_sends_tab_for_gh_pr_create(cw, monkeypatch):
+    """gh pr create is in AUTO_APPROVE_PATTERNS → Tab keystroke, no escalation.
+
+    Routine fleet op alongside `gh pr comment` and `gh pr view` — every
+    worker opens PRs as part of normal dispatch flow, and stopping for a
+    permission prompt on each one stalls the orchestration loop.
+    """
+    tabs: list[str] = []
+    slack: list[str] = []
+    monkeypatch.setattr(cw, "send_tab", lambda t: tabs.append(t))
+    monkeypatch.setattr(cw, "slack_ceo", lambda m: slack.append(m))
+
+    pane = _perm_pane("Bash(gh pr create --title '[ATLAS] feat(x)' --body 'summary')")
+    cw.handle_permission_prompt("atlas", "atlas:0.0", pane, {})
+
+    assert tabs == ["atlas:0.0"]
+    assert slack == []
+
+
+def test_unidentified_tool_escalation_includes_pane_tail(cw, monkeypatch):
+    """When extract_pending_tool returns None, the Slack escalation must
+    surface the last 3 non-empty pane lines so the recipient can judge the
+    prompt without a tmux attach.
+
+    Failure mode this catches: a pane with a ⏵⏵ marker but no recognised
+    tool-call line above it (e.g. an unknown TUI prompt, or output the
+    parser doesn't yet recognise) producing a context-free 'tool
+    unidentified' alert.
+    """
+    slack: list[str] = []
+    monkeypatch.setattr(cw, "send_tab", lambda _t: None)
+    monkeypatch.setattr(cw, "slack_ceo", lambda m: slack.append(m))
+
+    # Pane with the chevron marker but NO `● Bash(/Read(/Write(` line above
+    # it — extract_pending_tool returns None here. Include a few blank
+    # lines to prove the test exercises the non-empty filter, not just an
+    # arbitrary tail.
+    pane = "\n".join(
+        [
+            "running deploy step",
+            "",
+            "Waiting for service registry registration…",
+            "",
+            "Approve y/N",
+            "⏵⏵ Approve?",
+        ]
+    )
+    state = cw.handle_permission_prompt("atlas", "atlas:0.0", pane, {})
+
+    assert len(slack) == 1, "exactly one escalation must fire"
+    msg = slack[0]
+    assert "tool unidentified" in msg
+    # Pane-tail contract: last 3 non-empty lines, joined with " | "
+    assert "Waiting for service registry registration" in msg
+    assert "Approve y/N" in msg
+    assert "⏵⏵ Approve?" in msg
+    assert " | " in msg
+    # Blank pane lines must NOT leak into the tail
+    assert "running deploy step" not in msg
+    # NOT being cleared semantics preserved
+    assert "NOT being cleared" in msg
+    assert state["atlas_escalated_at"] > 0

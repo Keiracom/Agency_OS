@@ -400,6 +400,54 @@ jobs:
         run: pytest tests/ -v --tb=short --cov=src --cov-report=term-missing
 
   # ============================================
+  # ROADMAP V2 status auto-render (Dave directive 2026-05-31)
+  # ============================================
+  # Renders the current STATUS block from public.gate_ledger into
+  # docs/ROADMAP_V2.md and auto-commits the change on push to main.
+  # Runs regardless of backend-test outcome (if: always()) — the renderer
+  # itself never breaks CI; it emits a STATUS_BLOCK_UNAVAILABLE stub on any
+  # DB / connectivity failure and exits 0.
+  roadmap-status-render:
+    name: Roadmap Status Render
+    needs: backend-test
+    runs-on: ubuntu-latest
+    if: always() && github.ref == 'refs/heads/main' && github.event_name == 'push'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Default GITHUB_TOKEN is enough for pushing to the same repo
+          # because permissions.contents: write is granted above.
+          token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Install psycopg
+        run: pip install "psycopg[binary]"
+
+      - name: Render STATUS block into docs/ROADMAP_V2.md
+        env:
+          SUPABASE_DB_DSN: ${{ secrets.SUPABASE_DB_DSN }}
+        run: python3 scripts/roadmap_status.py --write
+
+      - name: Commit + push if changed
+        run: |
+          if git diff --quiet docs/ROADMAP_V2.md; then
+            echo "ROADMAP_V2.md unchanged — nothing to commit."
+            exit 0
+          fi
+          git config user.email "roadmap-bot@keiracom.local"
+          git config user.name "Roadmap Status Bot"
+          git add docs/ROADMAP_V2.md
+          git commit -m "chore(roadmap): auto-update STATUS block [skip ci]"
+          git push
+
+  # ============================================
   # Frontend: Lint, Type Check, Build
   # ============================================
   frontend-check:

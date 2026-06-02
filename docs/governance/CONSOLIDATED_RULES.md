@@ -104,8 +104,25 @@ summary to Dave.
 **Violation:** Flag `APPROVE violation` if execution starts (commit, deploy, PR create) with no RESTATE
 or `[PROPOSE]+approve` in recent messages for the same topic, and no `[FINAL CONCUR]` pair.
 
+**Independence rule (Dave directive 2026-06-02):** The deliberation layer is a promotion, not a
+genealogy or a headcount. Binding-review authority is gated by explicit promotion to the
+deliberation layer (KEI-220), not by callsign count or clone ancestry.
+
+| Tier | Callsigns | Binding-review authority |
+|---|---|---|
+| Deliberators | aiden, max | Yes — count toward 2-of-N binding concurrence |
+| External | dave, viktor | Yes — dave satisfies as one of the two |
+| Workers / non-promoted | atlas, nova, orion, scout | No — substantive input only, not binding |
+
+A binding 2-of-N concurrence requires two from {aiden, max}, or one from {aiden, max} + dave.
+Workers and clones (atlas, orion, nova, scout) may review for substance but do not satisfy the
+binding-deliberator requirement. Codified in `src/bot_common/concur_gate.py` via
+`DELIBERATOR_CALLSIGNS`. **Violation:** a concur trail that meets numerical 2-of-N only when worker
+votes are included counts as a violation of the promotion gate.
+
 **Absorbs:** LAW XV-D (Step 0 RESTATE), GOV-9 (Directive Scrutiny), Directive Acknowledgement Rule,
-Clone Step 0 Exemption, Enforcer Rule 2 (STEP-0-BEFORE-EXECUTION).
+Clone Step 0 Exemption, Enforcer Rule 2 (STEP-0-BEFORE-EXECUTION), Independence rule (Dave directive
+2026-06-02).
 
 ---
 

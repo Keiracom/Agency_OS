@@ -300,18 +300,127 @@ def test_gate_check_safe_default_allows_when_both_deliberators_concur(
 
 
 def test_gate_check_excludes_non_deliberator_concurrers(isolated_pending_dir) -> None:
-    """A non-deliberator concur (e.g. nova, orion) does not count toward the threshold."""
+    """Worker concurs (nova, orion, scout) do not count — promotion gate is total."""
     pdir = isolated_pending_dir / "processed"
     _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot]")
-    _write_envelope(pdir, "nova.json", "nova", "[CONCUR:elliot]")  # not a deliberator
-    _write_envelope(pdir, "orion.json", "orion", "[CONCUR:elliot]")  # not a deliberator
+    _write_envelope(pdir, "nova.json", "nova", "[CONCUR:elliot]")  # worker
+    _write_envelope(pdir, "orion.json", "orion", "[CONCUR:elliot]")  # worker (Aiden's clone)
+    _write_envelope(pdir, "scout.json", "scout", "[CONCUR:elliot]")  # worker
     allow, _ = concur_gate.gate_check(
         "[CONCUR:atlas] release",
         "elliot",
         synthesis_author="elliot",
         processed_dir=pdir,
     )
-    # Only 1 deliberator (aiden); nova + orion don't count → block.
+    # Only 1 deliberator (aiden); workers don't count → block.
+    assert allow is False
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Worker concurs do not count — deliberation-layer promotion rule
+# (Dave directive 2026-06-02 — KEI-220)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_deliberator_callsigns_constant_pinned_to_aiden_max() -> None:
+    """DELIBERATOR_CALLSIGNS is the promotion list. Workers are NOT in it.
+
+    Dave directive 2026-06-02: the deliberation layer is gated by explicit
+    promotion (KEI-220), not by clone genealogy or headcount. Locking the
+    literal here prevents accidental re-broadening.
+    """
+    assert frozenset({"aiden", "max"}) == concur_gate.DELIBERATOR_CALLSIGNS
+    for worker in ("atlas", "orion", "nova", "scout"):
+        assert worker not in concur_gate.DELIBERATOR_CALLSIGNS
+
+
+def test_clone_map_and_resolve_principal_removed() -> None:
+    """Dave-corrected framing 2026-06-02 — no clone-resolution step.
+
+    CLONE_MAP and _resolve_principal were introduced briefly in PR #1397 then
+    removed: the rule is promotion-based, not genealogy-based. A worker concur
+    must NOT collapse to a deliberator vote.
+    """
+    assert not hasattr(concur_gate, "CLONE_MAP")
+    assert not hasattr(concur_gate, "_resolve_principal")
+
+
+def test_gate_check_atlas_concur_does_not_count(isolated_pending_dir) -> None:
+    """Atlas is a worker, not a deliberator — concur is filtered out."""
+    pdir = isolated_pending_dir / "processed"
+    _write_envelope(pdir, "atlas.json", "atlas", "[CONCUR:elliot]")
+    _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot]")
+    # atlas filtered → only aiden remains → 1 of 2 needed → BLOCK.
+    allow, _ = concur_gate.gate_check(
+        "[CONCUR:atlas] release",
+        "elliot",
+        synthesis_author="elliot",
+        processed_dir=pdir,
+    )
+    assert allow is False
+
+
+def test_gate_check_orion_concur_does_not_count(isolated_pending_dir) -> None:
+    """Orion is a worker (Aiden's clone) — concur is filtered out, not promoted to aiden."""
+    pdir = isolated_pending_dir / "processed"
+    _write_envelope(pdir, "orion.json", "orion", "[CONCUR:elliot]")
+    _write_envelope(pdir, "max.json", "max", "[CONCUR:elliot]")
+    # orion filtered (worker, not deliberator) → only max remains → 1 of 2 → BLOCK.
+    # Importantly: orion does NOT collapse to aiden under Dave's corrected framing.
+    allow, _ = concur_gate.gate_check(
+        "[CONCUR:atlas] release",
+        "elliot",
+        synthesis_author="elliot",
+        processed_dir=pdir,
+    )
+    assert allow is False
+
+
+def test_gate_check_nova_concur_does_not_count(isolated_pending_dir) -> None:
+    """Nova is a worker — concur is filtered out."""
+    pdir = isolated_pending_dir / "processed"
+    _write_envelope(pdir, "nova.json", "nova", "[CONCUR:elliot]")
+    _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot]")
+    allow, _ = concur_gate.gate_check(
+        "[CONCUR:atlas] release",
+        "elliot",
+        synthesis_author="elliot",
+        processed_dir=pdir,
+    )
+    assert allow is False
+
+
+def test_gate_check_scout_concur_does_not_count(isolated_pending_dir) -> None:
+    """Scout is a worker — concur is filtered out."""
+    pdir = isolated_pending_dir / "processed"
+    _write_envelope(pdir, "scout.json", "scout", "[CONCUR:elliot]")
+    _write_envelope(pdir, "max.json", "max", "[CONCUR:elliot]")
+    allow, _ = concur_gate.gate_check(
+        "[CONCUR:atlas] release",
+        "elliot",
+        synthesis_author="elliot",
+        processed_dir=pdir,
+    )
+    assert allow is False
+
+
+def test_gate_check_only_aiden_max_can_satisfy_binding_two_of_n(
+    isolated_pending_dir,
+) -> None:
+    """A trail of all four workers (atlas+orion+nova+scout) → 0 deliberators → BLOCK.
+
+    Confirms the promotion gate is total: no count of worker concurs satisfies
+    the binding requirement.
+    """
+    pdir = isolated_pending_dir / "processed"
+    for cs in ("atlas", "orion", "nova", "scout"):
+        _write_envelope(pdir, f"{cs}.json", cs, "[CONCUR:elliot]")
+    allow, _ = concur_gate.gate_check(
+        "[CONCUR:atlas] release",
+        "elliot",
+        synthesis_author="elliot",
+        processed_dir=pdir,
+    )
     assert allow is False
 
 

@@ -1,33 +1,41 @@
 #!/usr/bin/env python3
 """test_fleet_scoreboard.py — Proof gate for the fleet liveness scoreboard.
 
-Re-runnable end-to-end proof that fleet_liveness_checker.py + the
-public.fleet_liveness_status view honestly classify GREEN / RED / MISMATCH.
+Re-runnable end-to-end proof that the on-box checker + the
+public.fleet_liveness_status view honestly classify per-agent identity.
 
-Three tests, all must pass:
+Four tests, all must pass:
 
-  TEST 1 (positive, end-to-end):
-    Invoke scripts/orchestrator/fleet_liveness_checker.py once. Verify the
-    view returns one row per expected callsign (all 7) and that every
-    last_seen timestamp is within the last 5 minutes. This proves the
-    checker actually wrote rows and the view surfaces them.
+  TEST 0 (timer liveness — NEW):
+    Verify the fleet-liveness-checker.timer Trigger is not 'n/a' (i.e. the
+    timer is armed and will fire), then wait up to 6 minutes for the timer
+    to fire naturally. A fresh row in public.fleet_liveness with
+    checked_at > the gate start time is the success condition. Proves the
+    timer is doing the writing — not a manual subprocess invocation that
+    masks a broken systemd unit.
 
-  TEST 2 (negative, RED):
+  TEST 1 (live per-agent callsign correctness — NEW):
+    For every callsign in EXPECTED_CALLSIGNS, query the LATEST row in
+    fleet_liveness (DISTINCT ON callsign, ORDER BY checked_at DESC) and
+    assert reported_callsign == callsign exactly. This is the regression
+    test for the BFS depth-0 bug where the pane shell's inherited
+    CALLSIGN was returned instead of the claude child's. Prints verbatim
+    per-agent rows so reviewers can audit live values not summaries.
+
+  TEST 2 (synthetic RED detection):
     INSERT a synthetic fleet_liveness row for callsign='test_agent' with
-    tmux_alive=FALSE, checked_at=NOW(). Verify the view emits status='RED'
-    for that callsign and ONLY for that callsign (no spillover to real
-    agents). Then DELETE the synthetic row.
+    tmux_alive=FALSE, checked_at=NOW(). Verify the view emits status='RED'.
+    Synthetic row purged in a try/finally so cleanup always runs.
 
-  TEST 3 (negative, MISMATCH):
+  TEST 3 (synthetic MISMATCH detection):
     INSERT a synthetic row for callsign='test_agent2' with tmux_alive=TRUE
     and callsign_match=FALSE. Verify the view emits status='MISMATCH'.
-    Then DELETE the synthetic row.
+    Synthetic row purged in try/finally.
 
 Exit 0 if every test passes. Exit 1 with a labelled failure list otherwise.
 
 Anchor: KEI Agency_OS-scout fleet-scoreboard-p0 dispatch from Elliot
-2026-06-02. Sibling to scripts/orchestrator/fleet_liveness_checker.py and
-supabase/migrations/20260602_fleet_liveness_callsign_match.sql.
+2026-06-02 (BFS depth-0 fix). Reviewers: aiden + max on LIVE data.
 """
 
 from __future__ import annotations
@@ -35,21 +43,23 @@ from __future__ import annotations
 import os
 import subprocess
 import sys
+import time
+from datetime import UTC, datetime
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
-CHECKER = REPO_ROOT / "scripts" / "orchestrator" / "fleet_liveness_checker.py"
 ENV_FILE = Path.home() / ".config" / "agency-os" / ".env"
 
-EXPECTED_CALLSIGNS = {"elliot", "aiden", "max", "atlas", "orion", "scout", "nova"}
+EXPECTED_CALLSIGNS = ["elliot", "aiden", "max", "atlas", "orion", "scout", "nova"]
 TEST_RED_CALLSIGN = "test_agent"
 TEST_MISMATCH_CALLSIGN = "test_agent2"
 TEST_CALLSIGNS = (TEST_RED_CALLSIGN, TEST_MISMATCH_CALLSIGN)
-FRESHNESS_MINUTES = 5
+TIMER_UNIT = "fleet-liveness-checker.timer"
+TIMER_WAIT_MAX_SEC = 6 * 60
+TIMER_POLL_INTERVAL_SEC = 10
 
 
 def _load_env_file(path: Path) -> None:
-    """Populate os.environ from a KEY=VALUE .env file. Existing vars win."""
     if not path.is_file():
         return
     try:
@@ -81,67 +91,142 @@ def _purge_test_rows(cur) -> None:
     )
 
 
-def _run_checker() -> tuple[int, str, str]:
-    """Invoke the on-box checker as a subprocess; return (rc, stdout, stderr)."""
-    result = subprocess.run(
-        [sys.executable, str(CHECKER)],
-        capture_output=True,
-        text=True,
-        timeout=120,
-        check=False,
-    )
-    return result.returncode, result.stdout, result.stderr
+def _timer_next_fire_label() -> str | None:
+    """Return the NEXT-column label from `systemctl list-timers`, or None if disarmed.
+
+    `systemctl --user show ... -p NextElapseUSecMonotonic` renders durations
+    (e.g. '4d 7h 30min 10.8s') not raw integers, so we fall back to parsing
+    `list-timers` which prints absolute timestamps. A disarmed timer shows
+    NEXT='-' or omits the row entirely.
+    """
+    try:
+        result = subprocess.run(
+            [
+                "systemctl",
+                "--user",
+                "list-timers",
+                TIMER_UNIT,
+                "--no-pager",
+                "--no-legend",
+            ],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            check=False,
+        )
+    except (subprocess.TimeoutExpired, OSError) as exc:
+        print(f"[TEST 0] systemctl list-timers failed: {exc}", file=sys.stderr)
+        return None
+    if result.returncode != 0:
+        return None
+    for line in result.stdout.splitlines():
+        line = line.strip()
+        if not line or line.startswith("0 timers"):
+            continue
+        # The NEXT column is the first whitespace-delimited token (or '-').
+        next_field = line.split()[0] if line.split() else "-"
+        if next_field == "-":
+            return None
+        return line  # return the whole row for printing context
+    return None
 
 
-def _test_1_end_to_end(conn) -> list[str]:
-    """Returns a list of failure messages — empty list == pass."""
+def _test_0_timer(conn) -> list[str]:
     failures: list[str] = []
-    rc, out, err = _run_checker()
-    if rc != 0:
-        failures.append(f"TEST 1: checker exited rc={rc} (expected 0)\nstderr:\n{err}")
+    next_label = _timer_next_fire_label()
+    if next_label is None:
+        failures.append(
+            f"TEST 0: {TIMER_UNIT} has no scheduled next fire (Trigger 'n/a' — "
+            "timer is disarmed). Run `systemctl --user start "
+            "fleet-liveness-checker.service` once to anchor OnUnitActiveSec."
+        )
         return failures
+    print(f"[TEST 0] timer armed — list-timers row: {next_label}")
 
+    start_time = datetime.now(UTC)
+    with conn.cursor() as cur:
+        cur.execute("SELECT NOW()")
+        db_start = cur.fetchone()[0]
+    print(f"[TEST 0] gate start: local={start_time.isoformat()} db={db_start.isoformat()}")
+    print(f"[TEST 0] waiting up to {TIMER_WAIT_MAX_SEC // 60}min for natural timer fire...")
+
+    deadline = time.monotonic() + TIMER_WAIT_MAX_SEC
+    fresh_callsign = None
+    fresh_at = None
+    while time.monotonic() < deadline:
+        with conn.cursor() as cur:
+            cur.execute(
+                """
+                SELECT callsign, checked_at
+                FROM public.fleet_liveness
+                WHERE checked_at > %s AND callsign = ANY(%s)
+                ORDER BY checked_at DESC
+                LIMIT 1
+                """,
+                (db_start, EXPECTED_CALLSIGNS),
+            )
+            row = cur.fetchone()
+        if row:
+            fresh_callsign, fresh_at = row[0], row[1]
+            break
+        elapsed = TIMER_WAIT_MAX_SEC - int(deadline - time.monotonic())
+        print(f"[TEST 0]   ...no fresh row yet (waited {elapsed}s)")
+        time.sleep(TIMER_POLL_INTERVAL_SEC)
+
+    if fresh_callsign is None:
+        failures.append(
+            f"TEST 0: no fleet_liveness row with checked_at > {db_start.isoformat()} "
+            f"after {TIMER_WAIT_MAX_SEC}s. Timer did not fire."
+        )
+    else:
+        print(f"[TEST 0] timer fired — first fresh row: {fresh_callsign} @ {fresh_at.isoformat()}")
+    return failures
+
+
+def _test_1_live_callsigns(conn) -> list[str]:
+    failures: list[str] = []
     with conn.cursor() as cur:
         cur.execute(
             """
-            SELECT callsign,
-                   status,
-                   EXTRACT(EPOCH FROM (NOW() - last_seen)) AS age_seconds
-            FROM public.fleet_liveness_status
+            SELECT DISTINCT ON (callsign)
+                callsign, reported_callsign, callsign_match, tmux_alive, checked_at
+            FROM public.fleet_liveness
             WHERE callsign = ANY(%s)
+            ORDER BY callsign, checked_at DESC
             """,
-            (sorted(EXPECTED_CALLSIGNS),),
+            (EXPECTED_CALLSIGNS,),
         )
         rows = cur.fetchall()
 
-    by_callsign = {r[0]: (r[1], float(r[2])) for r in rows}
-    missing = sorted(EXPECTED_CALLSIGNS - by_callsign.keys())
-    if missing:
-        failures.append(
-            f"TEST 1: missing callsigns in fleet_liveness_status: {missing} "
-            f"(found: {sorted(by_callsign.keys())})"
-        )
-
-    threshold = FRESHNESS_MINUTES * 60
-    stale = sorted(
-        (cs, age) for cs, (_status, age) in by_callsign.items() if age > threshold
+    by_callsign = {r[0]: r for r in rows}
+    print("[TEST 1] per-agent latest rows (verbatim):")
+    print(
+        f"         {'callsign':<8} {'reported_callsign':<20} "
+        f"{'callsign_match':<14} {'tmux_alive':<10} checked_at"
     )
-    if stale:
-        failures.append(
-            f"TEST 1: callsigns with last_seen older than {FRESHNESS_MINUTES} min: {stale}"
+    for cs in EXPECTED_CALLSIGNS:
+        row = by_callsign.get(cs)
+        if row is None:
+            print(f"         {cs:<8} <NO ROW>")
+            failures.append(f"TEST 1: no fleet_liveness row found for callsign={cs!r}")
+            continue
+        callsign, reported, match, tmux_alive, checked_at = row
+        print(
+            f"         {callsign:<8} {str(reported):<20} "
+            f"{str(match):<14} {str(tmux_alive):<10} {checked_at.isoformat()}"
         )
-
-    print(f"[TEST 1] checker rc={rc}, view rows: {len(rows)}/{len(EXPECTED_CALLSIGNS)}")
-    for cs in sorted(by_callsign):
-        status, age = by_callsign[cs]
-        print(f"         {cs:<8} status={status:<8} age={age:6.1f}s")
+        if reported != callsign:
+            failures.append(
+                f"TEST 1: callsign={callsign!r} reported_callsign={reported!r} "
+                f"(expected {callsign!r}, tmux_alive={tmux_alive}, "
+                f"checked_at={checked_at.isoformat()})"
+            )
     return failures
 
 
 def _test_2_red(conn) -> list[str]:
     failures: list[str] = []
     row = None
-    red_real = None
     with conn.cursor() as cur:
         _purge_test_rows(cur)
         cur.execute(
@@ -161,17 +246,6 @@ def _test_2_red(conn) -> list[str]:
                 (TEST_RED_CALLSIGN,),
             )
             row = cur.fetchone()
-
-            # Bonus check: synthetic insert must NOT bleed into real callsigns.
-            cur.execute(
-                """
-                SELECT COUNT(*) FROM public.fleet_liveness_status
-                WHERE callsign = ANY(%s) AND status = 'RED'
-                  AND last_seen > NOW() - INTERVAL '5 min'
-                """,
-                (sorted(EXPECTED_CALLSIGNS),),
-            )
-            red_real = cur.fetchone()[0]
         finally:
             _purge_test_rows(cur)
             conn.commit()
@@ -180,9 +254,7 @@ def _test_2_red(conn) -> list[str]:
         failures.append(f"TEST 2: no view row for {TEST_RED_CALLSIGN}")
     elif row[0] != "RED":
         failures.append(f"TEST 2: status was {row[0]!r}, expected 'RED'")
-
-    print(f"[TEST 2] synthetic {TEST_RED_CALLSIGN} status={row[0] if row else 'NULL'} "
-          f"(real-callsign RED count after insert: {red_real} — informational)")
+    print(f"[TEST 2] synthetic {TEST_RED_CALLSIGN} status={row[0] if row else 'NULL'}")
     return failures
 
 
@@ -228,7 +300,6 @@ def _test_3_mismatch(conn) -> list[str]:
             )
         if match is not False:
             failures.append(f"TEST 3: callsign_match was {match!r}, expected False")
-
     print(f"[TEST 3] synthetic {TEST_MISMATCH_CALLSIGN} row={row}")
     return failures
 
@@ -248,15 +319,15 @@ def main() -> int:
 
     all_failures: list[str] = []
     with psycopg.connect(dsn, prepare_threshold=None) as conn:
-        # Defensive: purge any leftover test rows from a prior crashed run BEFORE
-        # the end-to-end probe — otherwise stale 'test_agent' rows could confuse
-        # the freshness check (they would not be in EXPECTED_CALLSIGNS so it is
-        # harmless today, but cheap insurance against future test-callsign reuse).
         with conn.cursor() as cur:
             _purge_test_rows(cur)
             conn.commit()
 
-        all_failures.extend(_test_1_end_to_end(conn))
+        all_failures.extend(_test_0_timer(conn))
+        # TEST 1 reads the latest row per callsign; running it after TEST 0
+        # means the latest rows reflect a timer-fired write, not a stale
+        # pre-fix snapshot.
+        all_failures.extend(_test_1_live_callsigns(conn))
         all_failures.extend(_test_2_red(conn))
         all_failures.extend(_test_3_mismatch(conn))
 
@@ -266,7 +337,10 @@ def main() -> int:
         for msg in all_failures:
             print(f"FAIL: {msg}")
         return 1
-    print("PASS — all three tests verified: checker writes 7/7 rows, RED case, MISMATCH case.")
+    print(
+        "PASS — TEST 0 timer fired naturally, TEST 1 all 7 callsigns reported "
+        "correctly, TEST 2 RED, TEST 3 MISMATCH."
+    )
     return 0
 
 

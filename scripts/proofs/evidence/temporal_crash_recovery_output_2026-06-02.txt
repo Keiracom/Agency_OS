@@ -1,0 +1,30 @@
+Temporal addr: 45.76.114.137:7233, queue: atlas-crash-proof-xjtn
+PROOF_LOG path: /tmp/temporal_crash_proof.log
+
+=== CASE: pos ===
+[driver] started worker pid=1935440 workflow_id=pos-0eb16e81
+[driver] waiting for mark step2:start ...
+[driver] SIGKILL worker pid=1935440
+[driver] worker reaped
+[driver] marks at kill: [('step1', 'start', '1935440'), ('step1', 'end', '1935440'), ('step2', 'start', '1935440')]
+[driver] restarted worker pid=1935710
+[driver] final marks: [('step1', 'start', '1935440'), ('step1', 'end', '1935440'), ('step2', 'start', '1935440'), ('step2', 'start', '1935710'), ('step2', 'end', '1935710'), ('step3', 'start', '1935710'), ('step3', 'end', '1935710')]
+[driver] step starts (attempts): {'step1': 1, 'step2': 2, 'step3': 1}
+[driver] step ends (completions): {'step1': 1, 'step2': 1, 'step3': 1}
+[driver] workflow result: {'result': 'seed|s1|s2|s3'}
+
+=== CASE: neg ===
+[driver] started worker pid=1938107 workflow_id=neg-c4fd9fdb
+[driver] waiting for mark step1:start ...
+[driver] SIGKILL worker pid=1938107
+[driver] worker reaped
+[driver] marks at kill: [('step1', 'start', '1938107')]
+[driver] restarted worker pid=1938187
+[driver] final marks: [('step1', 'start', '1938107'), ('step1', 'start', '1938187'), ('step1', 'end', '1938187'), ('step2', 'start', '1938187'), ('step2', 'end', '1938187'), ('step3', 'start', '1938187'), ('step3', 'end', '1938187')]
+[driver] step starts (attempts): {'step1': 2, 'step2': 1, 'step3': 1}
+[driver] step ends (completions): {'step1': 1, 'step2': 1, 'step3': 1}
+[driver] workflow result: {'result': 'seed|s1|s2|s3'}
+
+=== PROOF VERDICT ===
+POSITIVE PASS: kill mid-step-2 → step1 not re-executed (1x), step2 re-executed (>=2 attempts, 1 completion), step3 ran once.
+NEGATIVE PASS: kill mid-step-1 (no checkpoint) → step1 re-executed (>=2 attempts, 1 completion), no silent skip.

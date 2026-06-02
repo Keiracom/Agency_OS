@@ -40,14 +40,26 @@ def cw():
 # ---------------------------------------------------------------------------
 
 
-def test_is_permission_prompt_returns_true_for_double_chevron(cw):
-    """Claude permission prompt: '⏵⏵' indicator (skip-permissions mode trigger)."""
-    assert cw.is_permission_prompt("waiting on tool call\n⏵⏵ Approve?") is True
+def test_is_permission_prompt_false_for_status_bar_only(cw):
+    """Status-bar ⏵⏵ alone is NOT a permission prompt — it appears on every idle pane."""
+    assert cw.is_permission_prompt("waiting on tool call\n⏵⏵ bypass permissions on") is False
 
 
-def test_is_permission_prompt_returns_true_for_bypass_permiss_hint(cw):
-    """Claude permission prompt: 'bypass permiss' substring."""
-    assert cw.is_permission_prompt("Press tab to bypass permissions") is True
+def test_is_permission_prompt_false_for_bypass_permiss_no_tool(cw):
+    """'bypass permiss' without a visible tool call → not a permission prompt."""
+    assert cw.is_permission_prompt("Press tab to bypass permissions") is False
+
+
+def test_is_permission_prompt_true_for_bash_with_chevron(cw):
+    """Real prompt: ⏵⏵ token AND a ● Bash( tool call above it."""
+    pane = "● Bash(ls -la /tmp)\n  Run this?\n  Allow (Tab)\n  Deny\n⏵⏵ bypass permiss"
+    assert cw.is_permission_prompt(pane) is True
+
+
+def test_is_permission_prompt_true_for_allow_deny_dialog(cw):
+    """Allow+Deny pattern with bypass token → real permission prompt."""
+    pane = "● Write(/etc/config)\n  Allow\n  Deny\n⏵⏵ bypass permissions on"
+    assert cw.is_permission_prompt(pane) is True
 
 
 def test_is_permission_prompt_false_for_normal_pane(cw):
@@ -380,8 +392,13 @@ def test_auto_approve_sends_tab_for_gh_pr_view(cw, monkeypatch):
     assert tabs == ["orion:0.0"]
 
 
-def test_unknown_tool_escalates_not_clears(cw, monkeypatch):
-    """Unknown tool → slack_ceo called; send_tab / revive_agent NOT called."""
+def test_unknown_tool_escalates_and_sends_tab(cw, monkeypatch):
+    """Unknown tool → slack_ceo called AND send_tab fires to unblock agent.
+
+    Changed from 'escalates_not_clears': Dave directive 2026-06-02 — watchdog
+    must always send the approve keystroke; reporting without clearing is the
+    same blind spot wearing a different mask.
+    """
     tabs: list[str] = []
     slack: list[str] = []
     monkeypatch.setattr(cw, "send_tab", lambda t: tabs.append(t))
@@ -393,9 +410,9 @@ def test_unknown_tool_escalates_not_clears(cw, monkeypatch):
     pane = _perm_pane("Bash(rm -rf /tmp/foo)")
     state = cw.handle_permission_prompt("aiden", "aiden:0.0", pane, {})
 
-    assert tabs == []
+    assert tabs == ["aiden:0.0"]          # Tab sent — agent unblocked
     assert len(slack) == 1
-    assert "needs permission" in slack[0]
+    assert "auto-approved" in slack[0]    # reported as auto-approved, not just escalated
     assert "rm -rf /tmp/foo" in slack[0]
     assert state["aiden_escalated_at"] > 0
 
@@ -584,7 +601,7 @@ def test_unidentified_tool_escalation_includes_pane_tail(cw, monkeypatch):
 
     assert len(slack) == 1, "exactly one escalation must fire"
     msg = slack[0]
-    assert "tool unidentified" in msg
+    assert "unidentified" in msg         # "unidentified prompt, Tab auto-sent"
     # Pane-tail contract: last 3 non-empty lines, joined with " | "
     assert "Waiting for service registry registration" in msg
     assert "Approve y/N" in msg
@@ -592,6 +609,6 @@ def test_unidentified_tool_escalation_includes_pane_tail(cw, monkeypatch):
     assert " | " in msg
     # Blank pane lines must NOT leak into the tail
     assert "running deploy step" not in msg
-    # NOT being cleared semantics preserved
-    assert "NOT being cleared" in msg
+    # Agent is unblocked (Tab sent) — "NOT being cleared" retired per Dave 2026-06-02
+    assert "NOT being cleared" not in msg
     assert state["atlas_escalated_at"] > 0

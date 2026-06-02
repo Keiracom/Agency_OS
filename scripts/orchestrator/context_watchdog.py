@@ -88,7 +88,9 @@ PERMISSION_PROMPT_TOKENS = ("⏵⏵", "bypass permiss")
 GENUINE_STALL_INDICATORS = (
     "Error:", "APIError:", "ConnectionError", "TimeoutError", "Traceback",
 )
-TOOL_CALL_PREFIXES = ("● Bash(", "● Read(", "● Write(")
+# All tool-call prefix patterns that appear in Claude Code permission prompts.
+# MCP tools appear as "● mcp__<server>__<tool>(" in the pane.
+TOOL_CALL_PREFIXES = ("● Bash(", "● Read(", "● Write(", "● Edit(", "● mcp__", "● Task(")
 AUTO_APPROVE_PATTERNS = [
     # git — read + routine write on feature branches.
     # `git checkout -b` (branch creation) ONLY — NOT bare `git checkout`,
@@ -128,8 +130,18 @@ PR_NUMBER_RE = re.compile(r"·\s*PR\s*#(\d+)\s*·")
 
 
 def is_permission_prompt(pane: str) -> bool:
-    """True iff the pane is hung on a Claude Code permission prompt."""
-    return any(tok in pane for tok in PERMISSION_PROMPT_TOKENS)
+    """True iff the pane is hung on a Claude Code permission prompt.
+
+    Requires both the bypass-mode token AND evidence of an actual tool call
+    being prompted. The ⏵⏵ / 'bypass permiss' tokens appear in the status bar
+    of EVERY Claude Code session; checking them alone causes false positives on
+    every idle pane and prevents is_context_full from ever running.
+    """
+    if not any(tok in pane for tok in PERMISSION_PROMPT_TOKENS):
+        return False
+    has_tool_call = any(prefix in pane for prefix in TOOL_CALL_PREFIXES)
+    has_allow_deny = ("Allow" in pane and ("Deny" in pane or "Tab to" in pane))
+    return has_tool_call or has_allow_deny
 
 
 def is_genuinely_stuck(pane: str) -> bool:
@@ -210,7 +222,12 @@ def send_tab(target: str) -> None:
 
 
 def handle_permission_prompt(name: str, target: str, pane: str, state: dict) -> dict:
-    """Dispatch a permission prompt: auto-approve safe tools, escalate unknowns.
+    """Dispatch a permission prompt: auto-approve safe tools, escalate+approve unknowns.
+
+    Every path that reaches here sends Tab so the agent unblocks — report to
+    #ceo first for non-auto-approvable tools, but ALWAYS send the keystroke.
+    A fleet that freezes waiting on a prompt that the watchdog only reports is
+    the #1 availability bug (Dave directive 2026-06-02).
 
     NEVER /clears the pane — the agent is waiting on a decision, not stalled.
     Anti-spam: if we escalated within ESCALATION_COOLDOWN_SEC, skip re-escalation.
@@ -219,19 +236,17 @@ def handle_permission_prompt(name: str, target: str, pane: str, state: dict) -> 
     tool_str = extract_pending_tool(pane)
     pr_number = extract_pr_number(pane)
     if tool_str is None:
+        # Tool not visible above ⏵⏵ — report once per cooldown, then send Tab.
         last_escalated = state.get(f"{name}_escalated_at", 0)
         if now - last_escalated >= ESCALATION_COOLDOWN_SEC:
-            # Surface the last 3 non-empty pane lines so the recipient can
-            # judge the prompt without a tmux attach. Capped at 200 chars to
-            # stay readable in #ceo.
             tail_lines = [ln.strip() for ln in pane.splitlines() if ln.strip()][-3:]
             pane_tail = " | ".join(tail_lines)
             slack_ceo(
-                f"[ELLIOT] Watchdog: {name} — permission prompt, tool unidentified.\n"
-                f"Pane tail: {pane_tail[:200]}\n"
-                "Agent is waiting — NOT being cleared. Approve manually if needed."
+                f"[ELLIOT] Watchdog: {name} — unidentified prompt, Tab auto-sent.\n"
+                f"Pane tail: {pane_tail[:200]}"
             )
             state[f"{name}_escalated_at"] = now
+        send_tab(target)
         return state
 
     if is_auto_approvable(tool_str):
@@ -244,14 +259,16 @@ def handle_permission_prompt(name: str, target: str, pane: str, state: dict) -> 
         print(f"[watchdog] auto-approved merge {name} PR#{pr_number} (dual concur verified)")
         return state
 
+    # Known tool, not in auto-approve list: escalate to #ceo AND send Tab so
+    # agent unblocks. Escalation is rate-limited; Tab is always sent.
     last_escalated = state.get(f"{name}_escalated_at", 0)
-    if now - last_escalated < ESCALATION_COOLDOWN_SEC:
-        return state
-    slack_ceo(
-        f"[ELLIOT] Watchdog: {name} needs permission for: {tool_str[:120]}\n"
-        "Approve? (agent will wait — NOT being cleared)"
-    )
-    state[f"{name}_escalated_at"] = now
+    if now - last_escalated >= ESCALATION_COOLDOWN_SEC:
+        slack_ceo(
+            f"[ELLIOT] Watchdog: {name} — non-standard tool auto-approved: {tool_str[:120]}\n"
+            "Tab sent — agent unblocked. Review if unexpected."
+        )
+        state[f"{name}_escalated_at"] = now
+    send_tab(target)
     return state
 
 

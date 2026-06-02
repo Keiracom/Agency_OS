@@ -140,6 +140,8 @@ def _test_1_end_to_end(conn) -> list[str]:
 
 def _test_2_red(conn) -> list[str]:
     failures: list[str] = []
+    row = None
+    red_real = None
     with conn.cursor() as cur:
         _purge_test_rows(cur)
         cur.execute(
@@ -153,25 +155,26 @@ def _test_2_red(conn) -> list[str]:
         )
         conn.commit()
 
-        cur.execute(
-            "SELECT status FROM public.fleet_liveness_status WHERE callsign = %s",
-            (TEST_RED_CALLSIGN,),
-        )
-        row = cur.fetchone()
+        try:
+            cur.execute(
+                "SELECT status FROM public.fleet_liveness_status WHERE callsign = %s",
+                (TEST_RED_CALLSIGN,),
+            )
+            row = cur.fetchone()
 
-        # Bonus check: synthetic insert must NOT bleed into real callsigns.
-        cur.execute(
-            """
-            SELECT COUNT(*) FROM public.fleet_liveness_status
-            WHERE callsign = ANY(%s) AND status = 'RED'
-              AND last_seen > NOW() - INTERVAL '5 min'
-            """,
-            (sorted(EXPECTED_CALLSIGNS),),
-        )
-        red_real = cur.fetchone()[0]
-
-        _purge_test_rows(cur)
-        conn.commit()
+            # Bonus check: synthetic insert must NOT bleed into real callsigns.
+            cur.execute(
+                """
+                SELECT COUNT(*) FROM public.fleet_liveness_status
+                WHERE callsign = ANY(%s) AND status = 'RED'
+                  AND last_seen > NOW() - INTERVAL '5 min'
+                """,
+                (sorted(EXPECTED_CALLSIGNS),),
+            )
+            red_real = cur.fetchone()[0]
+        finally:
+            _purge_test_rows(cur)
+            conn.commit()
 
     if row is None:
         failures.append(f"TEST 2: no view row for {TEST_RED_CALLSIGN}")
@@ -185,6 +188,7 @@ def _test_2_red(conn) -> list[str]:
 
 def _test_3_mismatch(conn) -> list[str]:
     failures: list[str] = []
+    row = None
     with conn.cursor() as cur:
         _purge_test_rows(cur)
         cur.execute(
@@ -198,18 +202,19 @@ def _test_3_mismatch(conn) -> list[str]:
         )
         conn.commit()
 
-        cur.execute(
-            """
-            SELECT status, reported_callsign, callsign_match
-            FROM public.fleet_liveness_status
-            WHERE callsign = %s
-            """,
-            (TEST_MISMATCH_CALLSIGN,),
-        )
-        row = cur.fetchone()
-
-        _purge_test_rows(cur)
-        conn.commit()
+        try:
+            cur.execute(
+                """
+                SELECT status, reported_callsign, callsign_match
+                FROM public.fleet_liveness_status
+                WHERE callsign = %s
+                """,
+                (TEST_MISMATCH_CALLSIGN,),
+            )
+            row = cur.fetchone()
+        finally:
+            _purge_test_rows(cur)
+            conn.commit()
 
     if row is None:
         failures.append(f"TEST 3: no view row for {TEST_MISMATCH_CALLSIGN}")

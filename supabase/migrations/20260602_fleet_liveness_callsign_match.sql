@@ -30,14 +30,19 @@ COMMENT ON COLUMN public.fleet_liveness.callsign_match IS
 -- Replace the status view to surface MISMATCH ahead of GREEN so identity
 -- drift on an otherwise-alive agent gets flagged. Order matters: a tmux-dead
 -- agent stays RED (status is determined before callsign_match is consulted).
+--
+-- Staleness window: 15 min (3x the 5-min checker cadence). Tighter windows
+-- false-fire UNKNOWN on healthy agents because the systemd timer's
+-- AccuracySec lets a normal fire drift to T+6min, and a 10-min window leaves
+-- no safety margin for back-to-back checker overruns.
 CREATE OR REPLACE VIEW public.fleet_liveness_status AS
 SELECT DISTINCT ON (callsign)
     callsign,
     CASE
-        WHEN NOT tmux_alive AND checked_at > NOW() - INTERVAL '10 min' THEN 'RED'
-        WHEN callsign_match = FALSE AND checked_at > NOW() - INTERVAL '10 min' THEN 'MISMATCH'
-        WHEN tmux_alive AND checked_at > NOW() - INTERVAL '10 min' THEN 'GREEN'
-        WHEN checked_at > NOW() - INTERVAL '10 min' THEN 'RED'
+        WHEN NOT tmux_alive AND checked_at > NOW() - INTERVAL '15 min' THEN 'RED'
+        WHEN callsign_match = FALSE AND checked_at > NOW() - INTERVAL '15 min' THEN 'MISMATCH'
+        WHEN tmux_alive AND checked_at > NOW() - INTERVAL '15 min' THEN 'GREEN'
+        WHEN checked_at > NOW() - INTERVAL '15 min' THEN 'RED'
         ELSE 'UNKNOWN'
     END AS status,
     checked_at AS last_seen,
@@ -51,4 +56,5 @@ COMMENT ON VIEW public.fleet_liveness_status IS
     'from public.fleet_liveness. Read by Dave fleet_check_query. MISMATCH '
     'fires when an alive agent reports a CALLSIGN env var that differs from '
     'the expected callsign — catches identity drift bugs that were previously '
-    'invisible (anchor: Max-running-as-Atlas incident).';
+    'invisible (anchor: Max-running-as-Atlas incident). Staleness window 15 '
+    'min = 3x the 5-min checker cadence (safe margin under systemd jitter).';

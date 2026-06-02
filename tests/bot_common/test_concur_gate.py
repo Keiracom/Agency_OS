@@ -271,30 +271,30 @@ def test_gate_check_d_blocks_even_when_CONCUR_GATE_SKIP_set(
     assert "[CONCUR-REQUEST:ELLIOT]" in replacement
 
 
-def test_gate_check_safe_default_requires_three_when_author_unknown(
+def test_gate_check_safe_default_requires_both_when_author_unknown(
     isolated_pending_dir,
 ) -> None:
-    """synthesis_author=None → require ALL 3 deliberators (aiden/max/atlas)."""
+    """synthesis_author=None → require BOTH deliberators (aiden AND max)."""
     pdir = isolated_pending_dir / "processed"
-    # Only 2 of 3 deliberators concur — should BLOCK under safe default.
+    # Only 1 of 2 deliberators concur — should BLOCK under safe default.
     _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot]")
-    _write_envelope(pdir, "max.json", "max", "[CONCUR:elliot]")
     allow, replacement = concur_gate.gate_check(
         "[CONCUR:atlas] release", "elliot", processed_dir=pdir
     )
     assert allow is False
     assert replacement is not None
-    assert "all 3 deliberators" in replacement
+    assert "all 2 deliberators" in replacement
 
 
-def test_gate_check_safe_default_allows_when_all_three_deliberators_concur(
+def test_gate_check_safe_default_allows_when_both_deliberators_concur(
     isolated_pending_dir,
 ) -> None:
-    """synthesis_author=None + 3-of-3 deliberators concur → ALLOW."""
+    """synthesis_author=None + both deliberators concur → ALLOW. Atlas (worker
+    clone, not a deliberator post-2026-06-02) does not add to the count."""
     pdir = isolated_pending_dir / "processed"
     _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot]")
     _write_envelope(pdir, "max.json", "max", "[CONCUR:elliot]")
-    _write_envelope(pdir, "atlas.json", "atlas", "[CONCUR:elliot]")
+    _write_envelope(pdir, "atlas.json", "atlas", "[CONCUR:elliot]")  # ignored — not a deliberator
     allow, _ = concur_gate.gate_check("[CONCUR:atlas] release", "elliot", processed_dir=pdir)
     assert allow is True
 

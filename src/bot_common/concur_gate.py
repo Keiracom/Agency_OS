@@ -56,7 +56,7 @@ Independence rule
 -----------------
 If `synthesis_author` is provided, that callsign is excluded from valid
 concurrers and the threshold is 2 distinct deliberators. If not provided,
-the safe default is to require ALL 3 deliberators (aiden/max/atlas) — i.e.
+the safe default is to require BOTH deliberators (aiden AND max) — i.e.
 the caller could not prove the author, so cross-attestation cannot rule out
 self-concurrence; demand the full set.
 
@@ -79,9 +79,9 @@ import time
 from pathlib import Path
 
 # Deliberators carry binding-review authority. Only their CONCUR signals
-# count toward the gate. Mirrors the deliberator roles named in the
-# orchestrator-merge-after-NATS-concur pattern (CONSOLIDATED_RULES.md).
-DELIBERATOR_CALLSIGNS: frozenset[str] = frozenset({"aiden", "max", "atlas"})
+# count toward the gate. Atlas is Elliot's worker clone — not an independent
+# deliberator — and is therefore excluded (Elliot HOLD on PR #1395, 2026-06-02).
+DELIBERATOR_CALLSIGNS: frozenset[str] = frozenset({"aiden", "max"})
 
 # Window for concur-signal freshness. 60-min default per Dave directive
 # 2026-06-02 ("allow for deliberation time").
@@ -215,8 +215,9 @@ def gate_check(
     Independence rule (Dave directive 2026-06-02):
       - synthesis_author=<callsign> -> excluded from valid concurrers; require
         2 distinct deliberators.
-      - synthesis_author=None       -> safe default: require ALL 3 deliberators
-        (the gate cannot rule out self-concurrence when authorship is unknown).
+      - synthesis_author=None       -> safe default: require BOTH deliberators
+        (aiden AND max) — the gate cannot rule out self-concurrence when
+        authorship is unknown.
 
     The CONCUR_GATE_SKIP env-var bypass that existed in v1 is REMOVED. There is
     no env-var path to skip this gate.

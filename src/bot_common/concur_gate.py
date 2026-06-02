@@ -54,11 +54,27 @@ gate_check(text, my_callsign, *, synthesis_author=None) -> (allow, replacement)
 
 Independence rule
 -----------------
+The deliberation layer is a promotion, not a genealogy. Aiden and Max are the
+only callsigns promoted to deliberator status (KEI-220, Dave directive
+2026-06-02). Atlas, Orion, Nova, and Scout are workers — they may produce
+substantive review input but their CONCUR signals do NOT satisfy the binding
+2-of-N requirement, regardless of which deliberator (if any) they originated
+from. There is no clone-resolution / principal-collapse step; promotion to
+the deliberation layer is the only filter that matters.
+
+A binding 2-of-N concurrence requires two from {aiden, max} or one from
+{aiden, max} + dave. (The dave-as-second case is satisfied by Dave's direct
+ratification on the held topic, not by R1 inbox-scan — handled out of band.)
+
 If `synthesis_author` is provided, that callsign is excluded from valid
-concurrers and the threshold is 2 distinct deliberators. If not provided,
-the safe default is to require BOTH deliberators (aiden AND max) — i.e.
-the caller could not prove the author, so cross-attestation cannot rule out
-self-concurrence; demand the full set.
+concurrers (direct discard, no resolution) and the threshold is 2 distinct
+deliberators. If not provided, the safe default is to require BOTH
+deliberators (aiden AND max) — the caller could not prove the author, so
+cross-attestation cannot rule out self-concurrence; demand the full set.
+
+The deliberation-layer-promotion rule is canonicalised in
+``docs/governance/CONSOLIDATED_RULES.md §RULE 3 — APPROVE`` (Independence rule
+subsection, Dave directive 2026-06-02).
 
 CONCUR_GATE_SKIP bypass
 -----------------------
@@ -78,9 +94,11 @@ import re
 import time
 from pathlib import Path
 
-# Deliberators carry binding-review authority. Only their CONCUR signals
-# count toward the gate. Atlas is Elliot's worker clone — not an independent
-# deliberator — and is therefore excluded (Elliot HOLD on PR #1395, 2026-06-02).
+# Callsigns promoted to the deliberation layer (KEI-220, Dave directive
+# 2026-06-02). ONLY these CONCUR signals satisfy the binding 2-of-N
+# requirement. Workers (atlas, orion, nova, scout) are excluded because
+# they are not promoted — not because of clone ancestry. The set is closed
+# under explicit promotion; do not infer membership from genealogy.
 DELIBERATOR_CALLSIGNS: frozenset[str] = frozenset({"aiden", "max"})
 
 # Window for concur-signal freshness. 60-min default per Dave directive
@@ -212,9 +230,13 @@ def gate_check(
                    original text is persisted under /tmp/<my_callsign>-pending-concur/
                    keyed by topic-sha so the agent can retry after concur.
 
-    Independence rule (Dave directive 2026-06-02):
-      - synthesis_author=<callsign> -> excluded from valid concurrers; require
-        2 distinct deliberators.
+    Independence rule (Dave directive 2026-06-02 — deliberation-layer promotion):
+      - DELIBERATOR_CALLSIGNS = {aiden, max} is the promotion list (KEI-220).
+        Worker concurs (atlas, orion, nova, scout) do NOT count — they are
+        excluded by the filter, full stop. There is no clone-resolution step;
+        promotion is the only criterion.
+      - synthesis_author=<callsign> -> excluded from valid concurrers (direct
+        discard, no resolution); require 2 distinct deliberators.
       - synthesis_author=None       -> safe default: require BOTH deliberators
         (aiden AND max) — the gate cannot rule out self-concurrence when
         authorship is unknown.

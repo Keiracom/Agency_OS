@@ -72,6 +72,19 @@ PARALLEL_AFTER_STEP: dict[str, list[str]] = {
 # from_callsign}. `chain_id == task_id` per Elliot's spec — dispatch() defaults
 # chain_id to task["id"] so state lookups by task_id resolve.
 CONSUMER_SUBJECT = "keiracom.agent.handoff"
+
+# JetStream durable consumer for keiracom.agent.handoff (Dave directive 2026-06-02
+# — NATS handoff stall fix). Core pub/sub drops messages published during
+# dispatcher downtime; a JS durable consumer with WorkQueue retention buffers
+# them until the consumer reconnects and acks. Storage=File so messages also
+# survive a NATS broker restart. Retention=WorkQueue (not Limits) so each
+# message is consumed exactly once across all consumers and removed on ack —
+# Limits would keep the message until age/size eviction, causing duplicate
+# dispatches if the consumer reset its sequence cursor.
+JS_STREAM_NAME = "agent_handoff"
+JS_CONSUMER_DURABLE = "chain-orchestrator"
+JS_DELIVER_SUBJECT = "_INBOX.chain_orch"
+
 FROM_TO_STEP: dict[str, str] = {
     "aiden": "aiden_plan",
     "max": "max_challenge",
@@ -273,7 +286,18 @@ def _save_state(state: dict) -> None:
 
 
 async def _publish_async(envelope: dict, role: str) -> bool:
-    """Inner async NATS publish — mirrors supervisor_wake_publish.publish_wake."""
+    """Inner async NATS publish — mirrors supervisor_wake_publish.publish_wake.
+
+    Publishes to keiracom.dispatch.<role>, which is NOT bound to the
+    agent_handoff JetStream — dispatch hops are routed via the
+    /dispatcher/spawn HTTP path (_publish_envelope). This NATS publisher
+    remains a core publish for any direct-NATS subscriber that may still
+    listen on dispatch.<role>. The handoff JS stream subscribes to a
+    different subject (CONSUMER_SUBJECT == keiracom.agent.handoff) — that
+    capture is by subject binding on the publisher side too: any core
+    nc.publish() to keiracom.agent.handoff is captured by the stream without
+    requiring a js.publish() call.
+    """
     subject = DISPATCH_SUBJECT_PATTERN.format(callsign=role)
     try:
         import nats  # lazy — keeps module collectable on CI hosts without nats-py
@@ -668,14 +692,118 @@ async def _consumer_handle_envelope_async(envelope: dict) -> list[dict]:
         return []
 
 
+async def _ensure_handoff_stream(js, subject: str = CONSUMER_SUBJECT) -> bool:
+    """Bind to or create the JetStream stream covering subject. Returns success bool.
+
+    Idempotent: if the stream already exists we proceed without modifying its
+    config (an operator may have tuned storage tiers manually — refusing to
+    overwrite preserves their intent). Returns False on any setup failure so
+    run_consumer can fall back to core subscribe.
+    """
+    from nats.js.api import RetentionPolicy, StorageType, StreamConfig  # noqa: PLC0415
+    from nats.js.errors import NotFoundError  # noqa: PLC0415
+
+    try:
+        await js.stream_info(JS_STREAM_NAME)
+        return True
+    except NotFoundError:
+        pass
+    except Exception as exc:  # noqa: BLE001 — fall-back to core subscribe
+        log.warning("v1_chain consumer: stream_info failed: %s", exc)
+        return False
+    try:
+        await js.add_stream(
+            config=StreamConfig(
+                name=JS_STREAM_NAME,
+                subjects=[subject],
+                retention=RetentionPolicy.WORK_QUEUE,
+                storage=StorageType.FILE,
+            )
+        )
+        log.info(
+            "v1_chain consumer: created JS stream=%s subject=%s retention=workqueue storage=file",
+            JS_STREAM_NAME,
+            subject,
+        )
+        return True
+    except Exception as exc:  # noqa: BLE001
+        log.warning("v1_chain consumer: add_stream failed: %s", exc)
+        return False
+
+
+async def _subscribe_jetstream_durable(js, subject, handler):
+    """Create a durable push consumer + subscribe. Returns the subscription, or None on failure."""
+    from nats.js.api import AckPolicy, ConsumerConfig  # noqa: PLC0415
+
+    try:
+        sub = await js.subscribe(
+            subject=subject,
+            durable=JS_CONSUMER_DURABLE,
+            cb=handler,
+            manual_ack=True,
+            config=ConsumerConfig(
+                durable_name=JS_CONSUMER_DURABLE,
+                deliver_subject=JS_DELIVER_SUBJECT,
+                ack_policy=AckPolicy.EXPLICIT,
+            ),
+        )
+        log.info(
+            "v1_chain consumer: JS durable=%s subscribed %s deliver=%s",
+            JS_CONSUMER_DURABLE,
+            subject,
+            JS_DELIVER_SUBJECT,
+        )
+        return sub
+    except Exception as exc:  # noqa: BLE001
+        log.warning("v1_chain consumer: JS subscribe failed: %s", exc)
+        return None
+
+
+async def _dispatch_handoff_message(msg) -> None:
+    """Decode + dispatch a single NATS message. Ack on success, nak on advance failure.
+
+    Malformed payloads are acked (permanent — re-delivery would loop). Handler
+    exceptions are naked so the WorkQueue stream re-delivers. Core (non-JS)
+    subscribe path: ack/nak are no-ops because the msg object has no such methods.
+    """
+    ack_fn = getattr(msg, "ack", None)
+    nak_fn = getattr(msg, "nak", None)
+    try:
+        payload = json.loads(msg.data.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        log.warning("v1_chain consumer: malformed payload: %s", exc)
+        if callable(ack_fn):
+            with contextlib.suppress(Exception):
+                await ack_fn()
+        return
+    try:
+        await _consumer_handle_envelope_async(payload)
+    except Exception:  # noqa: BLE001 — log + nak; never raise out of cb
+        log.warning("v1_chain consumer: dispatch failed; naking for redelivery", exc_info=True)
+        if callable(nak_fn):
+            with contextlib.suppress(Exception):
+                await nak_fn()
+        return
+    if callable(ack_fn):
+        with contextlib.suppress(Exception):
+            await ack_fn()
+
+
 async def run_consumer(nats_url: str | None = None) -> None:
-    """Subscribe to CONSUMER_SUBJECT and advance the chain on each handoff.
+    """Subscribe to CONSUMER_SUBJECT (durable JS consumer) and advance the chain on each handoff.
+
+    Uses a JetStream durable push consumer (stream=agent_handoff,
+    durable=chain-orchestrator, retention=WorkQueue, storage=File) so handoff
+    messages published during dispatcher downtime survive restarts and get
+    delivered when the consumer reconnects. Falls back to non-durable core
+    nc.subscribe() if JetStream is unavailable or setup fails — preserves
+    pre-fix behaviour on hosts without JS at the cost of dropped messages
+    during downtime (logged loudly).
 
     Long-running; cancellable via task.cancel() — closes the NATS connection.
-    Mirrors peer_event_ceo_relay.main() loop pattern.
     """
     try:
-        import nats  # lazy — keeps module collectable on hosts without nats-py
+        import nats  # noqa: PLC0415 — lazy; keeps module collectable without nats-py
     except ImportError as exc:
         log.error("v1_chain consumer: nats-py not installed; loop exits (%s)", exc)
         return
@@ -686,18 +814,34 @@ async def run_consumer(nats_url: str | None = None) -> None:
         log.error("v1_chain consumer: NATS connect failed url=%s: %s", url, exc)
         return
 
-    async def _handler(msg) -> None:
-        # Thin delegate (Max HOLD): bytes → dict → delegate to the async helper.
+    js_subscribed = False
+    try:
+        js = nc.jetstream()
+        if await _ensure_handoff_stream(js, CONSUMER_SUBJECT):
+            sub = await _subscribe_jetstream_durable(
+                js, CONSUMER_SUBJECT, _dispatch_handoff_message
+            )
+            js_subscribed = sub is not None
+    except Exception as exc:  # noqa: BLE001
+        log.warning(
+            "v1_chain consumer: JetStream setup failed (%s) — falling back to core subscribe", exc
+        )
+
+    if not js_subscribed:
+        log.warning(
+            "v1_chain consumer: durable JS unavailable — using core subscribe; "
+            "handoffs published during downtime WILL be dropped"
+        )
         try:
-            payload = json.loads(msg.data.decode("utf-8"))
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            log.warning("v1_chain consumer: malformed payload: %s", exc)
+            await nc.subscribe(CONSUMER_SUBJECT, cb=_dispatch_handoff_message)
+            log.info("v1_chain consumer: core-sub subscribed %s on %s", CONSUMER_SUBJECT, url)
+        except Exception as exc:  # noqa: BLE001
+            log.error("v1_chain consumer: core subscribe failed: %s", exc)
+            with contextlib.suppress(Exception):
+                await nc.close()
             return
-        await _consumer_handle_envelope_async(payload)
 
     try:
-        await nc.subscribe(CONSUMER_SUBJECT, cb=_handler)
-        log.info("v1_chain consumer: subscribed %s on %s", CONSUMER_SUBJECT, url)
         while True:
             await asyncio.sleep(60)
     finally:

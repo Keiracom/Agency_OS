@@ -1,30 +1,72 @@
-"""concur_gate.py — outbound R1 gate (P0 per Max directive 2026-05-11).
+"""concur_gate.py — outbound R1 gate, inbox-signal source (Dave directive 2026-06-02).
 
-Imported by scripts/slack_relay.py + scripts/coo_slack_relay.py to block
-explicit governance-action messages from reaching Slack until at least
-one peer has posted [CONCUR:<my-callsign>] in the recent message window.
+Imported by scripts/slack_relay.py + scripts/coo_slack_relay.py to block explicit
+governance-action messages from reaching Slack until at least 2 distinct non-author
+deliberators have posted [CONCUR:<my-callsign>] in the recent inbox window.
 
-Single source of truth for: trigger detection, peer concur lookup, hold
-file location. Other modules MUST NOT reimplement R1 detection — extend
-this module.
+History
+-------
+v1 (KEI-38, 2026-05-14): scanned the #execution Slack channel via
+conversations.history for a single [CONCUR:<callsign>] within a 10-message
+window. The channel was killed 2026-05-27 in the cutover sweep that retired
+the #execution → relay-inbox architecture; the Slack-history scan has been
+permanently broken since that date.
 
-Trigger (KEI-38, Dave verbatim 2026-05-14):
-  Gate fires ONLY on a literal [CONCUR:<callsign>] or [BLOCK:<callsign>]
-  token. Prose containing the word "concur" does NOT trigger. Tokens
-  with prefixes ([FINAL CONCUR:...], [CONCUR-REQUEST:...]) do NOT trigger
-  either, since they signal a different governance action (final
-  authorisation / hold-stub).
+v2 (Dave directive 2026-06-02 — this module): repoint the signal source to the
+inbox-watcher's processed/ directory (the file relay that replaced #execution),
+enforce ≥2 distinct deliberator concurrers, enforce independence (author cannot
+self-concur), fail closed, and remove the CONCUR_GATE_SKIP env-var bypass.
 
-Behaviour:
-  gate_check(text, callsign, ...) -> (allow, replacement)
-    allow=True, replacement=None      -> caller posts text as-is
-    allow=False, replacement="[CONCUR-REQUEST:CALLSIGN] ..."
-                                      -> caller posts replacement INSTEAD,
-                                         original message persisted to
-                                         /tmp/<callsign>-pending-concur/
+Source-of-signal choice (filesystem over NATS, documented per directive)
+------------------------------------------------------------------------
+The gate runs synchronously inside slack_relay.py (a sync script). The two
+candidate sources were:
 
-v1 is synchronous + manual-retry: agent re-invokes slack_relay.py after
-peer concur is seen. v2 (deferred) adds an auto-release daemon.
+  (a) NATS JetStream `elliot_inbox` stream — durable, sequence-timestamped,
+      authoritative. Requires nats-py async client + connect/subscribe cycle
+      per gate-check invocation. Adds an async hop to a sync call site.
+
+  (b) /tmp/telegram-relay-<callsign>/processed/*.json — the inbox-watcher's
+      post-consumption store. Each file has `from` field (sender callsign),
+      a body/text/subject containing the message, and file mtime as the
+      authoritative timestamp. Sync access, zero extra deps, already populated
+      by the same watcher that drains NATS.
+
+Picked (b). The processed/ dir is the materialised view of the NATS stream
+that the watcher has ALREADY acknowledged — using it avoids re-decoding
+NATS in a sync gate, and the file mtime is wall-clock-stable for the lookback
+window. The trade-off: if the inbox-watcher service is down, the gate sees
+no new concurrers and fails closed. That is the correct failure mode.
+
+Trigger detection (unchanged from KEI-38)
+-----------------------------------------
+Gate fires ONLY on a literal [CONCUR:<callsign>] or [BLOCK:<callsign>] token.
+Prose containing the word "concur" does NOT trigger. Tokens with prefixes
+([FINAL CONCUR:...], [CONCUR-REQUEST:...]) do NOT trigger either. The KEI-79
+[ESCALATION-INITIATED:<callsign>:<task-id>] sentinel is exempt.
+
+Behaviour
+---------
+gate_check(text, my_callsign, *, synthesis_author=None) -> (allow, replacement)
+  allow=True, replacement=None   -> caller posts text as-is
+  allow=False, replacement="..." -> caller posts replacement instead, original
+                                    persisted under /tmp/<callsign>-pending-concur/
+
+Independence rule
+-----------------
+If `synthesis_author` is provided, that callsign is excluded from valid
+concurrers and the threshold is 2 distinct deliberators. If not provided,
+the safe default is to require BOTH deliberators (aiden AND max) — i.e.
+the caller could not prove the author, so cross-attestation cannot rule out
+self-concurrence; demand the full set.
+
+CONCUR_GATE_SKIP bypass
+-----------------------
+REMOVED in v2. The env_skip() function was the largest hole in the v1 gate —
+a single env var would silently disable all gating. There is no replacement
+break-glass flag. If a future audit-logged break-glass path is required, it
+must be a separate mechanism with an explicit audit row, not a simple env
+flag readable by any process.
 """
 
 from __future__ import annotations
@@ -33,23 +75,31 @@ import hashlib
 import json
 import os
 import re
-import urllib.error
-import urllib.request
+import time
 from pathlib import Path
 
-CONCUR_LOOKBACK = 10
-EXECUTION_CHANNEL = "C0B3QB0K1GQ"
+# Deliberators carry binding-review authority. Only their CONCUR signals
+# count toward the gate. Atlas is Elliot's worker clone — not an independent
+# deliberator — and is therefore excluded (Elliot HOLD on PR #1395, 2026-06-02).
+DELIBERATOR_CALLSIGNS: frozenset[str] = frozenset({"aiden", "max"})
+
+# Window for concur-signal freshness. 60-min default per Dave directive
+# 2026-06-02 ("allow for deliberation time").
+DEFAULT_LOOKBACK_MINUTES = 60
+
+# Processed-dir template (one per callsign). The inbox-watcher service
+# (callsign-inbox-watcher.service) moves consumed JSON envelopes here.
+_PROCESSED_DIR_TEMPLATE = "/tmp/telegram-relay-{callsign}/processed"
 
 # Anchored trigger: literal [CONCUR:<callsign>] or [BLOCK:<callsign>].
-# Requires `[` immediately followed by CONCUR: or BLOCK:, which excludes
-# [FINAL CONCUR:...] (preceded by FINAL), [CONCUR-REQUEST:...] (uses `-`
-# not `:` after CONCUR), and prose containing the word "concur".
+# Excludes [FINAL CONCUR:...] (preceded by FINAL), [CONCUR-REQUEST:...]
+# (uses `-` not `:` after CONCUR), and prose containing "concur".
 _GATE_TRIGGER = re.compile(r"\[(?:CONCUR|BLOCK):[a-z][a-z0-9_-]*\]", re.IGNORECASE)
 
-# Canonical 7-callsign roster (mirrors scripts/cache_hit_rate_ingest.py:44).
-# Used by _eligible_reviewers() when ceo:agent_health is absent (Agency_OS-yvlr51).
-_KNOWN_CALLSIGNS: frozenset[str] = frozenset(
-    {"elliot", "aiden", "max", "atlas", "orion", "scout", "nova"}
+# KEI-79 escalation sentinel — Dave-authorised step-0 surrogate, exempt from
+# CONCUR matching. bd escalate emits this BEFORE the direct-post call.
+_ESCALATION_SENTINEL = re.compile(
+    r"\[ESCALATION-INITIATED:[a-z][a-z0-9_-]*:[A-Z]+-\d+\]", re.IGNORECASE
 )
 
 
@@ -61,86 +111,148 @@ def _topic_sha(text: str) -> str:
     return hashlib.sha1(text.encode("utf-8")).hexdigest()[:12]
 
 
-# KEI-79 escalation sentinel — bd escalate emits this BEFORE the direct-post call so
-# downstream gates recognise the escalation as a Step-0 surrogate (Dave authorisation
-# IS the gate event for an escalation path). Exempt from CONCUR matching.
-_ESCALATION_SENTINEL = re.compile(
-    r"\[ESCALATION-INITIATED:[a-z][a-z0-9_-]*:[A-Z]+-\d+\]", re.IGNORECASE
-)
+def _processed_dir(callsign: str) -> Path:
+    return Path(_PROCESSED_DIR_TEMPLATE.format(callsign=callsign.lower()))
 
 
-def _eligible_reviewers(my_callsign: str) -> list[str]:
-    """Return sorted list of peers eligible to release a CONCUR-REQUEST.
+def _lookback_seconds() -> float:
+    """Window for signal freshness. CONCUR_LOOKBACK_MINUTES env overrides default."""
+    raw = os.environ.get("CONCUR_LOOKBACK_MINUTES", "").strip()
+    if not raw:
+        return DEFAULT_LOOKBACK_MINUTES * 60.0
+    try:
+        return float(raw) * 60.0
+    except ValueError:
+        return DEFAULT_LOOKBACK_MINUTES * 60.0
 
-    Agency_OS-yvlr51 — when ceo:agent_health is populated by the polling loop
-    (KEI-63 follow-up, not yet shipped), this filters peers by API-cap (<70%
-    weekly), idle window (<30 min), and recent HOLD/BLOCK absence. Until that
-    infrastructure exists, fallback returns ALL non-author callsigns — the
-    release lookup already accepts [CONCUR:<requester>] from any sender, so
-    advertising the full roster keeps routing unblocked when a specific peer
-    is at context cap (the V1-chain freeze scenario Dave diagnosed).
-    """
-    # TODO(yvlr51 follow-up): query ceo:agent_health via mcp-bridge supabase
-    # and filter by (weekly_cap < 70%) AND (idle_minutes < 30) AND
-    # (no_recent_hold_or_block). Fail-open to the fallback on any read error.
-    return sorted(cs for cs in _KNOWN_CALLSIGNS if cs != my_callsign.lower())
+
+def _payload_text(payload: dict) -> str:
+    """Concur tokens may appear in subject, body, text, brief, or message — check all."""
+    parts: list[str] = []
+    for key in ("body", "text", "message", "subject", "brief"):
+        val = payload.get(key)
+        if isinstance(val, str):
+            parts.append(val)
+    return "\n".join(parts)
 
 
 def should_gate(text: str) -> bool:
     """True if the text contains a literal [CONCUR:<callsign>] or [BLOCK:<callsign>] token.
 
-    KEI-79 carve-out: [ESCALATION-INITIATED:<callsign>:<task-id>] sentinels are NOT gated
-    even if they incidentally contain a concur-shaped substring downstream.
+    KEI-79 carve-out: [ESCALATION-INITIATED:<callsign>:<task-id>] sentinels are
+    NOT gated even if they incidentally contain a concur-shaped substring.
     """
     if _ESCALATION_SENTINEL.search(text):
         return False
     return bool(_GATE_TRIGGER.search(text))
 
 
-def has_peer_concur(my_callsign: str, bot_token: str, channel: str = EXECUTION_CHANNEL) -> bool:
-    """Look back CONCUR_LOOKBACK messages in #execution for [CONCUR:<my-callsign>]."""
+def find_recent_concurrers(
+    my_callsign: str,
+    *,
+    now: float | None = None,
+    processed_dir: Path | None = None,
+) -> set[str]:
+    """Return the set of distinct callsigns that posted [CONCUR:<my_callsign>] within the window.
+
+    Source: <processed_dir>/*.json (defaults to /tmp/telegram-relay-<my_callsign>/processed).
+    Each JSON envelope must carry `from` (sender callsign) and at least one
+    of body/text/message/subject/brief. mtime is compared against the lookback
+    cutoff; envelopes older than the window are skipped.
+
+    Fail-closed: missing dir, OS error, malformed JSON, missing `from`, or
+    non-dict payload all SKIP the envelope silently. The gate then sees fewer
+    concurrers and blocks — the correct failure mode.
+    """
     needle = f"[concur:{my_callsign.lower()}]"
-    url = f"https://slack.com/api/conversations.history?channel={channel}&limit={CONCUR_LOOKBACK}"
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {bot_token}"})
-    try:
-        with urllib.request.urlopen(req, timeout=10) as r:
-            data = json.loads(r.read())
-    except (urllib.error.URLError, urllib.error.HTTPError, OSError):
-        return False
-    if not data.get("ok"):
-        return False
-    return any(needle in (msg.get("text") or "").lower() for msg in data.get("messages", []))
+    if now is None:
+        now = time.time()
+    cutoff = now - _lookback_seconds()
+    pdir = processed_dir or _processed_dir(my_callsign)
+    if not pdir.exists() or not pdir.is_dir():
+        return set()
+    concurrers: set[str] = set()
+    for path in pdir.iterdir():
+        if not path.is_file() or path.suffix.lower() != ".json":
+            continue
+        try:
+            mtime = path.stat().st_mtime
+        except OSError:
+            continue
+        if mtime < cutoff:
+            continue
+        try:
+            payload = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict):
+            continue
+        sender = payload.get("from") or payload.get("sender")
+        if not isinstance(sender, str) or not sender.strip():
+            continue
+        body = _payload_text(payload)
+        if needle in body.lower():
+            concurrers.add(sender.strip().lower())
+    return concurrers
 
 
 def gate_check(
-    text: str, my_callsign: str, bot_token: str, peer_label: str = "peer"
+    text: str,
+    my_callsign: str,
+    *,
+    synthesis_author: str | None = None,
+    peer_label: str = "peer",
+    processed_dir: Path | None = None,
+    now: float | None = None,
 ) -> tuple[bool, str | None]:
     """Return (allow, replacement_message).
 
     allow=True  -> caller posts text unchanged.
-    allow=False -> caller posts replacement (CONCUR-REQUEST) instead;
-                   the original text is persisted under /tmp/<callsign>-pending-concur/
+    allow=False -> caller posts replacement (CONCUR-REQUEST) instead; the
+                   original text is persisted under /tmp/<my_callsign>-pending-concur/
                    keyed by topic-sha so the agent can retry after concur.
+
+    Independence rule (Dave directive 2026-06-02):
+      - synthesis_author=<callsign> -> excluded from valid concurrers; require
+        2 distinct deliberators.
+      - synthesis_author=None       -> safe default: require BOTH deliberators
+        (aiden AND max) — the gate cannot rule out self-concurrence when
+        authorship is unknown.
+
+    The CONCUR_GATE_SKIP env-var bypass that existed in v1 is REMOVED. There is
+    no env-var path to skip this gate.
     """
     if not should_gate(text):
         return True, None
-    if has_peer_concur(my_callsign, bot_token):
+
+    raw = find_recent_concurrers(my_callsign, now=now, processed_dir=processed_dir)
+    valid = {cs for cs in raw if cs in DELIBERATOR_CALLSIGNS}
+    if synthesis_author:
+        valid.discard(synthesis_author.strip().lower())
+        required = 2
+    else:
+        required = len(DELIBERATOR_CALLSIGNS)
+
+    if len(valid) >= required:
         return True, None
-    # Hold the message; ask for concur.
+
     sha = _topic_sha(text)
     pdir = _pending_dir(my_callsign)
     pdir.mkdir(parents=True, exist_ok=True)
     (pdir / f"{sha}.txt").write_text(text)
-    topic = text.splitlines()[0][:120]
-    eligible = ", ".join(_eligible_reviewers(my_callsign))
+    topic = text.splitlines()[0][:120] if text.splitlines() else ""
+    have = ", ".join(sorted(valid)) if valid else "(none)"
+    need_descr = (
+        f"2 distinct deliberators excluding author={synthesis_author.lower()}"
+        if synthesis_author
+        else f"all {required} deliberators (synthesis_author not supplied)"
+    )
+    eligible = ", ".join(sorted(DELIBERATOR_CALLSIGNS))
     replacement = (
         f"[CONCUR-REQUEST:{my_callsign.upper()}] requesting concurrence from {peer_label} on: {topic}\n"
-        f"Eligible reviewers: {eligible}\n"
-        f"(held under /tmp/{my_callsign}-pending-concur/{sha}.txt; release on [CONCUR:{my_callsign}] in #execution)"
+        f"Have: {have} — need {need_descr}\n"
+        f"Eligible deliberators: {eligible}\n"
+        f"(held under /tmp/{my_callsign}-pending-concur/{sha}.txt; "
+        f"release on ≥{required} distinct non-author [CONCUR:{my_callsign}] in inbox window)"
     )
     return False, replacement
-
-
-def env_skip() -> bool:
-    """Allow CI / one-shot scripts to skip the gate via env var."""
-    return os.environ.get("CONCUR_GATE_SKIP", "").lower() in ("1", "true", "yes")

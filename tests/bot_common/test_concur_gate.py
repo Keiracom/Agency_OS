@@ -1,65 +1,64 @@
-"""tests for src/bot_common/concur_gate.py — R1 outbound concur gate.
+"""tests for src/bot_common/concur_gate.py — R1 outbound concur gate (v2, inbox-signal).
 
-Post KEI-38 (Dave verbatim 2026-05-14): the gate fires ONLY on a literal
-[CONCUR:<callsign>] or [BLOCK:<callsign>] token. Substring-match on the
-broad enforcer TRIGGER_PATTERNS list is gone — that list is for the LLM
-governance pre-filter, not for the outbound concur gate.
+v2 (Dave directive 2026-06-02): the gate's signal source is the inbox-watcher
+processed/*.json directory, not the dead #execution Slack channel. The gate now
+requires ≥2 distinct deliberator [CONCUR] within a lookback window, excludes the
+synthesis author (independence rule), and has no CONCUR_GATE_SKIP env-var bypass.
 
-Covers:
-  - should_gate: anchored-regex token detection
-  - has_peer_concur: Slack history lookup (mocked urlopen)
-  - gate_check: main entry — allow-as-is vs replacement-with-CONCUR-REQUEST
-  - env_skip: env bypass parsing
-  - Side effects: pending file written under /tmp/<callsign>-pending-concur/
-  - Topic-sha keying for hold files
+Coverage:
+  - should_gate: anchored-regex token detection (unchanged from v1)
+  - find_recent_concurrers: parses processed/*.json envelopes, filters by mtime
+  - gate_check acceptance criteria (dispatch-prescribed):
+      (a) passes with 2 distinct non-author concurrers
+      (b) BLOCKS with only 1 concurrer
+      (c) BLOCKS when only concurrer is the author
+      (d) BLOCKS when CONCUR_GATE_SKIP=1 (env var no longer opens the gate)
+  - Independence: synthesis_author excluded; None → 3-deliberator safe default
+  - Hold-file persistence under /tmp/<callsign>-pending-concur/
+  - No surviving import of env_skip / CONCUR_GATE_SKIP
 
-All Slack HTTP traffic mocked via urllib.request.urlopen patches.
+All filesystem traffic redirected to tmp_path via the processed_dir injection
+point on gate_check + the _pending_dir monkeypatch.
 """
 
 from __future__ import annotations
 
 import json
 import os
-from io import BytesIO
-from unittest.mock import patch
-from urllib.error import URLError
+import time
+from pathlib import Path
 
 import pytest
 
 from src.bot_common import concur_gate
 
 # ─────────────────────────────────────────────────────────────────────────────
-# should_gate — anchored-token detection (KEI-38, Dave verbatim 2026-05-14)
+# should_gate — anchored-token detection (unchanged from v1 / KEI-38)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
 def test_should_gate_matches_concur_token() -> None:
-    """Literal [CONCUR:<callsign>] token → gate fires."""
     assert concur_gate.should_gate("[CONCUR:max] release looks fine")
 
 
 def test_should_gate_matches_block_token() -> None:
-    """Literal [BLOCK:<callsign>] token → gate fires."""
     assert concur_gate.should_gate("[BLOCK:elliot] hold on the rebase")
 
 
 def test_should_gate_case_insensitive_token() -> None:
-    """Tokens are matched case-insensitively."""
     assert concur_gate.should_gate("[concur:scout] verified")
     assert concur_gate.should_gate("[Block:Aiden] stop")
 
 
 def test_should_gate_does_not_match_prose_concur() -> None:
-    """KEI-38 core fix — prose containing 'concur' must NOT trigger the gate."""
+    """KEI-38 — prose containing 'concur' must NOT trigger the gate."""
     assert not concur_gate.should_gate("we concur on this approach")
     assert not concur_gate.should_gate("shape-concur with hold")
     assert not concur_gate.should_gate("Max FINAL CONCUR on PR #842")
 
 
 def test_should_gate_does_not_match_final_concur_token() -> None:
-    """[FINAL CONCUR:<name>] is a merge-authorisation declaration, not a R1 trigger."""
     assert not concur_gate.should_gate("[FINAL CONCUR:ELLIOT] merging now")
-    assert not concur_gate.should_gate("[FINAL CONCUR:max]")
 
 
 def test_should_gate_does_not_match_concur_request_stub() -> None:
@@ -69,241 +68,306 @@ def test_should_gate_does_not_match_concur_request_stub() -> None:
     )
 
 
-def test_should_gate_no_match_on_completion_prose() -> None:
-    """Old TRIGGER_PATTERNS substrings (merged, committed, PR #N, done) no longer gate.
+def test_should_gate_does_not_match_escalation_sentinel() -> None:
+    """KEI-79: [ESCALATION-INITIATED:<callsign>:<task-id>] is exempt."""
+    assert not concur_gate.should_gate("[ESCALATION-INITIATED:orion:KEI-99] direct-post path")
 
-    This is the KEI-38 unblock for Max — factual completion claims pass through
-    without requiring peer concur. Peer-review discipline lives elsewhere.
-    """
+
+def test_should_gate_no_match_on_completion_prose() -> None:
     assert not concur_gate.should_gate("Just committed the fix.")
     assert not concur_gate.should_gate("PR merged to main.")
-    assert not concur_gate.should_gate("Looking at PR #715 right now.")
-    assert not concur_gate.should_gate("PR MERGED to main.")
     assert not concur_gate.should_gate("Task done, all stores written.")
 
 
-def test_should_gate_no_match_on_plain_text() -> None:
-    """Plain status text without trigger tokens → no gate."""
-    assert not concur_gate.should_gate("Hello team, standing by for next dispatch.")
-
-
 def test_should_gate_no_match_on_empty_brackets() -> None:
-    """[CONCUR:] with empty callsign → no gate (anchored regex requires [a-z]+ after colon)."""
     assert not concur_gate.should_gate("[CONCUR:] missing callsign")
 
 
-def test_should_gate_matches_token_with_hyphenated_callsign() -> None:
-    """Callsigns with hyphens or underscores are valid (e.g. atlas-bot)."""
-    assert concur_gate.should_gate("[CONCUR:atlas-bot] noted")
-    assert concur_gate.should_gate("[BLOCK:test_user] stop")
-
-
 # ─────────────────────────────────────────────────────────────────────────────
-# has_peer_concur — Slack history lookup (mocked)
+# find_recent_concurrers — processed-dir scan
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def _fake_slack_response(messages: list[dict], ok: bool = True) -> BytesIO:
-    body = json.dumps({"ok": ok, "messages": messages}).encode("utf-8")
-    return BytesIO(body)
+def _write_envelope(
+    pdir: Path,
+    name: str,
+    sender: str,
+    body: str,
+    *,
+    mtime: float | None = None,
+) -> Path:
+    """Materialise an inbox-watcher processed envelope at <pdir>/<name>.json."""
+    pdir.mkdir(parents=True, exist_ok=True)
+    path = pdir / name
+    path.write_text(json.dumps({"from": sender, "body": body}))
+    if mtime is not None:
+        os.utime(path, (mtime, mtime))
+    return path
 
 
-def test_has_peer_concur_found() -> None:
-    """`[CONCUR:aiden]` in recent history → True."""
-    messages = [
-        {"text": "[ELLIOT] [CONCUR:aiden] verified the diff"},
-        {"text": "[AIDEN] working on it"},
-    ]
-
-    class FakeResponse:
-        def __init__(self, body: BytesIO) -> None:
-            self._body = body
-
-        def read(self) -> bytes:
-            return self._body.read()
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    with patch.object(
-        concur_gate.urllib.request,
-        "urlopen",
-        return_value=FakeResponse(_fake_slack_response(messages)),
-    ):
-        assert concur_gate.has_peer_concur("aiden", "fake-token") is True
+def test_find_recent_concurrers_picks_up_distinct_senders(tmp_path) -> None:
+    """Two distinct deliberators posting [CONCUR:elliot] → set of two callsigns."""
+    pdir = tmp_path / "processed"
+    _write_envelope(pdir, "aiden_1.json", "aiden", "[CONCUR:elliot] looks good")
+    _write_envelope(pdir, "max_1.json", "max", "approved\n[CONCUR:elliot]")
+    found = concur_gate.find_recent_concurrers("elliot", processed_dir=pdir)
+    assert found == {"aiden", "max"}
 
 
-def test_has_peer_concur_case_insensitive_lookup() -> None:
-    """`[CONCUR:AIDEN]` (uppercase) still resolves for callsign='aiden'."""
-    messages = [{"text": "[ELLIOT] [CONCUR:AIDEN] looks good"}]
-
-    class FakeResponse:
-        def read(self) -> bytes:
-            return _fake_slack_response(messages).read()
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    with patch.object(concur_gate.urllib.request, "urlopen", return_value=FakeResponse()):
-        assert concur_gate.has_peer_concur("aiden", "fake-token") is True
+def test_find_recent_concurrers_deduplicates_same_sender(tmp_path) -> None:
+    """Same sender concurring twice → counted once."""
+    pdir = tmp_path / "processed"
+    _write_envelope(pdir, "aiden_1.json", "aiden", "[CONCUR:elliot] first")
+    _write_envelope(pdir, "aiden_2.json", "aiden", "[CONCUR:elliot] retry")
+    assert concur_gate.find_recent_concurrers("elliot", processed_dir=pdir) == {"aiden"}
 
 
-def test_has_peer_concur_not_found() -> None:
-    """No concur tag for this callsign → False."""
-    messages = [
-        {"text": "[ELLIOT] [CONCUR:max] PR looks fine"},
-        {"text": "[MAX] working on the build"},
-    ]
-
-    class FakeResponse:
-        def read(self) -> bytes:
-            return _fake_slack_response(messages).read()
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    with patch.object(concur_gate.urllib.request, "urlopen", return_value=FakeResponse()):
-        assert concur_gate.has_peer_concur("aiden", "fake-token") is False
+def test_find_recent_concurrers_skips_stale_envelopes(tmp_path, monkeypatch) -> None:
+    """Envelopes older than the lookback window are not counted."""
+    monkeypatch.setenv("CONCUR_LOOKBACK_MINUTES", "10")
+    pdir = tmp_path / "processed"
+    now = 1_780_000_000.0
+    _write_envelope(pdir, "fresh.json", "aiden", "[CONCUR:elliot]", mtime=now - 60)
+    _write_envelope(pdir, "stale.json", "max", "[CONCUR:elliot]", mtime=now - 60 * 60)
+    found = concur_gate.find_recent_concurrers("elliot", now=now, processed_dir=pdir)
+    assert found == {"aiden"}
 
 
-def test_has_peer_concur_network_failure_returns_false() -> None:
-    """urlopen raising URLError → False (conservative — don't allow without peer)."""
-    with patch.object(concur_gate.urllib.request, "urlopen", side_effect=URLError("network")):
-        assert concur_gate.has_peer_concur("aiden", "fake-token") is False
+def test_find_recent_concurrers_ignores_envelopes_without_token(tmp_path) -> None:
+    """Envelope with no [CONCUR:elliot] body → not counted, even from a deliberator."""
+    pdir = tmp_path / "processed"
+    _write_envelope(pdir, "aiden.json", "aiden", "status update, nothing to concur")
+    assert concur_gate.find_recent_concurrers("elliot", processed_dir=pdir) == set()
 
 
-def test_has_peer_concur_slack_api_not_ok_returns_false() -> None:
-    """Slack API returns ok=false → False."""
-
-    class FakeResponse:
-        def read(self) -> bytes:
-            return json.dumps({"ok": False, "error": "invalid_auth"}).encode("utf-8")
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *args):
-            pass
-
-    with patch.object(concur_gate.urllib.request, "urlopen", return_value=FakeResponse()):
-        assert concur_gate.has_peer_concur("aiden", "fake-token") is False
+def test_find_recent_concurrers_handles_malformed_envelope(tmp_path) -> None:
+    """Malformed JSON / missing 'from' / non-dict payload → fail closed (skip)."""
+    pdir = tmp_path / "processed"
+    pdir.mkdir()
+    (pdir / "bad.json").write_text("not json at all {{{")
+    (pdir / "no_from.json").write_text(json.dumps({"body": "[CONCUR:elliot]"}))
+    (pdir / "non_dict.json").write_text(json.dumps(["a", "list", "payload"]))
+    _write_envelope(pdir, "good.json", "aiden", "[CONCUR:elliot]")
+    found = concur_gate.find_recent_concurrers("elliot", processed_dir=pdir)
+    assert found == {"aiden"}
 
 
-# ─────────────────────────────────────────────────────────────────────────────
-# gate_check — main entry
-# ─────────────────────────────────────────────────────────────────────────────
+def test_find_recent_concurrers_missing_processed_dir_returns_empty(tmp_path) -> None:
+    """No processed/ dir → empty set (gate then fails closed downstream)."""
+    pdir = tmp_path / "nonexistent" / "processed"
+    assert concur_gate.find_recent_concurrers("elliot", processed_dir=pdir) == set()
 
 
-def test_gate_check_no_trigger_allows() -> None:
-    """No R1 trigger token → (True, None) regardless of peer concur."""
-    allow, replacement = concur_gate.gate_check(
-        "Standing by, no shipping happening.", "aiden", "fake-token"
+def test_find_recent_concurrers_extracts_token_from_alternate_fields(tmp_path) -> None:
+    """Token may live in body/text/subject/brief/message — all are scanned."""
+    pdir = tmp_path / "processed"
+    pdir.mkdir()
+    (pdir / "subject.json").write_text(
+        json.dumps({"from": "aiden", "subject": "[CONCUR:elliot] design"})
     )
+    (pdir / "text.json").write_text(
+        json.dumps({"from": "max", "text": "approval: [CONCUR:elliot]"})
+    )
+    (pdir / "brief.json").write_text(
+        json.dumps({"from": "atlas", "brief": "[CONCUR:elliot] safety lens"})
+    )
+    found = concur_gate.find_recent_concurrers("elliot", processed_dir=pdir)
+    assert found == {"aiden", "max", "atlas"}
+
+
+def test_find_recent_concurrers_accepts_sender_field_alias(tmp_path) -> None:
+    """`sender` is an accepted alias for `from` (Telegram relay envelope shape)."""
+    pdir = tmp_path / "processed"
+    pdir.mkdir()
+    (pdir / "sender.json").write_text(json.dumps({"sender": "aiden", "text": "[CONCUR:elliot] ok"}))
+    assert concur_gate.find_recent_concurrers("elliot", processed_dir=pdir) == {"aiden"}
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# gate_check — acceptance criteria (Dave directive 2026-06-02)
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@pytest.fixture
+def isolated_pending_dir(tmp_path, monkeypatch):
+    """Redirect _pending_dir away from real /tmp."""
+    monkeypatch.setattr(concur_gate, "_pending_dir", lambda cs: tmp_path / "pending" / cs)
+    return tmp_path
+
+
+def test_gate_check_no_trigger_allows(isolated_pending_dir) -> None:
+    """No [CONCUR/BLOCK:...] token → (True, None) without any inbox scan."""
+    allow, replacement = concur_gate.gate_check("Standing by, no shipping happening.", "elliot")
     assert allow is True
     assert replacement is None
 
 
-def test_gate_check_prose_concur_allows() -> None:
-    """KEI-38: prose 'we concur' must pass through without peer-concur lookup."""
-    # Patch has_peer_concur to fail loudly if called — the gate must short-circuit
-    # at should_gate=False before reaching the Slack lookup.
-    with patch.object(
-        concur_gate, "has_peer_concur", side_effect=AssertionError("should not be called")
-    ):
-        allow, replacement = concur_gate.gate_check(
-            "we concur on this approach", "max", "fake-token"
-        )
-    assert allow is True
+def test_gate_check_a_passes_with_two_distinct_non_author_concurrers(
+    isolated_pending_dir,
+) -> None:
+    """Acceptance (a): two distinct deliberator [CONCUR:elliot] from non-author → ALLOW."""
+    pdir = isolated_pending_dir / "processed"
+    _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot] yes")
+    _write_envelope(pdir, "max.json", "max", "[CONCUR:elliot] yes")
+    allow, replacement = concur_gate.gate_check(
+        "[CONCUR:atlas] release looks fine",
+        "elliot",
+        synthesis_author="elliot",
+        processed_dir=pdir,
+    )
+    assert allow is True, replacement
     assert replacement is None
 
 
-def test_gate_check_trigger_with_concur_allows() -> None:
-    """[CONCUR:<callsign>] token AND peer concur in history → (True, None)."""
-    with patch.object(concur_gate, "has_peer_concur", return_value=True):
-        allow, replacement = concur_gate.gate_check(
-            "[CONCUR:max] verified the diff", "aiden", "fake-token"
-        )
-    assert allow is True
-    assert replacement is None
-
-
-def test_gate_check_trigger_without_concur_blocks(tmp_path, monkeypatch) -> None:
-    """[CONCUR:<callsign>] token + NO peer concur → (False, replacement) + hold file."""
-    # Redirect _pending_dir to tmp_path so we don't touch real /tmp
-    monkeypatch.setattr(concur_gate, "_pending_dir", lambda cs: tmp_path / cs)
-    text = "[CONCUR:max] verified the diff"
-    with patch.object(concur_gate, "has_peer_concur", return_value=False):
-        allow, replacement = concur_gate.gate_check(text, "aiden", "fake-token")
+def test_gate_check_b_blocks_with_only_one_concurrer(isolated_pending_dir) -> None:
+    """Acceptance (b): only 1 deliberator concurrer → BLOCK + replacement + hold file."""
+    pdir = isolated_pending_dir / "processed"
+    _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot] yes")
+    text = "[CONCUR:atlas] release looks fine"
+    allow, replacement = concur_gate.gate_check(
+        text,
+        "elliot",
+        synthesis_author="elliot",
+        processed_dir=pdir,
+    )
     assert allow is False
     assert replacement is not None
-    assert "[CONCUR-REQUEST:AIDEN]" in replacement
-    # Hold file written under tmp_path
-    hold_dir = tmp_path / "aiden"
-    assert hold_dir.exists()
-    hold_files = list(hold_dir.glob("*.txt"))
+    assert "[CONCUR-REQUEST:ELLIOT]" in replacement
+    # Hold file written.
+    hold_files = list((isolated_pending_dir / "pending" / "elliot").glob("*.txt"))
     assert len(hold_files) == 1
     assert hold_files[0].read_text() == text
 
 
-def test_gate_check_topic_sha_in_replacement(tmp_path, monkeypatch) -> None:
-    """Replacement message references the held file by topic-sha."""
-    monkeypatch.setattr(concur_gate, "_pending_dir", lambda cs: tmp_path / cs)
-    text = "[BLOCK:elliot] hold on the rebase"
-    expected_sha = concur_gate._topic_sha(text)
-    with patch.object(concur_gate, "has_peer_concur", return_value=False):
-        _, replacement = concur_gate.gate_check(text, "aiden", "fake-token")
-    assert expected_sha in replacement
+def test_gate_check_c_blocks_when_only_concurrer_is_the_author(
+    isolated_pending_dir,
+) -> None:
+    """Acceptance (c): the lone concurrer is the synthesis author → BLOCK (independence)."""
+    pdir = isolated_pending_dir / "processed"
+    # Aiden authored the synthesis; aiden self-concurs in the inbox; nobody else has.
+    _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot] approving my own thing")
+    allow, replacement = concur_gate.gate_check(
+        "[CONCUR:atlas] release", "elliot", synthesis_author="aiden", processed_dir=pdir
+    )
+    assert allow is False
+    assert replacement is not None
+    assert "[CONCUR-REQUEST:ELLIOT]" in replacement
+    # The replacement should declare that we have no valid concurrers.
+    assert "Have: (none)" in replacement
+
+
+def test_gate_check_d_blocks_even_when_CONCUR_GATE_SKIP_set(
+    isolated_pending_dir, monkeypatch
+) -> None:
+    """Acceptance (d): CONCUR_GATE_SKIP=1 no longer opens the gate (env var removed)."""
+    monkeypatch.setenv("CONCUR_GATE_SKIP", "1")
+    pdir = isolated_pending_dir / "processed"  # empty — zero concurrers
+    pdir.mkdir()
+    allow, replacement = concur_gate.gate_check(
+        "[CONCUR:atlas] release", "elliot", synthesis_author="elliot", processed_dir=pdir
+    )
+    assert allow is False
+    assert replacement is not None
+    assert "[CONCUR-REQUEST:ELLIOT]" in replacement
+
+
+def test_gate_check_safe_default_requires_both_when_author_unknown(
+    isolated_pending_dir,
+) -> None:
+    """synthesis_author=None → require BOTH deliberators (aiden AND max)."""
+    pdir = isolated_pending_dir / "processed"
+    # Only 1 of 2 deliberators concur — should BLOCK under safe default.
+    _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot]")
+    allow, replacement = concur_gate.gate_check(
+        "[CONCUR:atlas] release", "elliot", processed_dir=pdir
+    )
+    assert allow is False
+    assert replacement is not None
+    assert "all 2 deliberators" in replacement
+
+
+def test_gate_check_safe_default_allows_when_both_deliberators_concur(
+    isolated_pending_dir,
+) -> None:
+    """synthesis_author=None + both deliberators concur → ALLOW. Atlas (worker
+    clone, not a deliberator post-2026-06-02) does not add to the count."""
+    pdir = isolated_pending_dir / "processed"
+    _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot]")
+    _write_envelope(pdir, "max.json", "max", "[CONCUR:elliot]")
+    _write_envelope(pdir, "atlas.json", "atlas", "[CONCUR:elliot]")  # ignored — not a deliberator
+    allow, _ = concur_gate.gate_check("[CONCUR:atlas] release", "elliot", processed_dir=pdir)
+    assert allow is True
+
+
+def test_gate_check_excludes_non_deliberator_concurrers(isolated_pending_dir) -> None:
+    """A non-deliberator concur (e.g. nova, orion) does not count toward the threshold."""
+    pdir = isolated_pending_dir / "processed"
+    _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot]")
+    _write_envelope(pdir, "nova.json", "nova", "[CONCUR:elliot]")  # not a deliberator
+    _write_envelope(pdir, "orion.json", "orion", "[CONCUR:elliot]")  # not a deliberator
+    allow, _ = concur_gate.gate_check(
+        "[CONCUR:atlas] release",
+        "elliot",
+        synthesis_author="elliot",
+        processed_dir=pdir,
+    )
+    # Only 1 deliberator (aiden); nova + orion don't count → block.
+    assert allow is False
+
+
+def test_gate_check_replacement_lists_deliberators(isolated_pending_dir) -> None:
+    """Replacement message names the eligible deliberator set."""
+    pdir = isolated_pending_dir / "processed"
+    pdir.mkdir()
+    _, replacement = concur_gate.gate_check(
+        "[CONCUR:atlas] release",
+        "elliot",
+        synthesis_author="elliot",
+        processed_dir=pdir,
+    )
+    assert "Eligible deliberators:" in replacement
+    for callsign in concur_gate.DELIBERATOR_CALLSIGNS:
+        assert callsign in replacement
+
+
+def test_gate_check_excludes_synthesis_author_case_insensitive(
+    isolated_pending_dir,
+) -> None:
+    """synthesis_author='AIDEN' should still be excluded (case-insensitive)."""
+    pdir = isolated_pending_dir / "processed"
+    _write_envelope(pdir, "aiden.json", "aiden", "[CONCUR:elliot]")
+    _write_envelope(pdir, "max.json", "max", "[CONCUR:elliot]")
+    allow, _ = concur_gate.gate_check(
+        "[CONCUR:atlas] release",
+        "elliot",
+        synthesis_author="AIDEN",  # uppercase author
+        processed_dir=pdir,
+    )
+    # AIDEN excluded → only max remains → 1 of 2 needed → BLOCK.
+    assert allow is False
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# env_skip
+# No surviving env_skip / CONCUR_GATE_SKIP path
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-@pytest.fixture(autouse=True)
-def _clear_env_skip():
-    prior = os.environ.pop("CONCUR_GATE_SKIP", None)
-    yield
-    if prior is not None:
-        os.environ["CONCUR_GATE_SKIP"] = prior
+def test_env_skip_removed_from_module() -> None:
+    """v2 removes env_skip(); module must no longer export it."""
+    assert not hasattr(concur_gate, "env_skip"), (
+        "env_skip must be removed in v2 — no env-var bypass per Dave directive 2026-06-02"
+    )
 
 
-def test_env_skip_default_false() -> None:
-    assert concur_gate.env_skip() is False
-
-
-def test_env_skip_one_true() -> None:
-    os.environ["CONCUR_GATE_SKIP"] = "1"
-    assert concur_gate.env_skip() is True
-
-
-def test_env_skip_true_string() -> None:
-    os.environ["CONCUR_GATE_SKIP"] = "true"
-    assert concur_gate.env_skip() is True
-
-
-def test_env_skip_yes_string() -> None:
-    os.environ["CONCUR_GATE_SKIP"] = "yes"
-    assert concur_gate.env_skip() is True
-
-
-def test_env_skip_unrecognized_false() -> None:
-    """Random non-truthy strings → False."""
-    os.environ["CONCUR_GATE_SKIP"] = "maybe"
-    assert concur_gate.env_skip() is False
+def test_has_peer_concur_removed_from_module() -> None:
+    """v2 removes the Slack history scan; gate is inbox-source-only."""
+    assert not hasattr(concur_gate, "has_peer_concur"), (
+        "has_peer_concur (Slack history scan) is dead — #execution killed 2026-05-27"
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# _topic_sha — deterministic short hash
+# _topic_sha — deterministic short hash (unchanged from v1)
 # ─────────────────────────────────────────────────────────────────────────────
 
 
@@ -316,43 +380,47 @@ def test_topic_sha_different_inputs_different_outputs() -> None:
 
 
 def test_topic_sha_length() -> None:
-    """12-char prefix of sha1."""
     assert len(concur_gate._topic_sha("anything")) == 12
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# _eligible_reviewers — Agency_OS-yvlr51 routing-fix (CONCUR-REQUEST signaling)
+# Lookback config
 # ─────────────────────────────────────────────────────────────────────────────
 
 
-def test_eligible_reviewers_fallback_when_no_agent_health() -> None:
-    """Agency_OS-yvlr51 negative path — ceo:agent_health absent → all non-author callsigns.
-
-    The polling-loop infra that populates ceo:agent_health (KEI-63 follow-up)
-    does not exist yet. The fallback MUST return the full 7-callsign roster
-    minus the author, so the CONCUR-REQUEST stub advertises every peer that
-    can validly release the gate. This is what unblocks the V1-chain
-    specific-callsign-stuck failure mode Dave diagnosed 2026-05-14.
-    """
-    result = concur_gate._eligible_reviewers("aiden")
-    expected = sorted({"elliot", "max", "atlas", "orion", "scout", "nova"})
-    assert result == expected
-    # Author always excluded, case-insensitive.
-    assert "aiden" not in concur_gate._eligible_reviewers("AIDEN")
+def test_lookback_default_is_sixty_minutes(monkeypatch) -> None:
+    monkeypatch.delenv("CONCUR_LOOKBACK_MINUTES", raising=False)
+    assert concur_gate._lookback_seconds() == 60.0 * 60.0
 
 
-def test_gate_check_replacement_advertises_eligible_reviewers(tmp_path, monkeypatch) -> None:
-    """CONCUR-REQUEST stub must list eligible non-author peers in its body."""
-    monkeypatch.setattr(concur_gate, "_pending_dir", lambda cs: tmp_path / cs)
-    with patch.object(concur_gate, "has_peer_concur", return_value=False):
-        _, replacement = concur_gate.gate_check(
-            "[CONCUR:max] verified the diff", "aiden", "fake-token"
-        )
-    assert "Eligible reviewers:" in replacement
-    eligible_line = next(
-        ln for ln in replacement.splitlines() if ln.startswith("Eligible reviewers:")
+def test_lookback_env_override(monkeypatch) -> None:
+    monkeypatch.setenv("CONCUR_LOOKBACK_MINUTES", "15")
+    assert concur_gate._lookback_seconds() == 15.0 * 60.0
+
+
+def test_lookback_invalid_env_falls_back_to_default(monkeypatch) -> None:
+    monkeypatch.setenv("CONCUR_LOOKBACK_MINUTES", "not-a-number")
+    assert concur_gate._lookback_seconds() == 60.0 * 60.0
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Integration smoke — real now() + real mtime
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+def test_real_now_and_mtime_pick_up_just_written_files(isolated_pending_dir) -> None:
+    """No now= injection — gate uses time.time() and fs mtime as written."""
+    pdir = isolated_pending_dir / "processed"
+    _write_envelope(pdir, "a.json", "aiden", "[CONCUR:elliot]")
+    _write_envelope(pdir, "m.json", "max", "[CONCUR:elliot]")
+    # No now=, no mtime override — relies on time.time() and current mtime.
+    allow, _ = concur_gate.gate_check(
+        "[CONCUR:atlas] release",
+        "elliot",
+        synthesis_author="elliot",
+        processed_dir=pdir,
     )
-    for peer in ("elliot", "max", "atlas", "orion", "scout", "nova"):
-        assert peer in eligible_line
-    # Author not in the eligible-reviewers line itself.
-    assert "aiden" not in eligible_line
+    assert allow is True
+    # Sanity: mtime is recent.
+    for path in pdir.glob("*.json"):
+        assert path.stat().st_mtime > time.time() - 5

@@ -445,19 +445,28 @@ def test_merge_with_dual_concur_auto_approves(cw, monkeypatch):
 @pytest.mark.parametrize(
     "tool_str",
     [
-        # git — extended write ops
+        # git — extended write ops. `git checkout -b` (branch creation) is the
+        # ONLY allowed checkout form; bare `git checkout` was removed (binding_dissent
+        # nucleus, Dave 2026-06-02) because it covers destructive paths like
+        # `git checkout -- .` and silent branch switches.
         "Bash(git fetch origin main)",
         "Bash(git pull --rebase)",
         "Bash(git push -u origin atlas/feature)",
-        "Bash(git checkout origin/main -b atlas/feature)",
+        "Bash(git checkout -b nova/feature)",
         "Bash(git rev-parse HEAD)",
-        # GitHub CLI — new read ops
+        # GitHub CLI — new read ops. `gh api ` removed (binding_dissent
+        # nucleus, Dave 2026-06-02): the substring cannot distinguish read
+        # endpoints from `gh api … -X PUT/POST/DELETE` writes or write
+        # endpoints like `/pulls/N/merge`. Anything previously matched by
+        # `gh api ` is now an explicit escalation to Dave.
         "Bash(gh run view 26731207618)",
         "Bash(gh run list --workflow ci.yml --limit 5)",
-        "Bash(gh api repos/Keiracom/Agency_OS/pulls/1378)",
-        # GitHub CLI — new write ops
+        # GitHub CLI — new write ops. `gh pr merge` removed (binding_dissent
+        # nucleus, Dave 2026-06-02): merges land code in main and MUST gate
+        # on verified dual-concur via is_merge_with_dual_concur, not on a
+        # blanket auto-approve. test_merge_with_dual_concur_auto_approves
+        # is the proof that the verified path still works after this change.
         "Bash(gh pr create --title 'feat' --body '…')",
-        "Bash(gh pr merge 1234 --squash --admin)",
         # tmux — extended read ops
         "Bash(tmux list-sessions)",
         "Bash(tmux list-panes -t atlas)",
@@ -519,6 +528,25 @@ def test_auto_approve_pattern_expansion_covers_new_categories(cw, tool_str):
         # global config, NOT in the allow-list. Catches accidental "git "
         # prefix-only matches.
         "Bash(git config user.email evil@example)",
+        # ── binding_dissent nucleus (Dave 2026-06-02) ─────────────────────
+        # `gh pr merge` was removed from AUTO_APPROVE_PATTERNS because
+        # merges land code in main. The verified path is
+        # is_merge_with_dual_concur; the substring path must NOT exist.
+        # A blanket auto-approve here defeats the whole review/dissent
+        # mechanism — this test enforces that the substring is gone.
+        "Bash(gh pr merge 1234 --squash --admin)",
+        # `gh api ` was removed because the substring cannot tell read from
+        # write. `gh api … /pulls/N/merge -X PUT` is the canonical bypass —
+        # it looks like an api read but performs a merge. Must escalate.
+        "Bash(gh api repos/Keiracom/Agency_OS/pulls/1385/merge -X PUT)",
+        # Bare `git checkout` was removed because it covers
+        # `git checkout -- .` (destructive working-tree reset — discards
+        # uncommitted work). The allow-list now requires `git checkout -b`
+        # explicitly. This test pins that `--` forms still escalate.
+        "Bash(git checkout -- .)",
+        # Another bare `git checkout` form — silent branch switch can move
+        # the working tree to an arbitrary ref. Must escalate, not auto-tab.
+        "Bash(git checkout main)",
     ],
 )
 def test_auto_approve_pattern_expansion_rejects_dangerous(cw, tool_str):

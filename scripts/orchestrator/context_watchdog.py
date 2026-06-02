@@ -90,16 +90,28 @@ GENUINE_STALL_INDICATORS = (
 )
 TOOL_CALL_PREFIXES = ("● Bash(", "● Read(", "● Write(")
 AUTO_APPROVE_PATTERNS = [
-    # git — read + routine write on feature branches
+    # git — read + routine write on feature branches.
+    # `git checkout -b` (branch creation) ONLY — NOT bare `git checkout`,
+    # which covers `git checkout -- .` (destructive working-tree reset) and
+    # `git checkout main` (silent branch switch). Max HOLD blocker #1 on
+    # PR #1385 (binding_dissent wire, Dave directive 2026-06-02).
     "git log", "git status", "git diff", "git branch", "git show", "git grep",
     "git add", "git commit", "git fetch", "git pull", "git stash", "git push",
-    "git checkout", "git rev-parse",
-    # GitHub CLI — read
+    "git checkout -b", "git rev-parse",
+    # GitHub CLI — read. `gh api ` substring REMOVED — it cannot distinguish
+    # read endpoints from write endpoints (`gh api … -X PUT/POST/DELETE` and
+    # endpoints like `/pulls/N/merge` are writes wearing a read prefix). Max
+    # HOLD blocker #2 on PR #1385.
     "gh pr view", "gh pr list", "gh pr checks", "gh pr diff",
     "gh issue view", "gh issue list",
-    "gh run view", "gh run list", "gh api ",
-    # GitHub CLI — routine write ops
-    "gh pr comment", "gh pr create", "gh pr merge",
+    "gh run view", "gh run list",
+    # GitHub CLI — routine write ops. `gh pr merge` substring REMOVED —
+    # merges land code in main and MUST gate on verified dual-concur, not on
+    # an unconditional auto-approve. The verified path lives in
+    # is_merge_with_dual_concur (PR comments must contain ≥2 REVIEW:approve
+    # before send_tab fires). Max HOLD blocker #3 + binding_dissent
+    # nucleus on PR #1385 (Dave directive 2026-06-02).
+    "gh pr comment", "gh pr create",
     # tmux read ops
     "tmux capture-pane", "tmux list-sessions", "tmux list-panes", "tmux list-windows",
     # Local scripts — diagnostic, test, lint (no external API spend)

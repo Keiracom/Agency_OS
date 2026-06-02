@@ -1,0 +1,18 @@
+[Unit]
+Description=Agency_OS — fleet liveness ground-truth checker (5 minute cadence)
+Documentation=file://%h/clawd/Agency_OS/scripts/orchestrator/fleet_liveness_checker.py
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=%h/.config/agency-os/.env
+WorkingDirectory=%h/clawd/Agency_OS
+ExecStart=%h/clawd/Agency_OS/.venv/bin/python3 %h/clawd/Agency_OS/scripts/orchestrator/fleet_liveness_checker.py
+Nice=10
+StandardOutput=journal
+StandardError=journal
+TimeoutStartSec=120
+
+[Install]
+WantedBy=default.target

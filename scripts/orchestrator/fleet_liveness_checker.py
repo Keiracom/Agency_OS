@@ -164,7 +164,17 @@ def _probe_reported_callsign(callsign: str) -> str | None:
 
 
 def _walk_pid_tree_for_callsign(root_pid: int) -> str | None:
-    """BFS over PID + descendants (depth-bounded), return first CALLSIGN seen."""
+    """BFS over PID + descendants (depth-bounded), return first CALLSIGN seen.
+
+    Depth 0 is the tmux pane leader (the pane shell). The shell inherits
+    CALLSIGN from the tmux server's own environment, which carries whatever
+    callsign was exported when tmux was first launched on this box. That
+    value is stale for every other session created since (anchor: pane shell
+    on aiden session shows CALLSIGN=atlas inherited from tmux server, while
+    the claude child at depth 1 correctly has CALLSIGN=aiden). Skip the
+    depth-0 read entirely and only consult /proc/<pid>/environ from depth>=1
+    so we read the per-agent claude process, not the shared shell ancestor.
+    """
     stack: list[tuple[int, int]] = [(root_pid, 0)]
     seen: set[int] = set()
     while stack:
@@ -172,9 +182,10 @@ def _walk_pid_tree_for_callsign(root_pid: int) -> str | None:
         if pid in seen or depth > _CALLSIGN_PROBE_MAX_DEPTH:
             continue
         seen.add(pid)
-        value = _read_callsign_env(pid)
-        if value:
-            return value
+        if depth > 0:
+            value = _read_callsign_env(pid)
+            if value:
+                return value
         try:
             result = subprocess.run(
                 ["pgrep", "-P", str(pid)],

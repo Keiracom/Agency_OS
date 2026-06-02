@@ -2,8 +2,8 @@
 """fleet_liveness_checker.py — on-box ground-truth liveness probe (5min cadence).
 
 Invoked by fleet-liveness-checker.timer every 5 minutes. For each callsign
-in CALLSIGNS, probes four signals from outside the agent's own process and
-writes one row to public.fleet_liveness:
+in CALLSIGNS, probes signals from outside the agent's own process and writes
+one row to public.fleet_liveness:
 
   1. tmux_alive   — `tmux has-session -t <callsign>` (or <callsign>bot fallback
                     for elliottbot / maxbot)
@@ -11,6 +11,12 @@ writes one row to public.fleet_liveness:
                             keiracom.agent.status.<callsign> via NATS JetStream
   3. backend_health — trimmed body from http://localhost:8000/health (256 chars)
   4. active_task_id — current claimed-active task for the callsign
+  5. reported_callsign — CALLSIGN env var actually exported in the agent's
+                         tmux pane process tree (pane leader + descendants).
+                         Catches the bug where an agent runs under the wrong
+                         callsign without anyone noticing.
+  6. callsign_match — TRUE/FALSE when reported_callsign is observable;
+                      NULL when the pane has no readable process or env var.
 
 Side effect: for every callsign with tmux_alive=True AND active_task_id IS NOT
 NULL, also updates public.tasks.heartbeat_at=NOW() — revives the heartbeat
@@ -53,9 +59,12 @@ HEALTH_BODY_MAX = 256
 
 _INSERT_SQL = """
 INSERT INTO public.fleet_liveness
-    (callsign, checked_at, tmux_alive, nats_last_publish_at, backend_health, active_task_id)
-VALUES (%s, NOW(), %s, %s, %s, %s)
+    (callsign, checked_at, tmux_alive, nats_last_publish_at, backend_health,
+     active_task_id, reported_callsign, callsign_match)
+VALUES (%s, NOW(), %s, %s, %s, %s, %s, %s)
 """
+
+_CALLSIGN_PROBE_MAX_DEPTH = 4
 
 _ACTIVE_TASK_SQL = """
 SELECT id::text FROM public.tasks
@@ -100,6 +109,90 @@ def _probe_tmux(callsign: str) -> bool:
         except (subprocess.TimeoutExpired, OSError) as exc:
             logger.debug("tmux probe %s failed: %s", name, exc)
     return False
+
+
+def _read_callsign_env(pid: int) -> str | None:
+    """Read CALLSIGN= out of /proc/<pid>/environ, or None if absent/unreadable."""
+    try:
+        with open(f"/proc/{pid}/environ", "rb") as fh:
+            data = fh.read()
+    except (OSError, PermissionError):
+        return None
+    prefix = b"CALLSIGN="
+    for raw in data.split(b"\x00"):
+        if raw.startswith(prefix):
+            return raw[len(prefix) :].decode("utf-8", errors="replace").strip() or None
+    return None
+
+
+def _probe_reported_callsign(callsign: str) -> str | None:
+    """Return the CALLSIGN env var exported in the agent's tmux pane process tree.
+
+    Walks the pane leader PID and its descendants (claude is typically a child of
+    a shell that may not itself export CALLSIGN). Returns the first observed
+    value or None if no descendant exports CALLSIGN. Fail-graceful on every
+    subprocess / proc-fs path — exceptions log at DEBUG and return None.
+    """
+    if not shutil.which("tmux"):
+        return None
+    candidates = [callsign]
+    alias = TMUX_ALIASES.get(callsign)
+    if alias and alias != callsign:
+        candidates.append(alias)
+    for name in candidates:
+        try:
+            result = subprocess.run(
+                ["tmux", "list-panes", "-t", f"={name}", "-F", "#{pane_pid}"],
+                capture_output=True,
+                timeout=3,
+                check=False,
+                text=True,
+            )
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            logger.debug("reported-callsign list-panes %s failed: %s", name, exc)
+            continue
+        if result.returncode != 0:
+            continue
+        for line in result.stdout.splitlines():
+            pid_str = line.strip()
+            if not pid_str.isdigit():
+                continue
+            found = _walk_pid_tree_for_callsign(int(pid_str))
+            if found:
+                return found
+    return None
+
+
+def _walk_pid_tree_for_callsign(root_pid: int) -> str | None:
+    """BFS over PID + descendants (depth-bounded), return first CALLSIGN seen."""
+    stack: list[tuple[int, int]] = [(root_pid, 0)]
+    seen: set[int] = set()
+    while stack:
+        pid, depth = stack.pop()
+        if pid in seen or depth > _CALLSIGN_PROBE_MAX_DEPTH:
+            continue
+        seen.add(pid)
+        value = _read_callsign_env(pid)
+        if value:
+            return value
+        try:
+            result = subprocess.run(
+                ["pgrep", "-P", str(pid)],
+                capture_output=True,
+                timeout=2,
+                check=False,
+                text=True,
+            )
+        except (subprocess.TimeoutExpired, OSError) as exc:
+            logger.debug("pgrep -P %d failed: %s", pid, exc)
+            continue
+        if result.returncode != 0:
+            continue
+        for line in result.stdout.splitlines():
+            child = line.strip()
+            if child.isdigit():
+                stack.append((int(child), depth + 1))
+    return None
 
 
 def _probe_nats_last_publish(callsign: str) -> datetime | None:
@@ -195,11 +288,21 @@ def main() -> int:
                     nats_ts = _probe_nats_last_publish(callsign)
                     health = _probe_backend_health()
                     active_task = _query_active_task(cur, callsign)
+                    reported = _probe_reported_callsign(callsign) if tmux_alive else None
+                    match = (reported == callsign) if reported is not None else None
 
                     try:
                         cur.execute(
                             _INSERT_SQL,
-                            (callsign, tmux_alive, nats_ts, health, active_task),
+                            (
+                                callsign,
+                                tmux_alive,
+                                nats_ts,
+                                health,
+                                active_task,
+                                reported,
+                                match,
+                            ),
                         )
                         written += 1
                     except Exception as exc:  # noqa: BLE001

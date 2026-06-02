@@ -1,0 +1,12 @@
+[Unit]
+Description=Agency_OS — fire fleet liveness checker every 5 minutes
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=5min
+RandomizedDelaySec=30
+Persistent=true
+Unit=fleet-liveness-checker.service
+
+[Install]
+WantedBy=timers.target

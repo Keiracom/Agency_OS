@@ -525,17 +525,18 @@ def main() -> int:
             return 2
     except ImportError:
         pass
-    # R1 outbound gate (P0 per Max directive 2026-05-11 — hold trigger-pattern
-    # messages until peer concur is in the recent #execution window).
+    # R1 outbound gate (P0 per Max directive 2026-05-11; rewired Dave directive
+    # 2026-06-02 — scan inbox-watcher processed/ for ≥2 distinct non-author
+    # deliberator [CONCUR] within the lookback window; CONCUR_GATE_SKIP bypass
+    # removed). See src/bot_common/concur_gate.py for the source-of-signal note.
     try:
-        from src.bot_common.concur_gate import env_skip, gate_check
+        from src.bot_common.concur_gate import gate_check
     except ImportError:
         # Repo not on sys.path (rare — e.g. invoked from outside the repo
         # root). Fall through ungated rather than block all posts.
-        env_skip = lambda: True  # noqa: E731
         gate_check = None
-    if gate_check and not env_skip():
-        allow, replacement = gate_check(message, CALLSIGN, BOT_TOKEN)
+    if gate_check:
+        allow, replacement = gate_check(message, CALLSIGN)
         if not allow and replacement is not None:
             message = replacement
             print("⚠  concur-gate HELD original; posting CONCUR-REQUEST instead", file=sys.stderr)

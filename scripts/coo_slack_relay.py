@@ -80,16 +80,21 @@ def post(channel: str, text: str) -> dict:
         )
         return {"ok": True, "dropped": True, "reason": "execution_channel_killed"}
     if channel not in ALLOWED_CHANNELS:
-        print(f"ERROR: Max-relay refuses post to {channel} — Max only posts to #execution per Dave 2026-05-11", file=sys.stderr)
+        print(
+            f"ERROR: Max-relay refuses post to {channel} — Max only posts to #execution per Dave 2026-05-11",
+            file=sys.stderr,
+        )
         sys.exit(2)
     if not text.startswith(CALLSIGN_TAG):
         text = f"{CALLSIGN_TAG} {text}"
-    body = json.dumps({
-        "channel": channel,
-        "text": text,
-        "username": USERNAME,
-        "icon_emoji": ":toolbox:",
-    }).encode("utf-8")
+    body = json.dumps(
+        {
+            "channel": channel,
+            "text": text,
+            "username": USERNAME,
+            "icon_emoji": ":toolbox:",
+        }
+    ).encode("utf-8")
     req = urllib.request.Request(
         "https://slack.com/api/chat.postMessage",
         data=body,
@@ -115,23 +120,24 @@ def main() -> int:
         if _repo not in sys.path:
             sys.path.insert(0, _repo)
         from src.bot_common.verify_gate import gate_check as verify_gate_check
+
         ok, blocker = verify_gate_check(message)
         if not ok:
             print(f"R_VERIFY_BLOCKED: {blocker}", file=sys.stderr)
             return 2
     except ImportError:
         pass
-    # R1 outbound gate (P0 per Max directive 2026-05-11)
+    # R1 outbound gate (P0 per Max directive 2026-05-11; rewired Dave directive
+    # 2026-06-02 — inbox-signal source, CONCUR_GATE_SKIP bypass removed).
     try:
-        from src.bot_common.concur_gate import env_skip, gate_check
+        from src.bot_common.concur_gate import gate_check
     except ImportError:
-        env_skip = lambda: True  # noqa: E731
         gate_check = None
-    if gate_check and not env_skip():
-        allow, replacement = gate_check(message, CALLSIGN, BOT_TOKEN)
+    if gate_check:
+        allow, replacement = gate_check(message, CALLSIGN)
         if not allow and replacement is not None:
             message = replacement
-            print(f"⚠  concur-gate HELD original; posting CONCUR-REQUEST instead", file=sys.stderr)
+            print("⚠  concur-gate HELD original; posting CONCUR-REQUEST instead", file=sys.stderr)
     result = post(channel, message)
     if not result.get("ok"):
         print(f"ERROR: Slack rejected: {result}", file=sys.stderr)

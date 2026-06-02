@@ -1034,3 +1034,208 @@ def test_advance_step_fail_open_when_query_returns_none(
     state = json.loads(state_file.read_text())
     assert state[chain_id]["current_step"] == "max_challenge"
     assert state[chain_id].get("ceiling_tripped") is not True
+
+
+# ---------------------------------------------------------------------------
+# JetStream durable consumer (Dave directive 2026-06-02 — handoff stall fix)
+# ---------------------------------------------------------------------------
+
+
+class _FakeAckMsg:
+    """NATS msg double exposing data + async ack/nak counters."""
+
+    def __init__(self, data: bytes):
+        self.data = data
+        self.ack_calls = 0
+        self.nak_calls = 0
+
+    async def ack(self) -> None:
+        self.ack_calls += 1
+
+    async def nak(self) -> None:
+        self.nak_calls += 1
+
+
+async def test_ensure_handoff_stream_returns_true_when_stream_exists(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """If stream_info succeeds, helper returns True without calling add_stream."""
+    add_called = {"n": 0}
+
+    class _FakeJS:
+        async def stream_info(self, name: str):
+            assert name == orch.JS_STREAM_NAME
+            return object()  # success — any non-exception return
+
+        async def add_stream(self, *, config):  # pragma: no cover — should not fire
+            add_called["n"] += 1
+
+    ok = await orch._ensure_handoff_stream(_FakeJS(), orch.CONSUMER_SUBJECT)
+    assert ok is True
+    assert add_called["n"] == 0
+
+
+async def test_ensure_handoff_stream_creates_on_not_found():
+    """If stream_info raises NotFoundError, helper calls add_stream and returns True."""
+    from nats.js.errors import NotFoundError
+
+    created: dict = {}
+
+    class _FakeJS:
+        async def stream_info(self, name: str):
+            raise NotFoundError()
+
+        async def add_stream(self, *, config):
+            created["name"] = config.name
+            created["subjects"] = list(config.subjects)
+            created["retention"] = config.retention
+            created["storage"] = config.storage
+
+    ok = await orch._ensure_handoff_stream(_FakeJS(), orch.CONSUMER_SUBJECT)
+    from nats.js.api import RetentionPolicy, StorageType
+
+    assert ok is True
+    assert created["name"] == orch.JS_STREAM_NAME
+    assert created["subjects"] == [orch.CONSUMER_SUBJECT]
+    assert created["retention"] == RetentionPolicy.WORK_QUEUE
+    assert created["storage"] == StorageType.FILE
+
+
+async def test_ensure_handoff_stream_returns_false_when_add_raises():
+    """If add_stream raises, helper returns False (fall-back to core sub upstream)."""
+    from nats.js.errors import NotFoundError
+
+    class _FakeJS:
+        async def stream_info(self, name: str):
+            raise NotFoundError()
+
+        async def add_stream(self, *, config):
+            raise RuntimeError("broker rejected")
+
+    ok = await orch._ensure_handoff_stream(_FakeJS(), orch.CONSUMER_SUBJECT)
+    assert ok is False
+
+
+async def test_subscribe_jetstream_durable_passes_consumer_config():
+    """js.subscribe is called with durable + manual_ack + EXPLICIT ack policy."""
+    captured: dict = {}
+
+    class _FakeJS:
+        async def subscribe(self, *, subject, durable, cb, manual_ack, config):
+            captured["subject"] = subject
+            captured["durable"] = durable
+            captured["manual_ack"] = manual_ack
+            captured["durable_name"] = config.durable_name
+            captured["deliver_subject"] = config.deliver_subject
+            captured["ack_policy"] = config.ack_policy
+            return object()  # sub handle
+
+    async def _cb(msg):  # pragma: no cover — not invoked
+        pass
+
+    sub = await orch._subscribe_jetstream_durable(_FakeJS(), orch.CONSUMER_SUBJECT, _cb)
+    from nats.js.api import AckPolicy
+
+    assert sub is not None
+    assert captured["subject"] == orch.CONSUMER_SUBJECT
+    assert captured["durable"] == orch.JS_CONSUMER_DURABLE
+    assert captured["manual_ack"] is True
+    assert captured["durable_name"] == orch.JS_CONSUMER_DURABLE
+    assert captured["deliver_subject"] == orch.JS_DELIVER_SUBJECT
+    assert captured["ack_policy"] == AckPolicy.EXPLICIT
+
+
+async def test_subscribe_jetstream_durable_returns_none_on_failure():
+    """Subscribe failure returns None so caller can fall back to core sub."""
+
+    class _FakeJS:
+        async def subscribe(self, **kwargs):
+            raise RuntimeError("no JS")
+
+    sub = await orch._subscribe_jetstream_durable(_FakeJS(), orch.CONSUMER_SUBJECT, lambda m: None)
+    assert sub is None
+
+
+async def test_dispatch_handoff_message_acks_on_success(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Well-formed payload + successful handler → ack, no nak."""
+    _capture_publishes(monkeypatch)
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+    chain_id = "task-js-1"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": chain_id,
+            "brief": "x",
+            "started_ts": 0.0,
+            "current_step": "aiden_plan",
+            "steps_done": [],
+            "atom_ids": {},
+            "pending": [],
+        },
+    )
+    envelope = {"task_id": chain_id, "atom_id": "a1", "from_callsign": "aiden"}
+    msg = _FakeAckMsg(json.dumps(envelope).encode("utf-8"))
+    await orch._dispatch_handoff_message(msg)
+    assert msg.ack_calls == 1
+    assert msg.nak_calls == 0
+
+
+async def test_dispatch_handoff_message_acks_on_malformed_payload():
+    """Permanent parse failure → ack (drop), not nak (which would redeliver forever)."""
+    msg = _FakeAckMsg(b"\xff\xfe not json")
+    await orch._dispatch_handoff_message(msg)
+    assert msg.ack_calls == 1
+    assert msg.nak_calls == 0
+
+
+async def test_dispatch_handoff_message_naks_on_handler_exception(
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Handler raise → nak so the WorkQueue stream redelivers; never propagates."""
+
+    async def _boom(_payload):
+        raise RuntimeError("downstream blew up")
+
+    monkeypatch.setattr(orch, "_consumer_handle_envelope_async", _boom)
+    envelope = {"task_id": "t", "atom_id": "a", "from_callsign": "aiden"}
+    msg = _FakeAckMsg(json.dumps(envelope).encode("utf-8"))
+    await orch._dispatch_handoff_message(msg)  # must NOT raise
+    assert msg.ack_calls == 0
+    assert msg.nak_calls == 1
+
+
+async def test_dispatch_handoff_message_core_subscribe_no_ack_attrs(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    """Core-subscribe msgs have no ack/nak methods — helper must not crash."""
+    _capture_publishes(monkeypatch)
+    state_file = tmp_path / "v1_chain_state.json"
+    monkeypatch.setattr(orch, "STATE_FILE", state_file)
+    chain_id = "task-core-1"
+    _seed_state(
+        tmp_path,
+        chain_id,
+        {
+            "chain_id": chain_id,
+            "task_id": chain_id,
+            "brief": "x",
+            "started_ts": 0.0,
+            "current_step": "aiden_plan",
+            "steps_done": [],
+            "atom_ids": {},
+            "pending": [],
+        },
+    )
+
+    class _CoreMsg:
+        def __init__(self, data: bytes):
+            self.data = data
+
+    envelope = {"task_id": chain_id, "atom_id": "a1", "from_callsign": "aiden"}
+    msg = _CoreMsg(json.dumps(envelope).encode("utf-8"))
+    await orch._dispatch_handoff_message(msg)  # must NOT crash on missing ack/nak

@@ -51,26 +51,14 @@ SET LOCAL agency_os.callsign = 'dave';
 
 
 -- ============================================================================
--- 1. gate_roadmap — CREATE IF NOT EXISTS + ALTER ADD COLUMN IF NOT EXISTS.
+-- 1. gate_roadmap — ADDITIVE ONLY (Dave directive 2026-06-02).
+--
+-- The gate_roadmap table already exists in prod (50 live rows confirmed
+-- against jatzvazlbusedwsnqxzr). This migration MUST be additive — it
+-- only ADDs columns + a UNIQUE constraint via DO block. No CREATE TABLE
+-- gate_roadmap, even with IF NOT EXISTS. A fresh-DB bootstrap is the
+-- responsibility of the original gate_roadmap migration (not this one).
 -- ============================================================================
-
-CREATE TABLE IF NOT EXISTS public.gate_roadmap (
-    id            UUID         PRIMARY KEY DEFAULT gen_random_uuid(),
-    component     TEXT         NOT NULL,
-    phase         TEXT         NOT NULL,
-    subphase      TEXT,
-    proof_gate    TEXT         NOT NULL,
-    gate_id       TEXT,
-    status        TEXT         NOT NULL DEFAULT 'not_started'
-                  CHECK (status IN ('not_started', 'built', 'proven', 'skipped', 'deferred')),
-    owner         TEXT,
-    kei_link      TEXT,
-    blocker_text  TEXT,
-    notes         TEXT,
-    last_verified TIMESTAMPTZ,
-    created_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    updated_at    TIMESTAMPTZ  NOT NULL DEFAULT NOW()
-);
 
 ALTER TABLE public.gate_roadmap
     ADD COLUMN IF NOT EXISTS built_by_callsign        TEXT,

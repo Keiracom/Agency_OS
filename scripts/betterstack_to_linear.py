@@ -139,6 +139,15 @@ def handle_incident(
     event: dict,
 ) -> int:  # NOSONAR S3516 — multiple return paths: 0 success/idempotent-skip, 2 missing LINEAR_API_KEY (operator misconfig signal), 0 graceful no-op on no-incident-id or create-failure; failures fail-open + logged per operator-script discipline
     """Idempotent create: skip if incident_id already mapped to a Linear issue."""
+    # Linear retirement (Dave 2026-06-03 "we don't need linear"): this writer is
+    # neutered by default — no issueCreate is POSTed. Reversible via
+    # LINEAR_RETIRED=0. governance_hooks.py also blocks Linear write mutations at
+    # the PreToolUse hook (defense-in-depth). Returns 0 (graceful no-op) so the
+    # systemd timer does not log a failure. Mirrors the completion_sync_worker
+    # 1x3x retired-writer pattern.
+    if os.environ.get("LINEAR_RETIRED", "1") != "0":
+        logger.info("LINEAR_RETIRED: betterstack→Linear issueCreate suppressed (no-op)")
+        return 0
     incident_id = event.get("incident_id", "")
     if not incident_id:
         return 0

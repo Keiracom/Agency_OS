@@ -513,7 +513,16 @@ async def ingest(
     try:
         from src.cognee.client import add, cognify
     except ImportError as exc:
-        logger.error("cognee.client import failed: %s — Phase 0 not live?", exc)
+        # Agency_OS-3uj7: demoted from error → debug. The original level was
+        # raising "WARNING: cognee.client import failed" on every code path
+        # that touched this module (e.g. bd claim indirectly via the recall
+        # injector chain) — confusing because cognee Phase 0 is deliberately
+        # absent on hosts where the cognee wrapper isn't installed and the
+        # caller is fail-open by contract. The ingester returns (0, len(chunks))
+        # below to signal "skipped — no client" so the caller's invariants
+        # don't break; logging this at debug keeps it grep-able without
+        # producing stderr noise on every invocation.
+        logger.debug("cognee.client import failed: %s — Phase 0 not live?", exc)
         return 0, len(chunks)
 
     ok, fail = 0, 0

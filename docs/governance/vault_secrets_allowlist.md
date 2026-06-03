@@ -127,3 +127,35 @@ that calls `resolve_into_env()` then `exec`s the service — one wrapper, fleet-
 instead of 58 per-entrypoint edits. `.env` then shrinks to the bootstrap allowlist
 (`VAULT_ADDR`/`VAULT_TOKEN`). Migrate carve-out removal happens batch-by-batch AFTER
 each batch of units is moved onto the wrapper and verified green.
+
+---
+
+## Read-topology analysis (Phase 2 lever — static audit 2026-06-03)
+
+The decisive question for Phase 2 efficiency: do services read env directly, or via
+a shared hub? Answer: **a shared hub.**
+
+- `src/config/settings.py` is a pydantic `BaseSettings` config hub **imported by 91
+  files**. Pydantic reads `os.environ` at instantiation.
+- `config/.env` (pydantic `env_file`) **does not exist** → `env_file` is a no-op →
+  **`os.environ` is the sole secret source** for the entire app.
+- **Zero unused migrate secrets** — all 62 have at least one live reader.
+
+**Conclusion — one lever covers everything.** Because every consumer (the 91-file
+settings hub + any direct `os.environ` reads + the 80 host services) ultimately reads
+`os.environ`, a `vault-envwrap` launcher that calls `resolve_into_env()` (Vault →
+`os.environ`) then `exec`s the service makes the whole fleet Vault-backed **without
+editing settings.py or any of the 91 consumers**. Phase 2 is a launch-boundary change
+(systemd `ExecStart`), not a code migration.
+
+**Final data-backed allowlist (what stays in `.env`):**
+| Category | Count | Action |
+|----------|------:|--------|
+| Bootstrap (`VAULT_ADDR`, `VAULT_TOKEN`) | 2 | keep — resolver needs them |
+| Frontend/build-time | 4 | → Vercel env (not agent `.env`) |
+| Migrate (Vault-resolved) | 62 | removed from `.env` after launcher rollout + verify-green |
+| Unused | 0 | — |
+| Missing everywhere (`STRIPE_SECRET_KEY`) | 1 | provision or drop from manifest |
+
+**Phase 2 execution (pending Elliot go):** build `vault-envwrap`, pilot on ONE
+low-risk unit, verify green, roll out in batches, then strip the 62 carve-outs.

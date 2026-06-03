@@ -107,12 +107,38 @@ def main() -> int:
     )
     print(f"N+1 worst-spike  : {over:.1f} GB  (the config that would OOM)")
 
-    sustained_ok = sustained <= ram_mb / 1024
-    worst_ok = worst <= addressable_mb / 1024
+    # Real measured aggregate (Aiden review #1433): when >=N sessions are live,
+    # the worst-case need not be a linear projection from a single-session peak
+    # — sum the N largest MEASURED co-resident peaks + infra. This is an actual
+    # observed aggregate, not 6 x WORST_SPIKE. Stronger proof when the box is
+    # loaded; absent under N live sessions it falls back to the projection.
+    measured_worst_gb: float | None = None
+    if len(peaks) >= N_TOTAL:
+        topn_mb = sum(peaks[:N_TOTAL])
+        measured_worst_gb = topn_mb / 1024 + INFRA_RESERVE_GB
+        print(
+            f"\nmeasured agg     : sum(top {N_TOTAL} live peaks) {topn_mb:.0f} MB + "
+            f"{INFRA_RESERVE_GB} GB infra = {measured_worst_gb:.1f} GB  (REAL aggregate)"
+        )
+    else:
+        print(
+            f"\nmeasured agg     : only {len(peaks)} live sessions (< N={N_TOTAL}) — "
+            f"projection used; re-run under sustained {N_TOTAL}-session load for a real aggregate"
+        )
+
+    # Gate uses the WORSE of (linear projection, measured aggregate) — never
+    # weaker than the projection, stronger when a real aggregate exists.
+    gate_worst = max(worst, measured_worst_gb or 0.0)
+    sustained_ok = sustained <= ram_mb / 1024  # sustained must fit RAM with NO swap
+    worst_ok = gate_worst <= addressable_mb / 1024  # spike may dip into swap, no OOM
+    swap_dip_gb = max(0.0, gate_worst - ram_mb / 1024)
     print("\n─── PROOF GATE (1) ───────────────────────────────────────────────")
-    print(f"sustained under physical RAM : {'PASS' if sustained_ok else 'FAIL'}")
-    print(f"worst-spike under RAM+swap   : {'PASS' if worst_ok else 'FAIL'} (no OOM)")
-    return 0 if worst_ok else 1
+    print(f"sustained under physical RAM (no swap-thrash): {'PASS' if sustained_ok else 'FAIL'}")
+    print(
+        f"worst-case under RAM+swap (no OOM)           : {'PASS' if worst_ok else 'FAIL'}"
+        f"  [bound={gate_worst:.1f} GB, swap dip {swap_dip_gb:.1f} GB]"
+    )
+    return 0 if (worst_ok and sustained_ok) else 1
 
 
 if __name__ == "__main__":

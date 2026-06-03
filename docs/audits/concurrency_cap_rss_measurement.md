@@ -23,7 +23,7 @@ pages — no shared-page double-counting). Reproduce with:
 python3 scripts/measure_session_rss.py
 ```
 
-## Verbatim measurement (2026-06-03, 7 live sessions, 9–13 min old)
+## Verbatim measurement (2026-06-03, 8 live tmux scopes, 9–13 min old)
 
 ```
 ─── MEASURED (verbatim) ──────────────────────────────────────────
@@ -60,6 +60,29 @@ worst all-spike: 6 × 2.6 + 4.0 = 19.6 GB  < 20.9 GB RAM+swap    (no OOM)
 ```
 
 **=> N_TOTAL = 6** concurrent sessions.
+
+### Conservatism caveat (Aiden review, PR #1433)
+
+The 19.6 GB worst-case is a **linear projection** (`6 × WORST_SPIKE 2.6`), not a
+simultaneously-observed figure — only 1 of the 8 live scopes hit 2.6 GB; the rest
+sat at 0.9–1.4 GB. It dips ~4 GB into swap, and the snapshot was early-session
+(9–13 min), not sustained-load. So the bound passes *literally* but is a
+conservative upper bound, not a measured-under-load aggregate.
+
+To close that gap, `measure_session_rss.py` now also computes a **real measured
+aggregate** when ≥N sessions are live: `sum(top N live memory.peak) + infra`. On
+this box that is **sum(top 6) 7924 MB + 4 GB = 11.7 GB — inside physical RAM with
+ZERO swap.** The gate reports the *worse* of {projection 19.6, measured 11.7} so it
+is never weaker than the projection but shows the real aggregate is far safer. A
+sustained-load 6-session re-run will make the aggregate authoritative.
+
+### Rollout ramp condition (Aiden review, PR #1433)
+
+Honour the ratified "start low, tune up only if headroom proven": when flipping
+`DISPATCHER_CONCURRENCY_CAP_ENABLED=1`, set **`AGENT_CONCURRENCY_N_TOTAL=4` (or 5)
+first**, then ramp to 6 only after a sustained-load 6-session
+`measure_session_rss.py` shows the measured aggregate within RAM. The env knob +
+dormant default already support this with no code change.
 
 ## Partition (the stage-pair guard)
 

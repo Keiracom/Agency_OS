@@ -28,7 +28,14 @@ from dataclasses import dataclass
 from datetime import timedelta
 from uuid import uuid4
 
-import httpx
+# NB: httpx is intentionally NOT imported at module-top.
+# This module defines BOTH the activity (run_chain_step) and the workflow
+# (V1ChainWorkflow). Temporal validates every workflow under a sandbox that
+# re-evaluates module imports with deterministic-only restrictions — httpx
+# transitively pulls urllib.request which the sandbox refuses, killing the
+# whole worker at startup (validates ALL workflows including
+# FleetSupervisorWorkflow). httpx is only used in the activity, which runs
+# outside the sandbox, so import it lazily inside run_chain_step instead.
 
 try:
     from temporalio import activity, workflow
@@ -64,6 +71,7 @@ _DEFAULT_INTERCEPTOR_URL = "http://127.0.0.1:4001/interceptor/forward"
 _INTERCEPTOR_TIMEOUT_S = 300.0
 _INTERCEPTOR_MODEL = "governance_tier_fast"
 _INTERCEPTOR_TIER = "starter"
+_INTERCEPTOR_MAX_TOKENS = 2000  # matches governance_tier_fast LiteLLM cap; required by /interceptor/forward schema
 
 
 @dataclass
@@ -159,6 +167,8 @@ async def run_chain_step(inp: ChainStepInput) -> ChainStepOutput:
     hb_task = asyncio.create_task(_heartbeat())
 
     try:
+        import httpx  # noqa: PLC0415 — activity-only; module-top import breaks the workflow sandbox
+
         from src.keiracom_system.vault.api_agent_cold_start import (  # noqa: PLC0415
             fetch_persona,
             insert_attribution,
@@ -177,6 +187,7 @@ async def run_chain_step(inp: ChainStepInput) -> ChainStepOutput:
             "prompt": inp.brief,
             "model": _INTERCEPTOR_MODEL,
             "tier": _INTERCEPTOR_TIER,
+            "max_tokens": _INTERCEPTOR_MAX_TOKENS,
             "messages": [
                 {"role": "system", "content": persona},
                 {"role": "user", "content": inp.brief},

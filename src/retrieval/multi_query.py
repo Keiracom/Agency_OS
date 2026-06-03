@@ -35,7 +35,11 @@ logger = logging.getLogger(__name__)
 
 MULTI_QUERY_ENABLED_ENV = "RETRIEVAL_MULTI_QUERY_ENABLED"
 ANTHROPIC_BASE_URL_ENV = "ANTHROPIC_BASE_URL"
-DEFAULT_MODEL = "claude-haiku-4-5"
+# Routes through the LiteLLM governance-tier proxy alias (gate_roadmap
+# litellm_routing cb31edd9, C3). The proxy serves only governance_tier_{fast,
+# premium}; the prior 'claude-haiku-4-5' literal had no model group there and
+# 400'd on every routed call. governance_tier_fast → openai/gpt-4o-mini.
+DEFAULT_MODEL = "governance_tier_fast"
 DEFAULT_N_VARIANTS = 3
 MAX_TOKENS = 128
 

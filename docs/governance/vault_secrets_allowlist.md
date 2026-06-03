@@ -98,3 +98,32 @@ Phase 1 seeded the manifest-gap subset; these are removed from `.env` in Phase 2
 
 **`STRIPE_SECRET_KEY`** is in `SECRET_MANIFEST` but absent from both `.env` and Vault —
 provision or drop (flagged to Elliot), independent of this allowlist.
+
+---
+
+## Spawn-path coverage map (Phase 2 prep — static audit 2026-06-03)
+
+**Why this matters:** removing a secret from `.env` only breaks nothing if the
+process that reads it resolves from Vault instead. The audit below shows that is
+TRUE for the agent-spawn path and FALSE for the host-service fleet.
+
+| Spawn path | Secret source | Vault-covered? | Safe to remove from `.env`? |
+|------------|---------------|----------------|------------------------------|
+| **Agent spawn** (`dispatcher/main.py` → `agent_cold_start.py`, `env -i`) | `resolve_into_env()` from Vault, no `.env` inheritance | ✅ yes | ✅ yes (proven by cold-start probe: 71/71 resolve) |
+| **Host services** (alerts, slack listeners, coo bot, monitors, enforcer, …) | `EnvironmentFile=…/.env` (systemd) | ❌ **no** | ❌ **no — would break the service** |
+
+**Counts (host `~/.config/systemd/user`):**
+- 107 `.service` units total
+- **80** load secrets via `EnvironmentFile=…/agency-os/.env`
+- 58 distinct entrypoints; **0** of the `.env`-dependent ones call `resolve_into_env`
+
+**Conclusion — honest gate definition:** `vault_secrets` (zero carve-outs) is NOT a
+`.env` edit. It requires bringing the 80 host services onto Vault resolution. The
+agent-spawn path is already there; the host fleet is not.
+
+**Revised Phase 2 (recommended): a Vault-resolve launcher.**
+Replace `EnvironmentFile=…/.env` with a thin wrapper (`ExecStart=vault-envwrap <cmd>`)
+that calls `resolve_into_env()` then `exec`s the service — one wrapper, fleet-wide,
+instead of 58 per-entrypoint edits. `.env` then shrinks to the bootstrap allowlist
+(`VAULT_ADDR`/`VAULT_TOKEN`). Migrate carve-out removal happens batch-by-batch AFTER
+each batch of units is moved onto the wrapper and verified green.

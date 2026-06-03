@@ -26,7 +26,7 @@ import signal
 from .audit_activity import emit_audit_event
 from .client import DEFAULT_NAMESPACE, DEFAULT_TASK_QUEUE, from_env
 from .fleet_supervisor_workflow import FleetSupervisorWorkflow
-from .v1_chain_workflow import V1ChainWorkflow, run_chain_step
+from .v1_chain_workflow import V1ChainWorkflow, capture_hop_reasoning, run_chain_step
 
 log = logging.getLogger(__name__)
 
@@ -47,7 +47,7 @@ async def run() -> None:
     task_queue = os.environ.get("TEMPORAL_TASK_QUEUE", DEFAULT_TASK_QUEUE)
     namespace = os.environ.get("TEMPORAL_NAMESPACE", DEFAULT_NAMESPACE)
     log.info(
-        "worker starting: namespace=%s task_queue=%s addr=%s workflows=[FleetSupervisorWorkflow,V1ChainWorkflow] activities=[emit_audit_event,run_chain_step]",
+        "worker starting: namespace=%s task_queue=%s addr=%s workflows=[FleetSupervisorWorkflow,V1ChainWorkflow] activities=[emit_audit_event,run_chain_step,capture_hop_reasoning]",
         namespace,
         task_queue,
         os.environ.get("TEMPORAL_ADDR"),
@@ -57,7 +57,7 @@ async def run() -> None:
         client,
         task_queue=task_queue,
         workflows=[FleetSupervisorWorkflow, V1ChainWorkflow],
-        activities=[emit_audit_event, run_chain_step],
+        activities=[emit_audit_event, run_chain_step, capture_hop_reasoning],
     )
 
     stop_event = asyncio.Event()

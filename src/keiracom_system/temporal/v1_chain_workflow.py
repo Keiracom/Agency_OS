@@ -23,6 +23,7 @@ import asyncio
 import contextlib
 import logging
 import os
+import re
 import time
 from dataclasses import dataclass
 from datetime import timedelta
@@ -71,7 +72,9 @@ _DEFAULT_INTERCEPTOR_URL = "http://127.0.0.1:4001/interceptor/forward"
 _INTERCEPTOR_TIMEOUT_S = 300.0
 _INTERCEPTOR_MODEL = "governance_tier_fast"
 _INTERCEPTOR_TIER = "starter"
-_INTERCEPTOR_MAX_TOKENS = 2000  # matches governance_tier_fast LiteLLM cap; required by /interceptor/forward schema
+_INTERCEPTOR_MAX_TOKENS = (
+    2000  # matches governance_tier_fast LiteLLM cap; required by /interceptor/forward schema
+)
 
 
 @dataclass
@@ -92,6 +95,17 @@ class ChainStepOutput:
     cost_aud: float
     latency_ms: float
     dry_run: bool
+    response_text: str = ""  # raw LLM output — input to capture_hop_reasoning
+
+
+@dataclass
+class CaptureReasoningInput:
+    """Input to the capture_hop_reasoning activity (DESIGN-AMENDMENT-v2)."""
+
+    chain_id: str
+    hop_name: str
+    callsign: str
+    response_text: str
 
 
 @dataclass
@@ -100,6 +114,12 @@ class ChainWorkflowInput:
     chain_id: str = ""  # defaults to task_id when empty (resolved in workflow.run)
     brief: str = ""
     dry_run: bool = False
+    # DESIGN-AMENDMENT-v2 Gap 2: SHARED counter (NOT a separate cap). Default
+    # matches src/keiracom_system/chain/v1_chain_orchestrator.V1_VERDICT_MAX_RETRIES.
+    # Passing it via workflow input avoids the temporalio workflow sandbox
+    # restriction on importing modules that read os.environ at module-top.
+    # Dispatch script may override via --max-capture-retries.
+    max_capture_retries: int = 3
 
 
 async def run_chain_step(inp: ChainStepInput) -> ChainStepOutput:
@@ -210,7 +230,7 @@ async def run_chain_step(inp: ChainStepInput) -> ChainStepOutput:
                 f"run_chain_step: interceptor returned no choices, "
                 f"body_keys={sorted(response.keys())!r}"
             )
-        _text = (choices[0].get("message") or {}).get("content") or ""
+        response_text = (choices[0].get("message") or {}).get("content") or ""
         usage = response.get("usage") or {}
         input_tokens = int(usage.get("prompt_tokens", 0))
         output_tokens = int(usage.get("completion_tokens", 0))
@@ -255,11 +275,142 @@ async def run_chain_step(inp: ChainStepInput) -> ChainStepOutput:
         cost_aud=cost_aud,
         latency_ms=latency_ms,
         dry_run=False,
+        response_text=response_text,
     )
 
 
 if activity is not None:
     run_chain_step = activity.defn(name="run_chain_step")(run_chain_step)  # type: ignore[assignment]
+
+
+# ───────────────────────────────────────────────────────────────────────────
+# capture_hop_reasoning — DESIGN-AMENDMENT-v2 Gap 1+2 (Aiden+Max concur).
+# ───────────────────────────────────────────────────────────────────────────
+# Parses DECISION: / CHALLENGE: / TRADEOFFS: / REJECTED: section headers from
+# the hop's LLM output. INSERTs one row into public.reasoning_records.
+# Fires BEFORE the next hop's run_chain_step in the workflow — a hop that
+# produces no reasoning cannot advance the chain.
+#
+# Retry policy lives on the workflow-side execute_activity call, using the
+# SHARED V1_VERDICT_MAX_RETRIES counter (NOT a separate cap) per Gap 2.
+# DatabaseWriteError is non-retryable at the workflow level (hard-fail on
+# DB unavailable — fail-loud per the proof_gate principle).
+# ───────────────────────────────────────────────────────────────────────────
+
+_REASONING_HEADERS = ("DECISION", "CHALLENGE", "TRADEOFFS", "REJECTED")
+_REASONING_HEADER_RE = re.compile(
+    r"^\s*\**\s*(?P<key>" + "|".join(_REASONING_HEADERS) + r")\s*:\s*(?P<rest>.*)$",
+    re.IGNORECASE | re.MULTILINE,
+)
+
+
+class ReasoningParseError(RuntimeError):
+    """Raised when a hop's response_text is missing required section headers.
+
+    Temporal retries this via the workflow's shared V1_VERDICT_MAX_RETRIES
+    policy — see the workflow.run wiring below.
+    """
+
+
+class DatabaseWriteError(RuntimeError):
+    """Raised when the reasoning_records INSERT fails. Non-retryable."""
+
+
+def parse_reasoning_sections(text: str) -> dict[str, str]:
+    """Return {decision, challenge, tradeoffs, rejected_options} from `text`.
+
+    Raises ReasoningParseError if any of the four sections is missing or
+    empty after parsing. Section boundaries: each header line starts a
+    section; the section runs until the next header line or end of text.
+    """
+    if not text or not text.strip():
+        raise ReasoningParseError("empty response_text — no reasoning to parse")
+    matches = list(_REASONING_HEADER_RE.finditer(text))
+    if not matches:
+        raise ReasoningParseError(
+            "no DECISION:/CHALLENGE:/TRADEOFFS:/REJECTED: headers in response"
+        )
+    sections: dict[str, str] = {}
+    for i, m in enumerate(matches):
+        key = m.group("key").upper()
+        start = m.end()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(text)
+        body = (m.group("rest") + "\n" + text[start:end]).strip()
+        if key not in sections:  # first occurrence wins
+            sections[key] = body
+    missing = [h for h in _REASONING_HEADERS if h not in sections or not sections[h].strip()]
+    if missing:
+        raise ReasoningParseError(f"missing or empty section(s): {missing}")
+    return {
+        "decision": sections["DECISION"],
+        "challenge": sections["CHALLENGE"],
+        "tradeoffs": sections["TRADEOFFS"],
+        "rejected_options": sections["REJECTED"],
+    }
+
+
+async def capture_hop_reasoning(inp: CaptureReasoningInput) -> dict:
+    """Activity: parse + persist deliberation reasoning for one chain hop.
+
+    Returns {reasoning_record_id, hop_name, callsign} on success. Raises
+    ReasoningParseError on parse failure (Temporal retries via the shared
+    V1_VERDICT_MAX_RETRIES counter). Raises DatabaseWriteError on INSERT
+    failure (non-retryable — hard-fail per Gap 2).
+    """
+    sections = parse_reasoning_sections(inp.response_text)
+    try:
+        from src.keiracom_system.vault.agent_cold_start import _connect  # noqa: PLC0415
+    except ImportError as exc:
+        raise DatabaseWriteError(f"reasoning_records: vault import failed: {exc}") from exc
+    try:
+        conn = _connect()
+    except Exception as exc:  # noqa: BLE001
+        raise DatabaseWriteError(f"reasoning_records: connect failed: {exc}") from exc
+    try:
+        # _connect() returns an autocommit=True connection. SET LOCAL /
+        # set_config(is_local=true) only persists within a transaction, so
+        # toggle autocommit off for this transaction. Restored in finally.
+        prior_autocommit = conn.autocommit
+        conn.autocommit = False
+        with conn.cursor() as cur:
+            # SET LOCAL rejects parameter binding — use set_config() to pass a value.
+            cur.execute("SELECT set_config('agency_os.callsign', %s, true)", (inp.callsign,))
+            cur.execute(
+                "INSERT INTO public.reasoning_records "
+                "(chain_id, hop_name, callsign, source, "
+                "decision, challenge, tradeoffs, rejected_options) "
+                "VALUES (%s, %s, %s, 'temporal_activity', %s, %s, %s, %s) "
+                "RETURNING id",
+                (
+                    inp.chain_id,
+                    inp.hop_name,
+                    inp.callsign,
+                    sections["decision"],
+                    sections["challenge"],
+                    sections["tradeoffs"],
+                    sections["rejected_options"],
+                ),
+            )
+            row = cur.fetchone()
+        conn.commit()
+    except Exception as exc:  # noqa: BLE001
+        raise DatabaseWriteError(f"reasoning_records: INSERT failed: {exc}") from exc
+    finally:
+        with contextlib.suppress(Exception):
+            conn.autocommit = prior_autocommit
+        with contextlib.suppress(Exception):
+            conn.close()
+    return {
+        "reasoning_record_id": str(row[0]) if row else "",
+        "hop_name": inp.hop_name,
+        "callsign": inp.callsign,
+    }
+
+
+if activity is not None:
+    capture_hop_reasoning = activity.defn(name="capture_hop_reasoning")(  # type: ignore[assignment]
+        capture_hop_reasoning
+    )
 
 
 if workflow is not None:
@@ -282,6 +433,15 @@ if workflow is not None:
             chain_id = inp.chain_id or inp.task_id
             step_timeout = timedelta(minutes=40)
             no_retry = RetryPolicy(maximum_attempts=1)
+            # DESIGN-AMENDMENT-v2 Gap 2: SHARED counter, NOT a separate cap.
+            # Value is plumbed through ChainWorkflowInput.max_capture_retries
+            # (default matches v1_chain_orchestrator.V1_VERDICT_MAX_RETRIES) to
+            # avoid the workflow-sandbox restriction on importing modules that
+            # read os.environ at module-top.
+            capture_retry = RetryPolicy(
+                maximum_attempts=inp.max_capture_retries,
+                non_retryable_error_types=["DatabaseWriteError"],
+            )
             atom_id = ""
 
             for step in ("aiden_plan", "max_challenge", "nova_build"):
@@ -301,6 +461,20 @@ if workflow is not None:
                     result_type=ChainStepOutput,
                 )
                 atom_id = result.atom_id
+                # Blocking position: capture deliberation BEFORE the next hop.
+                # Dry-run skips capture (no response_text to parse).
+                if not inp.dry_run:
+                    await workflow.execute_activity(
+                        "capture_hop_reasoning",
+                        CaptureReasoningInput(
+                            chain_id=chain_id,
+                            hop_name=step,
+                            callsign=CHAIN_STEP_TO_CALLSIGN[step],
+                            response_text=result.response_text,
+                        ),
+                        start_to_close_timeout=step_timeout,
+                        retry_policy=capture_retry,
+                    )
 
             orion_result, atlas_result = await asyncio.gather(
                 workflow.execute_activity(
@@ -334,6 +508,32 @@ if workflow is not None:
                     result_type=ChainStepOutput,
                 ),
             )
+            # Capture the parallel pair's reasoning BEFORE workflow completion.
+            if not inp.dry_run:
+                await asyncio.gather(
+                    workflow.execute_activity(
+                        "capture_hop_reasoning",
+                        CaptureReasoningInput(
+                            chain_id=chain_id,
+                            hop_name="orion_spec",
+                            callsign="orion",
+                            response_text=orion_result.response_text,
+                        ),
+                        start_to_close_timeout=step_timeout,
+                        retry_policy=capture_retry,
+                    ),
+                    workflow.execute_activity(
+                        "capture_hop_reasoning",
+                        CaptureReasoningInput(
+                            chain_id=chain_id,
+                            hop_name="atlas_safety",
+                            callsign="atlas",
+                            response_text=atlas_result.response_text,
+                        ),
+                        start_to_close_timeout=step_timeout,
+                        retry_policy=capture_retry,
+                    ),
+                )
 
             return {
                 "task_id": inp.task_id,

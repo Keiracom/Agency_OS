@@ -141,11 +141,17 @@ def test_revive_agent_falls_back_to_bd_ready_when_last_task_blank(cw, monkeypatc
 
 
 def _stub_one_agent(cw, monkeypatch, *, pane_text: str):
-    """Reduce AGENTS to a single test agent + stub pane_capture to return pane_text."""
+    """Reduce AGENTS to a single test agent + stub pane_capture to return pane_text.
+
+    Also forces check_ground_truth_progress() to False so the legacy
+    revive-on-genuinely-stuck assertion holds. The ground-truth gate
+    (HEAD-OF-OPS 2026-06-03) is exercised in its own tests below.
+    """
     monkeypatch.setattr(cw, "AGENTS", {"aiden": "aiden:0.0"})
     monkeypatch.setattr(cw, "pane_capture", lambda _target: pane_text)
     monkeypatch.setattr(cw, "send_pane", lambda *a, **kw: None)
     monkeypatch.setattr(cw, "slack_ceo", lambda _msg: None)
+    monkeypatch.setattr(cw, "check_ground_truth_progress", lambda _secs: False)
 
 
 def test_check_other_agents_sets_revive_sent_after_reviving(cw, monkeypatch):
@@ -254,6 +260,7 @@ def test_check_other_agents_passes_last_task_to_revive(cw, monkeypatch):
     monkeypatch.setattr(cw, "AGENTS", {"aiden": "aiden:0.0"})
     monkeypatch.setattr(cw, "pane_capture", lambda _t: "Traceback (most recent call):\n...")
     monkeypatch.setattr(cw, "revive_agent", fake_revive)
+    monkeypatch.setattr(cw, "check_ground_truth_progress", lambda _secs: False)
 
     cw.check_other_agents({"aiden_last_task": "KEI-42: wire foo"})
     assert received == {
@@ -335,6 +342,7 @@ def test_record_then_revive_uses_persisted_last_task(cw, tmp_path, monkeypatch):
     monkeypatch.setattr(cw, "AGENTS", {"aiden": "aiden:0.0"})
     monkeypatch.setattr(cw, "pane_capture", lambda _t: "...\nError: oh no")
     monkeypatch.setattr(cw, "revive_agent", fake_revive)
+    monkeypatch.setattr(cw, "check_ground_truth_progress", lambda _secs: False)
 
     cw.check_other_agents(cw.load_state())
     assert received["last_task"] == "KEI-77: rebase PR after #1371"
@@ -410,9 +418,9 @@ def test_unknown_tool_escalates_and_sends_tab(cw, monkeypatch):
     pane = _perm_pane("Bash(rm -rf /tmp/foo)")
     state = cw.handle_permission_prompt("aiden", "aiden:0.0", pane, {})
 
-    assert tabs == ["aiden:0.0"]          # Tab sent — agent unblocked
+    assert tabs == ["aiden:0.0"]  # Tab sent — agent unblocked
     assert len(slack) == 1
-    assert "auto-approved" in slack[0]    # reported as auto-approved, not just escalated
+    assert "auto-approved" in slack[0]  # reported as auto-approved, not just escalated
     assert "rm -rf /tmp/foo" in slack[0]
     assert state["aiden_escalated_at"] > 0
 
@@ -432,8 +440,12 @@ def test_escalation_anti_spam(cw, monkeypatch):
     assert len(slack) == 1, "anti-spam cooldown should suppress the second escalation"
 
 
-def test_merge_with_dual_concur_auto_approves(cw, monkeypatch):
-    """gh pr merge + 2+ REVIEW:approve in PR comments → Tab keystroke."""
+def test_merge_with_dual_concur_is_structurally_denied(cw, monkeypatch):
+    """gh pr merge is now HARD-DENIED by structural bar (HEAD-OF-OPS 2026-06-03).
+
+    Even with 2+ REVIEW:approve in comments, the watchdog refuses to send Tab —
+    merges to main require human action, not pattern-match auto-approval.
+    """
     tabs: list[str] = []
     slack: list[str] = []
     monkeypatch.setattr(cw, "send_tab", lambda t: tabs.append(t))
@@ -446,10 +458,13 @@ def test_merge_with_dual_concur_auto_approves(cw, monkeypatch):
     monkeypatch.setattr(cw.subprocess, "run", lambda *a, **kw: _R())
 
     pane = _perm_pane("Bash(gh pr merge 1375 --squash --admin)", pr=1375)
-    cw.handle_permission_prompt("elliot", "elliottbot:0.0", pane, {})
+    state = cw.handle_permission_prompt("elliot", "elliottbot:0.0", pane, {})
 
-    assert tabs == ["elliottbot:0.0"]
-    assert slack == []
+    assert tabs == [], "structural deny must NOT send Tab on gh pr merge"
+    assert len(slack) == 1, "first DENY escalates to #ceo"
+    assert "DENIED elliot" in slack[0]
+    assert "elliot_deny_log" in state and state["elliot_deny_log"]
+    assert state["elliot_deny_log"][-1]["reason"] == "structural_deny_proven_or_merge"
 
 
 # ─── AUTO_APPROVE_PATTERNS expansion (2026-06-01) ──────────────────────────────
@@ -601,7 +616,7 @@ def test_unidentified_tool_escalation_includes_pane_tail(cw, monkeypatch):
 
     assert len(slack) == 1, "exactly one escalation must fire"
     msg = slack[0]
-    assert "unidentified" in msg         # "unidentified prompt, Tab auto-sent"
+    assert "unidentified" in msg  # "unidentified prompt, Tab auto-sent"
     # Pane-tail contract: last 3 non-empty lines, joined with " | "
     assert "Waiting for service registry registration" in msg
     assert "Approve y/N" in msg

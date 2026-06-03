@@ -1,0 +1,30 @@
+name: Proof Tier — Banned Mocks Gate
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "tests/proof_tier/**"
+      - "scripts/ci/check_banned_mocks.py"
+      - ".github/workflows/proof-tier-banned-mocks.yml"
+  push:
+    branches: [main]
+    paths:
+      - "tests/proof_tier/**"
+      - "scripts/ci/check_banned_mocks.py"
+
+jobs:
+  banned-mocks:
+    name: refuse mocks under tests/proof_tier/
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Run banned-mocks gate
+        run: |
+          python scripts/ci/check_banned_mocks.py --root tests/proof_tier

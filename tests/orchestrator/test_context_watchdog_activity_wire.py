@@ -260,3 +260,36 @@ def test_try_classify_returns_no_data_on_helper_exception(cw, monkeypatch):
 
     monkeypatch.setattr(aa, "compute_activity_state", _boom)
     assert cw._try_classify_activity("nova") == "no_data"
+
+
+# ---------------------------------------------------------------------------
+# Pane-name → DB-callsign mapping (Max-specific; caught by live proof run)
+# ---------------------------------------------------------------------------
+
+
+def test_db_callsign_maps_maxbot_to_max(cw):
+    """tmux session name 'maxbot' must map to DB callsign 'max'. Verified live
+    against tool_call_log: 2824 rows under 'max', 0 under 'maxbot'. Without
+    this mapping Max would silently skip auto-wake forever."""
+    assert cw._db_callsign("maxbot") == "max"
+
+
+def test_db_callsign_passes_through_other_agents(cw):
+    for name in ("atlas", "orion", "aiden", "scout", "nova", "elliot"):
+        assert cw._db_callsign(name) == name
+
+
+def test_try_classify_uses_mapped_callsign(cw, monkeypatch):
+    """compute_activity_state must be called with the mapped DB callsign, not
+    the raw pane name."""
+    import scripts.orchestrator.agent_activity as aa
+
+    seen: list[str] = []
+
+    def _spy(callsign):
+        seen.append(callsign)
+        return "active"
+
+    monkeypatch.setattr(aa, "compute_activity_state", _spy)
+    cw._try_classify_activity("maxbot")
+    assert seen == ["max"]

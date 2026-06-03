@@ -712,8 +712,26 @@ def is_flap_tripped(name: str, now: float) -> bool:
     return len(load_flap_events(name, now)) >= FLAP_THRESHOLD
 
 
+# tmux session name → DB callsign mapping. Most agents match 1:1 (atlas, orion,
+# aiden, scout, nova) but Max's tmux session is "maxbot" while tool_call_log
+# rows are written with callsign="max" (verified via SELECT COUNT(*) — 2824
+# rows under "max", 0 under "maxbot"). Without this mapping the activity
+# lookup for Max would always return no_data and the wire-up would silently
+# skip auto-wake for Max — defeating the false-green-fix Max himself was
+# affected by.
+_PANE_TO_DB_CALLSIGN: dict[str, str] = {"maxbot": "max"}
+
+
+def _db_callsign(pane_name: str) -> str:
+    return _PANE_TO_DB_CALLSIGN.get(pane_name, pane_name)
+
+
 def _try_classify_activity(name: str) -> str:
     """Best-effort wrapper around scripts.orchestrator.agent_activity.
+
+    Translates the watchdog's tmux session name into the canonical DB
+    callsign (e.g. "maxbot" -> "max") before querying, so each agent's
+    activity_state row is actually found.
 
     Returns 'no_data' on any error (import miss, DB unreachable, callsign
     absent). The fail-open contract lets the watchdog fall through to its
@@ -725,7 +743,7 @@ def _try_classify_activity(name: str) -> str:
             compute_activity_state,
         )
 
-        return compute_activity_state(name)
+        return compute_activity_state(_db_callsign(name))
     except Exception as exc:  # noqa: BLE001 — fail-open: never block watchdog cycle
         print(f"[watchdog] activity-state lookup failed for {name}: {exc}")
         return "no_data"

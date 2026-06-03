@@ -81,12 +81,22 @@ def test_negative_cmd_superset_raises():
                     "UPDATE public.gate_roadmap SET status='proven', proof_run_id=%s WHERE id=%s",
                     (run_id, gate_id),
                 )
+            # Post atlas-proof-gate-trigger-fix: superset_cmd is its own
+            # subbranch with a distinct error token. Pre-fix the message
+            # contained 'cmd_mismatch' for this case; post-fix it carries
+            # 'superset_cmd' instead. Both still raise check_violation
+            # with the 'Check A' prefix.
             assert "Check A" in str(exc_info.value), (
                 "Check A (exact cmd match) did not raise on superset cmd — "
                 "the verifier may have been weakened to substring/shape match. "
                 f"Got: {exc_info.value!s}"
             )
-            assert "cmd_mismatch" in str(exc_info.value)
+            assert "superset_cmd" in str(exc_info.value), (
+                "superset_cmd subbranch did not fire — the substring-match "
+                "weakening is no longer rejected with a distinct message. "
+                f"Got: {exc_info.value!s}"
+            )
+            assert "contains but does not equal contract.cmd" in str(exc_info.value)
     finally:
         conn.rollback()
         conn.close()

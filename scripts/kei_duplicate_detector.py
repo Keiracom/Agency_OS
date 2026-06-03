@@ -129,6 +129,13 @@ def _post_linear_comment(
 ) -> bool:
     """Linear GraphQL commentCreate. Returns True on ok=true, else False.
     Best-effort: any network/JSON failure returns False without raising."""
+    # Linear retirement (Dave 2026-06-03 "we don't need linear"): commentCreate
+    # is suppressed by default — no mutation is POSTed. Reversible via
+    # LINEAR_RETIRED=0. governance_hooks.py also blocks Linear write mutations at
+    # the PreToolUse hook (defense-in-depth). Returns False (best-effort: comment
+    # not posted), which all callers already tolerate.
+    if os.environ.get("LINEAR_RETIRED", "1") != "0":
+        return False
     query = (
         "mutation Comment($issueId: String!, $body: String!) {"
         "  commentCreate(input: {issueId: $issueId, body: $body}) {"

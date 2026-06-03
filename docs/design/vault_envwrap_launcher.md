@@ -26,8 +26,12 @@ Therefore a launcher that populates `os.environ` from Vault *before* the service
 reads config makes the entire fleet Vault-backed **without editing settings.py or any of
 the 91 consumers**. This is a launch-boundary change, not a code migration.
 
+**Precedent:** `resolve_into_env()` is already PROVEN on the agent-spawn cold-start path
+(#1289 / #1443, `agent_cold_start.py`, `env -i` no-`.env`). This launcher **generalizes
+that proven pattern** to the host-service fleet — it is not a new mechanism.
+
 Alternatives rejected:
-- *Per-entrypoint `resolve_into_env()` calls* — 58 edits, easy to miss one, no single
+- *Per-entrypoint `resolve_into_env()` calls* — ~58 edits, easy to miss one, no single
   rollback point.
 - *Render `.env` from Vault at boot* — keeps plaintext secrets on disk; defeats the gate.
 
@@ -68,15 +72,52 @@ after (a) all batches green, (b) Vault HA/auto-unseal confirmed, (c) token-renew
 ratified. This sequences availability risk behind the gate flip rather than ahead of it.
 
 **Dependencies this surfaces (need Aiden/Dave ruling):**
-- Vault availability/HA on the boot path (`vault_auto_unseal.sh` exists — is it
-  sufficient? what's the unseal RTO?).
+- Vault availability/HA on the boot path (`keiracom-vault-unseal.service` is the host
+  unseal unit — is its RTO sufficient as a boot gate?).
 - `VAULT_TOKEN` lifecycle — TTL, renewal, what happens on expiry at boot.
 - Secret caching — should the launcher cache last-good resolution to survive a transient
   Vault blip during boot?
 
-## 5. Boot-path inventory it touches
+## 4b. Boot-ordering & cold-boot (systemd) — Aiden axis 1
 
-80 `.env`-dependent units, risk-bucketed (full list in `vault_secrets_allowlist.md`):
+A wrapped unit MUST NOT start before Vault is up + unsealed, or it fails closed at boot.
+**Machine-derived finding: of the 80 `.env`-dependent units, only 1 has a Vault ordering
+dep today — 79 have none.** Conversion therefore adds, to each unit (via a drop-in, not
+the base unit, so rollback is a file delete):
+
+```
+[Unit]
+After=network-online.target keiracom-vault-unseal.service
+Requires=keiracom-vault-unseal.service
+Wants=network-online.target
+```
+
+- `Requires=` (not just `Wants=`) so a failed/sealed Vault propagates as a clear unit
+  failure rather than a silent partial boot.
+- **Cold-boot-during-Vault-outage:** with `Requires=`, wrapped units stay in
+  `activating`/`failed` until Vault unseals; systemd retries on `keiracom-vault-unseal`
+  recovery. The fleet does NOT silently run with stale/absent secrets. During rollout the
+  retained `EnvironmentFile=.env` (graceful mode, §4) means even a hard Vault outage
+  degrades to baseline `.env` boot, not an outage — this is why fail-closed is the LAST
+  step, gated on Vault HA sign-off.
+- **Blast radius if fail-closed prematurely:** a Vault outage would block boot of up to 80
+  units simultaneously. Unacceptable until Vault HA/unseal RTO is ratified — hence the
+  staged stance.
+
+## 5. Boot-path inventory it touches — Aiden axis 4
+
+**Exhaustive machine-derived inventory: `vault_envwrap_boot_inventory.md`** (every
+`.env`-dependent unit, its `ExecStart`, and whether it has a Vault ordering dep).
+
+**Count reconciliation (80 vs 102):** the conversion target is the **80 `.service`
+units** that carry `EnvironmentFile=…/.env`. Timers (`.timer`) carry no `EnvironmentFile`
+— they *activate* a backing `.service`, so wrapping the service covers the timer-driven
+run; converting a timer is a no-op. Aiden's 102 = 71 services + 31 timers across the
+fleet; filtered to actual `.env` secret readers it is 80 services + 0 timers. No unit is
+missed — timers inherit their service's conversion. (Host total seen: 105 services + 36
+timers; 80 services are `.env`-dependent.)
+
+Risk-bucketed (detail in `vault_secrets_allowlist.md`):
 
 | Risk | Count | Rollout |
 |------|------:|---------|
@@ -104,6 +145,16 @@ observability-only, no downstream dependency, failure self-heals next tick.
 **Pilot success criteria:** unit active/green, journal shows `resolved=N missing=…`, the
 alert fires identically, zero new errors, memory flat.
 
+**Tranche plan + per-tranche go/no-go (Aiden axis 2 — no big-bang across 80):**
+| Tranche | Units | Go/no-go gate before next tranche |
+|---------|-------|-----------------------------------|
+| 0 (pilot) | 1 (`alert-budget-threshold`) | green + identical behaviour + 24h soak + rollback rehearsed |
+| 1 | rest of LOW (10) | all active, one full timer cycle each, zero regressions, 24h |
+| 2…N | MED (49) in ~10-unit tranches | each tranche green + soak before the next |
+| final | HIGH (20), **one unit at a time** | per-unit green + watch; never two HIGH concurrently |
+**No-go on any tranche → halt rollout, rollback that tranche (§7), reassess. No tranche
+proceeds on a partial pass.**
+
 ## 7. Rollback
 
 - **Per-unit:** revert the one `ExecStart` line to the original `python …`; the retained
@@ -114,6 +165,20 @@ alert fires identically, zero new errors, memory flat.
   Mass-revert = restore the snapshot + `daemon-reload`.
 - **Hard stop:** because graceful-fallback keeps `.env` present throughout rollout, a
   wrapper failure degrades to baseline behaviour rather than an outage.
+
+**⛔ Sequencing guarantee (Aiden axis 3 — load-bearing):** `.env` IS the rollback target.
+The vault_secrets Phase-2 `.env` prune (removing the 62 carve-outs) MUST NOT run until the
+launcher is proven across the **full 80-unit inventory**. Order is strict and one-way:
+
+```
+pilot (1) → LOW → MED → HIGH (all 80 green + soaked)
+  → THEN flip fail-closed (gated on Vault HA sign-off)
+  → THEN prune .env carve-outs
+```
+
+Pruning `.env` early removes the rollback target and converts any later wrapper failure
+into an outage. Phase-1 (#1443) deliberately keeps the secrets in `.env`; this guarantee
+holds them there until rollback is no longer needed.
 
 ## 8. Risks & mitigations
 

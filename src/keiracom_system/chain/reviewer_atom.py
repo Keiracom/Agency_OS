@@ -27,9 +27,9 @@ as "do not progress; surface for human review or retry".
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable, Literal
-from uuid import UUID
+from typing import Any, Literal
 
 log = logging.getLogger(__name__)
 

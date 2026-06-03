@@ -159,3 +159,30 @@ editing settings.py or any of the 91 consumers**. Phase 2 is a launch-boundary c
 
 **Phase 2 execution (pending Elliot go):** build `vault-envwrap`, pilot on ONE
 low-risk unit, verify green, roll out in batches, then strip the 62 carve-outs.
+
+---
+
+## Phase 2 batch/risk plan (static audit 2026-06-03)
+
+The 80 `.env`-dependent units, risk-bucketed for a verify-green-per-batch rollout of
+the `vault-envwrap` launcher:
+
+| Risk | Count | Profile | Rollout order |
+|------|------:|---------|---------------|
+| **LOW** | 11 | periodic alerts/monitors (timer-driven, stateless, self-recovers next tick) | **batch 1 — pilot here** |
+| **MED** | 49 | indexers, sync workers, per-agent services | batches 2–N (after LOW green) |
+| **HIGH** | 20 | always-on critical path: slack/NATS listeners, dispatcher, fleet-supervisor, coo/enforcer bots | **last** (one at a time, watch closely) |
+
+**Recommended pilot unit:** `agency-os-alert-budget-threshold.service` — periodic,
+observability-only, no downstream depends on it, failure is non-critical and
+self-heals on the next timer tick. Convert ExecStart to `vault-envwrap`, run once,
+assert it resolves from Vault + behaves identically, then proceed to the rest of LOW.
+
+**Minor infra finding (unrelated to gate):** 2 broken systemd symlinks in
+`~/.config/systemd/user` (e.g. `aiden-inbox-watcher.service` → missing target).
+Dead unit references — worth a cleanup pass, flagged to Elliot.
+
+**Gate-complete definition (honest):** `vault_secrets` flips proven when all 80 units
+launch via `vault-envwrap` (or are retired), the 62 migrate carve-outs are removed
+from `.env`, `.env` carries only `VAULT_ADDR`/`VAULT_TOKEN` (+ documented frontend
+build vars en route to Vercel), and `git grep` is clean in `src/`.

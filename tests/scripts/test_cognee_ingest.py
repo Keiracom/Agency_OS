@@ -386,6 +386,48 @@ async def test_ingest_wrapper_import_failure_returns_all_fail(ingest_mod, monkey
     assert fail == 2
 
 
+@pytest.mark.asyncio
+async def test_ingest_wrapper_import_failure_logs_at_debug_not_error(
+    ingest_mod, monkeypatch, caplog
+) -> None:
+    """Agency_OS-3uj7: cognee.client ImportError must log at DEBUG (silent on
+    default config) — not ERROR/WARNING that floods stderr on every fail-open
+    invocation (e.g. bd claim → cognee_recall_injector chain on hosts without
+    the Phase 0 wrapper installed).
+    """
+    import logging
+
+    real_import = (
+        __builtins__["__import__"] if isinstance(__builtins__, dict) else __builtins__.__import__
+    )
+
+    def fake_import(name, *args, **kwargs):
+        if name == "src.cognee.client":
+            raise ImportError("not installed")
+        return real_import(name, *args, **kwargs)
+
+    monkeypatch.setattr("builtins.__import__", fake_import)
+    monkeypatch.delitem(sys.modules, "src.cognee.client", raising=False)
+
+    chunks = [("manual", "t1", [])]
+    with caplog.at_level(logging.DEBUG, logger=ingest_mod.logger.name):
+        await ingest_mod.ingest(
+            chunks,
+            org_id="org",
+            app_id="app",
+            agent_id="max",
+            dry_run=False,
+            skip_cognify=True,
+        )
+
+    matching = [r for r in caplog.records if "cognee.client import failed" in r.getMessage()]
+    assert matching, "expected the import-failure log line, got none"
+    assert all(r.levelno == logging.DEBUG for r in matching), (
+        "ImportError must log at DEBUG (Agency_OS-3uj7) — got levels "
+        + ", ".join(logging.getLevelName(r.levelno) for r in matching)
+    )
+
+
 # main CLI ──────────────────────────────────────────────────────────────────
 
 

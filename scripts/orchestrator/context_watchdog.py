@@ -15,6 +15,7 @@ Full sequence per Dave directive 2026-05-31:
 
 Hard rule: NEVER auto-authorise paid chain runs.
 """
+
 from __future__ import annotations
 
 import hashlib
@@ -36,7 +37,7 @@ VENV_PYTHON = str(REPO / ".venv" / "bin" / "python3")
 
 ELLIOT_PANE = "elliottbot:0.0"
 WAKE_TIMEOUT_SEC = 1200  # 20 min — two timer cycles before escalating (was 600 = single-shot)
-IDLE_TIMEOUT_MIN = 40    # min idle (no pane change) before wake without restart
+IDLE_TIMEOUT_MIN = 40  # min idle (no pane change) before wake without restart
 
 AGENTS = {
     "atlas": "atlas:0.0",
@@ -49,10 +50,10 @@ AGENTS = {
 
 sys.path.insert(0, str(REPO))
 from dotenv import load_dotenv
+
 load_dotenv("/home/elliotbot/.config/agency-os/.env")
 
 from scripts.utils.tmux_send import (  # noqa: E402
-    pane_content as _pane_content_util,
     safe_send,
     wait_for_prompt,
 )
@@ -60,8 +61,9 @@ from scripts.utils.tmux_send import (  # noqa: E402
 
 def pane_capture(target: str) -> str:
     try:
-        r = subprocess.run(["tmux", "capture-pane", "-p", "-t", target],
-                           capture_output=True, text=True, timeout=5)
+        r = subprocess.run(
+            ["tmux", "capture-pane", "-p", "-t", target], capture_output=True, text=True, timeout=5
+        )
         return r.stdout if r.returncode == 0 else ""
     except Exception:
         return ""
@@ -86,7 +88,11 @@ def is_context_full(pane: str) -> bool:
 
 PERMISSION_PROMPT_TOKENS = ("⏵⏵", "bypass permiss")
 GENUINE_STALL_INDICATORS = (
-    "Error:", "APIError:", "ConnectionError", "TimeoutError", "Traceback",
+    "Error:",
+    "APIError:",
+    "ConnectionError",
+    "TimeoutError",
+    "Traceback",
 )
 # All tool-call prefix patterns that appear in Claude Code permission prompts.
 # MCP tools appear as "● mcp__<server>__<tool>(" in the pane.
@@ -97,36 +103,102 @@ AUTO_APPROVE_PATTERNS = [
     # which covers `git checkout -- .` (destructive working-tree reset) and
     # `git checkout main` (silent branch switch). Max HOLD blocker #1 on
     # PR #1385 (binding_dissent wire, Dave directive 2026-06-02).
-    "git log", "git status", "git diff", "git branch", "git show", "git grep",
-    "git add", "git commit", "git fetch", "git pull", "git stash", "git push",
-    "git checkout -b", "git rev-parse",
+    "git log",
+    "git status",
+    "git diff",
+    "git branch",
+    "git show",
+    "git grep",
+    "git add",
+    "git commit",
+    "git fetch",
+    "git pull",
+    "git stash",
+    "git push",
+    "git checkout -b",
+    "git rev-parse",
     # GitHub CLI — read. `gh api ` substring REMOVED — it cannot distinguish
     # read endpoints from write endpoints (`gh api … -X PUT/POST/DELETE` and
     # endpoints like `/pulls/N/merge` are writes wearing a read prefix). Max
     # HOLD blocker #2 on PR #1385.
-    "gh pr view", "gh pr list", "gh pr checks", "gh pr diff",
-    "gh issue view", "gh issue list",
-    "gh run view", "gh run list",
+    "gh pr view",
+    "gh pr list",
+    "gh pr checks",
+    "gh pr diff",
+    "gh issue view",
+    "gh issue list",
+    "gh run view",
+    "gh run list",
     # GitHub CLI — routine write ops. `gh pr merge` substring REMOVED —
     # merges land code in main and MUST gate on verified dual-concur, not on
     # an unconditional auto-approve. The verified path lives in
     # is_merge_with_dual_concur (PR comments must contain ≥2 REVIEW:approve
     # before send_tab fires). Max HOLD blocker #3 + binding_dissent
     # nucleus on PR #1385 (Dave directive 2026-06-02).
-    "gh pr comment", "gh pr create",
+    "gh pr comment",
+    "gh pr create",
     # tmux read ops
-    "tmux capture-pane", "tmux list-sessions", "tmux list-panes", "tmux list-windows",
+    "tmux capture-pane",
+    "tmux list-sessions",
+    "tmux list-panes",
+    "tmux list-windows",
     # Local scripts — diagnostic, test, lint (no external API spend)
-    "python3 scripts/", "python3 -m pytest", "python3 -B -m", "python3 -c ",
-    "python3 <<", "pytest", "ruff ", "mypy ",
+    "python3 scripts/",
+    "python3 -m pytest",
+    "python3 -B -m",
+    "python3 -c ",
+    "python3 <<",
+    "pytest",
+    "ruff ",
+    "mypy ",
     # Beads / bd task ops
-    "bd ready", "bd show", "bd close", "bd claim", "bd update", "bd create",
+    "bd ready",
+    "bd show",
+    "bd close",
+    "bd claim",
+    "bd update",
+    "bd create",
     # File + environment ops
-    "cat ", "ls ", "find ", "grep ", "head ", "tail ", "wc ", "echo ",
-    "source ", "env ", "which ", "type ",
+    "cat ",
+    "ls ",
+    "find ",
+    "grep ",
+    "head ",
+    "tail ",
+    "wc ",
+    "echo ",
+    "source ",
+    "env ",
+    "which ",
+    "type ",
 ]
 ESCALATION_COOLDOWN_SEC = 300  # 5 min — anti-spam window for unknown-tool escalations
 PR_NUMBER_RE = re.compile(r"·\s*PR\s*#(\d+)\s*·")
+
+# Structural proven/attest DENY bar (HEAD-OF-OPS DIRECTIVE 2026-06-03).
+# Any tool_str containing one of these patterns is HARD-DENIED by the watchdog —
+# no Tab is sent, the prompt stays pending for human decision, and the DENY is
+# logged to state[f"{name}_deny_log"] for audit. Supersedes both
+# AUTO_APPROVE_PATTERNS and is_merge_with_dual_concur.
+#
+# Rationale: status changes on gate_roadmap.* to 'proven' AND gh pr merge land
+# code/state that affects ratified-decisions surface. Those must go through a
+# human, not the watchdog's pattern matcher.
+STRUCTURAL_DENY_SUBSTRINGS = (
+    "status=proven",
+    "gate_proof_runs",
+    "gh pr merge",
+)
+STRUCTURAL_DENY_REGEXES = (re.compile(r"INSERT.*proven", re.IGNORECASE),)
+
+# Ground-truth progress sources (HEAD-OF-OPS DIRECTIVE 2026-06-03).
+# If ANY of these shows activity within IDLE_TIMEOUT_MIN, the fleet is NOT
+# stalled — the watchdog should skip revive even if a pane looks idle.
+WORKER_LOG_PATHS = (
+    Path("/home/elliotbot/clawd/logs/keiracom-temporal-worker.log"),
+    Path("/home/elliotbot/clawd/logs/dispatcher.log"),
+    Path("/home/elliotbot/clawd/logs/fleet-supervisor.log"),
+)
 
 
 def is_permission_prompt(pane: str) -> bool:
@@ -140,7 +212,7 @@ def is_permission_prompt(pane: str) -> bool:
     if not any(tok in pane for tok in PERMISSION_PROMPT_TOKENS):
         return False
     has_tool_call = any(prefix in pane for prefix in TOOL_CALL_PREFIXES)
-    has_allow_deny = ("Allow" in pane and ("Deny" in pane or "Tab to" in pane))
+    has_allow_deny = "Allow" in pane and ("Deny" in pane or "Tab to" in pane)
     return has_tool_call or has_allow_deny
 
 
@@ -190,6 +262,106 @@ def is_auto_approvable(tool_str: str) -> bool:
     return any(pat in tool_str for pat in AUTO_APPROVE_PATTERNS)
 
 
+def is_structurally_denied(tool_str: str) -> bool:
+    """True iff `tool_str` matches any STRUCTURAL_DENY pattern (HARD DENY).
+
+    Overrides every auto-approve path. The watchdog must NOT advance the
+    permission prompt; the human reviews + decides.
+    """
+    if not tool_str:
+        return False
+    if any(sub in tool_str for sub in STRUCTURAL_DENY_SUBSTRINGS):
+        return True
+    return any(rx.search(tool_str) for rx in STRUCTURAL_DENY_REGEXES)
+
+
+def _git_recent_commit(since_seconds: int) -> bool:
+    try:
+        r = subprocess.run(
+            ["git", "log", f"--since={since_seconds} seconds ago", "--oneline", "-1"],
+            capture_output=True,
+            text=True,
+            timeout=5,
+            cwd=str(REPO),
+            check=False,
+        )
+        return r.returncode == 0 and bool(r.stdout.strip())
+    except Exception:
+        return False
+
+
+def _gate_roadmap_recent_change(since_seconds: int) -> bool:
+    """Postgres lookup — any gate_roadmap_history row in the last `since_seconds`."""
+    try:
+        import psycopg  # noqa: PLC0415
+    except ImportError:
+        return False
+    dsn = os.environ.get("DATABASE_URL_MIGRATIONS") or os.environ.get("DATABASE_URL", "")
+    dsn = dsn.replace("postgresql+asyncpg://", "postgresql://", 1)
+    if not dsn:
+        return False
+    try:
+        with (
+            psycopg.connect(dsn, prepare_threshold=None, connect_timeout=5) as conn,
+            conn.cursor() as cur,
+        ):
+            cur.execute(
+                "SELECT 1 FROM public.gate_roadmap_history "
+                "WHERE changed_at > NOW() - make_interval(secs => %s) LIMIT 1",
+                (since_seconds,),
+            )
+            return cur.fetchone() is not None
+    except Exception:
+        return False
+
+
+def _worker_log_recent_mtime(since_seconds: int) -> bool:
+    cutoff = time.time() - since_seconds
+    for p in WORKER_LOG_PATHS:
+        try:
+            if p.exists() and p.stat().st_mtime > cutoff:
+                return True
+        except OSError:
+            continue
+    return False
+
+
+def check_ground_truth_progress(since_seconds: int) -> bool:
+    """True iff ANY ground-truth source shows progress in the last `since_seconds`.
+
+    Sources:
+      1. public.gate_roadmap_history (status changes).
+      2. Worker log mtime (Temporal worker / dispatcher / fleet-supervisor).
+      3. Recent git commits in the repo.
+
+    Used before declaring an agent 'stalled' — if the fleet is shipping work,
+    individual pane idleness is not stall.
+    """
+    if since_seconds <= 0:
+        return False
+    return (
+        _gate_roadmap_recent_change(since_seconds)
+        or _worker_log_recent_mtime(since_seconds)
+        or _git_recent_commit(since_seconds)
+    )
+
+
+def sd_notify_watchdog() -> None:
+    """Send WATCHDOG=1 heartbeat to systemd if NOTIFY_SOCKET is wired.
+
+    Harmless on Type=oneshot units (NotifyAccess defaults make this a no-op);
+    enables the systemd watchdog timer when the unit is converted to
+    Type=notify + WatchdogSec=N (see infra/systemd/agents/elliot-context-
+    watchdog.service for the converted unit + companion ops alert).
+    """
+    if not os.environ.get("NOTIFY_SOCKET"):
+        return
+    try:
+        subprocess.run(["systemd-notify", "WATCHDOG=1"], timeout=2, check=False)
+    except Exception:
+        pass
+
+
 def is_merge_with_dual_concur(tool_str: str, pr_number: int | None) -> bool:
     """True iff the pending tool is `gh pr merge` AND the PR shows 2+ REVIEW:approve.
 
@@ -200,9 +372,11 @@ def is_merge_with_dual_concur(tool_str: str, pr_number: int | None) -> bool:
         return False
     try:
         r = subprocess.run(
-            ["gh", "pr", "view", str(pr_number), "--json", "comments", "-q",
-             ".comments[].body"],
-            capture_output=True, text=True, timeout=15, check=False,
+            ["gh", "pr", "view", str(pr_number), "--json", "comments", "-q", ".comments[].body"],
+            capture_output=True,
+            text=True,
+            timeout=15,
+            check=False,
         )
         if r.returncode != 0:
             return False
@@ -215,8 +389,7 @@ def is_merge_with_dual_concur(tool_str: str, pr_number: int | None) -> bool:
 def send_tab(target: str) -> None:
     """Send a single Tab keystroke to a tmux pane (advances past a Claude prompt)."""
     try:
-        subprocess.run(["tmux", "send-keys", "-t", target, "Tab"],
-                       timeout=5, check=False)
+        subprocess.run(["tmux", "send-keys", "-t", target, "Tab"], timeout=5, check=False)
     except Exception:
         pass
 
@@ -235,6 +408,30 @@ def handle_permission_prompt(name: str, target: str, pane: str, state: dict) -> 
     now = time.time()
     tool_str = extract_pending_tool(pane)
     pr_number = extract_pr_number(pane)
+
+    # Structural proven/attest bar fires FIRST — overrides every auto-approve
+    # path. Tab is NOT sent; prompt stays pending. DENY logged to state file.
+    if tool_str is not None and is_structurally_denied(tool_str):
+        deny_log = state.setdefault(f"{name}_deny_log", [])
+        deny_log.append(
+            {
+                "ts": now,
+                "tool": tool_str[:200],
+                "reason": "structural_deny_proven_or_merge",
+            }
+        )
+        # Cap to last 50 entries to keep state file bounded.
+        state[f"{name}_deny_log"] = deny_log[-50:]
+        last_escalated = state.get(f"{name}_escalated_at", 0)
+        if now - last_escalated >= ESCALATION_COOLDOWN_SEC:
+            slack_ceo(
+                f"[ELLIOT] Watchdog DENIED {name}: structural bar (proven/merge). "
+                f"Tool: {tool_str[:120]}. Prompt left pending — needs human."
+            )
+            state[f"{name}_escalated_at"] = now
+        print(f"[watchdog] DENY {name}: {tool_str[:80]}")
+        return state
+
     if tool_str is None:
         # Tool not visible above ⏵⏵ — report once per cooldown, then send Tab.
         last_escalated = state.get(f"{name}_escalated_at", 0)
@@ -310,15 +507,19 @@ def record_agent_task(name: str, task_summary: str) -> None:
 
 def slack_ceo(msg: str) -> None:
     try:
-        subprocess.run([VENV_PYTHON, SLACK_RELAY, "--channel", "ceo", "--text", msg],
-                       env={**os.environ, "CALLSIGN": "elliot"},
-                       timeout=15, check=False)
+        subprocess.run(
+            [VENV_PYTHON, SLACK_RELAY, "--channel", "ceo", "--text", msg],
+            env={**os.environ, "CALLSIGN": "elliot"},
+            timeout=15,
+            check=False,
+        )
     except Exception:
         pass
 
 
 # send_pane and wait_for_prompt are now imported from scripts.utils.tmux_send.
 # Thin wrappers kept for callers that pass delay= kwargs.
+
 
 def send_pane(target: str, text: str, delay: float = 0) -> bool:
     """Verified pane injection via scripts.utils.tmux_send.safe_send.
@@ -333,9 +534,9 @@ def send_pane(target: str, text: str, delay: float = 0) -> bool:
 def ensure_compact_state() -> str:
     """Refresh compact state file. Returns content."""
     try:
-        subprocess.run([VENV_PYTHON, WRITE_COMPACT], timeout=30,
-                       cwd=str(REPO), check=False,
-                       env={**os.environ})
+        subprocess.run(
+            [VENV_PYTHON, WRITE_COMPACT], timeout=30, cwd=str(REPO), check=False, env={**os.environ}
+        )
     except Exception:
         pass
     if STATE_FILE.exists():
@@ -489,16 +690,24 @@ def check_other_agents(state: dict) -> dict:
             continue
 
         last_task = state.get(f"{name}_last_task", "")
+        # Context-full is a structural pane signal — revive regardless of
+        # ground-truth (the agent itself cannot continue without a /clear).
         if is_context_full(pane):
             revive_agent(name, target, "context-full", last_task=last_task)
             state[key_revive] = now
         elif is_genuinely_stuck(pane):
+            # Ground-truth gate: if the fleet is shipping work in the recent
+            # window, individual pane idleness is not a stall — skip revive.
+            if check_ground_truth_progress(IDLE_TIMEOUT_MIN * 60):
+                print(f"[watchdog] {name} pane idle but ground-truth shows progress — skip revive")
+                continue
             revive_agent(name, target, "error-detected", last_task=last_task)
             state[key_revive] = now
     return state
 
 
 def main() -> None:
+    sd_notify_watchdog()
     now = time.time()
     state = load_state()
 
@@ -529,14 +738,20 @@ def main() -> None:
         if elliot_hash == state.get("elliot_last_hash", ""):
             slack_ceo(
                 "[ELLIOT] Watchdog: auto-resume FAILED — Elliot pane unchanged "
-                f"{WAKE_TIMEOUT_SEC//60}min after restart. Needs manual intervention."
+                f"{WAKE_TIMEOUT_SEC // 60}min after restart. Needs manual intervention."
             )
             state["elliot_wake_sent"] = 0  # reset to avoid spam loop
     elif not wake_sent:
         # No active wake; check for idle-too-long (Problem B standalone)
         idle_secs = now - state.get("elliot_last_hash_ts", now)
         if idle_secs > IDLE_TIMEOUT_MIN * 60:
-            state = wake_idle_elliot(state, now)
+            # Ground-truth gate: fleet shipping work means Elliot isn't the
+            # blocker — skip the wake. Prevents nuisance pings during deep
+            # multi-agent work where Elliot's pane is correctly quiet.
+            if check_ground_truth_progress(IDLE_TIMEOUT_MIN * 60):
+                print("[watchdog] elliot idle but ground-truth shows progress — skip wake")
+            else:
+                state = wake_idle_elliot(state, now)
 
     # ── Other agents ─────────────────────────────────────────────────────
     state = check_other_agents(state)

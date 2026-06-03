@@ -1,0 +1,26 @@
+[Unit]
+Description=Elliot context-cycling watchdog — wedge detect, restart, wake/resume + loud-death (HEAD-OF-OPS DIRECTIVE 2026-06-03)
+Documentation=scripts/orchestrator/context_watchdog.py
+After=network-online.target
+
+[Service]
+# Type=notify so systemd-notify WATCHDOG=1 from the script is honoured + a
+# missing heartbeat triggers restart. Was Type=oneshot — converting to notify
+# enables the loud-death guarantee in the dispatch directive.
+Type=notify
+NotifyAccess=all
+WatchdogSec=120s
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS-orion
+ExecStart=/home/elliotbot/clawd/Agency_OS/.venv/bin/python3 /home/elliotbot/clawd/Agency_OS-orion/scripts/orchestrator/context_watchdog.py
+Restart=on-failure
+RestartSec=10
+# Loud death: any non-zero exit OR missed WATCHDOG heartbeat → ops alert
+# fires via the existing keiracom-ops-failure-alert@.service template (drops
+# a #ceo line via slack_relay.py).
+OnFailure=keiracom-ops-failure-alert@%n.service
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

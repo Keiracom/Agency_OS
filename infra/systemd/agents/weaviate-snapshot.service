@@ -1,0 +1,15 @@
+[Unit]
+Description=Agency OS — Weaviate snapshot → Cloudflare R2 offsite (KEI-242, orion-weaviate-offsite)
+Documentation=ceo:vultr_infrastructure_ratified weaviate_snapshot=R2 (HARD GATE)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/elliotbot/clawd/Agency_OS
+EnvironmentFile=-/home/elliotbot/.config/agency-os/.env
+ExecStart=/usr/bin/python3 -m src.keiracom_system.backup.weaviate_snapshot
+StandardOutput=append:/home/elliotbot/clawd/logs/weaviate-snapshot.log
+StandardError=append:/home/elliotbot/clawd/logs/weaviate-snapshot.log
+# tar + gzip + boto3 streaming multipart upload of a ~1.2GB archive.
+MemoryMax=1G

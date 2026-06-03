@@ -83,7 +83,15 @@ def write_checkpoint(
         return None
     if not position_text or not position_text.strip():
         position_text = "(position not extractable)"
-    pane_excerpt = pane_tail[-3000:] if pane_tail else ""
+    # SECURITY P1 (Aiden HOLD on PR #1419): mask credentials in pane_tail
+    # before it lands in agent_checkpoints. Same redaction class as
+    # PR #1416 — DSN passwords, PGPASSWORD/DATABASE_URL envs, Bearer tokens.
+    # position_text already runs through extract_position_hint which only
+    # picks lines starting with '●' (tool-call prefix) — those don't carry
+    # credentials. pane_tail is the raw scrollback and DOES need scrubbing.
+    from scripts.orchestrator.context_watchdog import _redact_secrets  # noqa: PLC0415
+
+    pane_excerpt = _redact_secrets(pane_tail[-3000:]) if pane_tail else ""
     try:
         with _connect() as conn, conn.cursor() as cur:
             import json  # noqa: PLC0415

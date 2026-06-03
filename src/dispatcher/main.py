@@ -37,6 +37,7 @@ from src.dispatcher.bounded_spawn_enforcer import (
     DECISION_VIOLATION,
     BoundedSpawnEnforcer,
 )
+from src.dispatcher.concurrency_cap import N_TOTAL, ConcurrencyDecision, ConcurrencyGate
 from src.dispatcher.container_lifecycle import ContainerStartupError, DockerUnavailableError
 from src.dispatcher.cost_breaker import BreakerDecision, CostBreaker
 from src.dispatcher.idempotency import IdempotencyDecision, IdempotencyGate
@@ -119,6 +120,27 @@ def _set_idempotency_gate(gate: IdempotencyGate | None) -> None:
     """Test-only setter for the idempotency gate (DI through module attr)."""
     global _idempotency_gate  # noqa: PLW0603
     _idempotency_gate = gate
+
+
+# Pre-spawn concurrency cap with role-class reservation (Agency_OS-03w4 /
+# ceo:decision:concurrency_cap_2026-06-04). The dispatch-layer hard semaphore
+# that QUEUES spawns beyond N while reserving the deliberator + reviewer
+# stage-pairs. None = no-op (rollout phase 1 default; wired in lifespan once
+# Valkey config lands). See src/dispatcher/concurrency_cap.py.
+_concurrency_gate: ConcurrencyGate | None = None
+
+
+def _set_concurrency_gate(gate: ConcurrencyGate | None) -> None:
+    """Test-only setter for the concurrency cap gate (DI through module attr)."""
+    global _concurrency_gate  # noqa: PLW0603
+    _concurrency_gate = gate
+
+
+async def _release_concurrency_slot(callsign: str | None) -> None:
+    """Release a held concurrency slot. No-op when gate unwired or callsign None."""
+    if _concurrency_gate is None or not callsign:
+        return
+    await _concurrency_gate.release(callsign=callsign)
 
 
 # Pre-spawn budget ceiling gate (PR #1203 / Cat 21 lever 28 / cutover-blocker 2).
@@ -598,9 +620,13 @@ async def _reaper_loop(rp: Reaper) -> None:
                         and getattr(v.get("handle"), "session_name", None) not in live_set
                     ]
                     for k in dead_keys:
-                        _spawned.pop(k, None)
+                        gc_entry = _spawned.pop(k, None)
                         if _watchdog is not None:
                             _watchdog.unregister(k)  # safe — pops with default None
+                        # Free the concurrency slot held by the GC'd session
+                        # (Agency_OS-03w4) so its reserved band isn't leaked.
+                        if gc_entry is not None:
+                            await _release_concurrency_slot(gc_entry.get("concurrency_callsign"))
                         logger.info("dispatcher: GC'd completed session key=%s", k)
             except Exception:  # noqa: BLE001 — GC must not break the reaper loop
                 logger.exception("dispatcher: _spawned GC raised")
@@ -669,6 +695,17 @@ async def _lifespan(_app: FastAPI) -> AsyncGenerator[None, None]:
     v1c_task = asyncio.create_task(_v1_chain_run_consumer(), name="v1-chain-consumer")
     background_tasks.append(v1c_task)
     logger.info("v1_chain consumer: background task started")
+
+    # Step 8 — concurrency cap (Agency_OS-03w4 / ceo:decision:concurrency_cap_
+    # 2026-06-04). Env-gated ON: DISPATCHER_CONCURRENCY_CAP_ENABLED=1 wires the
+    # role-reservation semaphore against the dispatcher Valkey pool. Default OFF
+    # follows the phased-rollout discipline of the other pre-spawn gates; flip
+    # it on once Valkey is confirmed reachable in the target env.
+    if os.environ.get("DISPATCHER_CONCURRENCY_CAP_ENABLED", "").strip() in {"1", "true", "True"}:
+        from src.dispatcher.valkey_pool import get_valkey_client  # noqa: PLC0415
+
+        _set_concurrency_gate(ConcurrencyGate(valkey_client=get_valkey_client()))
+        logger.info("concurrency cap: ENABLED (N_TOTAL=%d) via dispatcher Valkey pool", N_TOTAL)
 
     try:
         yield
@@ -963,12 +1000,61 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
             await asyncio.sleep(queue_poll_s)
             can_spawn, ceiling_reason = check_physical_ceiling(len(_spawned))
 
+    # Pre-spawn concurrency cap with role-class reservation (Agency_OS-03w4 /
+    # ceo:decision:concurrency_cap_2026-06-04). PRIMARY dispatch-layer cap: a
+    # hard semaphore reserving the 2-deliberator + 2-reviewer stage-pairs so
+    # the cap can never starve them (the proof-gate NEGATIVE). On QUEUE we poll
+    # for a freed slot up to the timeout, then requeue-not-drop (spawned:False)
+    # — the caller re-enqueues. Fail-open inside the gate on a Valkey blip.
+    concurrency_callsign: str | None = None
+    if _concurrency_gate is not None:
+        cc_callsign = _bounded_spawn_callsign(req.spawn_kwargs or {})
+        cc_role = (req.spawn_kwargs or {}).get("role") or (req.spawn_kwargs or {}).get("chain_step")
+        try:
+            cc_timeout_s = int(os.environ.get("DISPATCHER_CONCURRENCY_TIMEOUT_S") or "300")
+        except ValueError:
+            cc_timeout_s = 300
+        cc_deadline = asyncio.get_event_loop().time() + cc_timeout_s
+        cc_result = await _concurrency_gate.acquire(callsign=cc_callsign, role_hint=cc_role)
+        while cc_result.decision == ConcurrencyDecision.QUEUE:
+            if asyncio.get_event_loop().time() >= cc_deadline:
+                logger.warning(
+                    "concurrency cap: queue timeout key=%s callsign=%s role=%s after %ds — %s",
+                    req.key,
+                    cc_callsign,
+                    cc_result.role,
+                    cc_timeout_s,
+                    cc_result.reason,
+                )
+                return {
+                    "spawned": False,
+                    "key": req.key,
+                    "backend": backend.value,
+                    "decision": "concurrency_cap_queue",
+                    "role": cc_result.role,
+                    "reason": cc_result.reason,
+                }
+            logger.info(
+                "concurrency cap: queuing spawn key=%s callsign=%s role=%s — %s",
+                req.key,
+                cc_callsign,
+                cc_result.role,
+                cc_result.reason,
+            )
+            await asyncio.sleep(5)
+            cc_result = await _concurrency_gate.acquire(callsign=cc_callsign, role_hint=cc_role)
+        # GRANTED — remember the callsign so terminate/reaper releases the slot.
+        if cc_result.role != "bypass":
+            concurrency_callsign = cc_callsign
+
     manager = SessionManager(backend=backend)
     try:
         handle = manager.spawn(**spawn_kwargs_effective)
     except (TmuxUnavailableError, DockerUnavailableError) as exc:
+        await _release_concurrency_slot(concurrency_callsign)
         raise HTTPException(status_code=503, detail=str(exc)) from exc
     except (SessionStartupError, ContainerStartupError, TypeError) as exc:
+        await _release_concurrency_slot(concurrency_callsign)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     try:
@@ -977,6 +1063,7 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
         # Registration rejected (e.g. session name does not match the
         # reaper prefix). Tear the session down so it is not left orphaned.
         manager.terminate(handle)
+        await _release_concurrency_slot(concurrency_callsign)
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     _spawned[req.key] = {
@@ -985,6 +1072,9 @@ async def dispatcher_spawn(req: SpawnRequest) -> dict[str, Any]:
         # Retained for the work-loop exit hook (Agency_OS-innu): release the
         # tenant slot + pop overflow on terminate. None when not a work-loop spawn.
         "tenant_id": (req.spawn_kwargs or {}).get("tenant_id"),
+        # Retained for the concurrency-cap exit hook (Agency_OS-03w4): release
+        # the reserved slot on terminate / reaper GC. None for bypass spawns.
+        "concurrency_callsign": concurrency_callsign,
     }
 
     # Bounded-spawn enforcement (Agency_OS-gcpm / Audit RED-7).
@@ -1071,6 +1161,9 @@ async def dispatcher_terminate(req: TerminateRequest) -> dict[str, Any]:
     tenant_id = entry.get("tenant_id")
     if tenant_id:
         await work_loop.release_on_exit(str(tenant_id), req.key)
+    # Concurrency-cap exit hook (Agency_OS-03w4): free the reserved slot so the
+    # next queued spawn of that role band can acquire. TTL reaps it if missed.
+    await _release_concurrency_slot(entry.get("concurrency_callsign"))
     return {"terminated": True, "key": req.key, "watchdog_tracked": _watchdog.tracked}
 
 

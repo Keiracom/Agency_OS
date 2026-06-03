@@ -191,6 +191,27 @@ STRUCTURAL_DENY_SUBSTRINGS = (
 )
 STRUCTURAL_DENY_REGEXES = (re.compile(r"INSERT.*proven", re.IGNORECASE),)
 
+# Credential-redaction patterns (SECURITY P1, 2026-06-03). Any pane content
+# that flows into slack_ceo() must pass through _redact_secrets() first —
+# panes can carry psql DSNs, PGPASSWORD env lines, bearer tokens.
+_REDACT_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"postgresql(\+\w+)?://[^@\s]+@"), r"postgresql\1://***@"),
+    (re.compile(r"(PGPASSWORD)=\S+"), r"\1=***"),
+    (re.compile(r"(DATABASE_URL)=\S+"), r"\1=***"),
+    (re.compile(r":[^:@/\s]{8,}@"), ":***@"),
+    (re.compile(r"Bearer [A-Za-z0-9_.\-]{20,}"), "Bearer ***"),
+)
+
+
+def _redact_secrets(text: str) -> str:
+    """Mask credential patterns before they hit Slack."""
+    if not text:
+        return text
+    for pat, repl in _REDACT_PATTERNS:
+        text = pat.sub(repl, text)
+    return text
+
+
 # Ground-truth progress sources (HEAD-OF-OPS DIRECTIVE 2026-06-03).
 # If ANY of these shows activity within IDLE_TIMEOUT_MIN, the fleet is NOT
 # stalled — the watchdog should skip revive even if a pane looks idle.
@@ -426,7 +447,7 @@ def handle_permission_prompt(name: str, target: str, pane: str, state: dict) -> 
         if now - last_escalated >= ESCALATION_COOLDOWN_SEC:
             slack_ceo(
                 f"[ELLIOT] Watchdog DENIED {name}: structural bar (proven/merge). "
-                f"Tool: {tool_str[:120]}. Prompt left pending — needs human."
+                f"Tool: {_redact_secrets(tool_str[:120])}. Prompt left pending — needs human."
             )
             state[f"{name}_escalated_at"] = now
         print(f"[watchdog] DENY {name}: {tool_str[:80]}")
@@ -437,7 +458,7 @@ def handle_permission_prompt(name: str, target: str, pane: str, state: dict) -> 
         last_escalated = state.get(f"{name}_escalated_at", 0)
         if now - last_escalated >= ESCALATION_COOLDOWN_SEC:
             tail_lines = [ln.strip() for ln in pane.splitlines() if ln.strip()][-3:]
-            pane_tail = " | ".join(tail_lines)
+            pane_tail = _redact_secrets(" | ".join(tail_lines))
             slack_ceo(
                 f"[ELLIOT] Watchdog: {name} — unidentified prompt, Tab auto-sent.\n"
                 f"Pane tail: {pane_tail[:200]}"
@@ -461,7 +482,7 @@ def handle_permission_prompt(name: str, target: str, pane: str, state: dict) -> 
     last_escalated = state.get(f"{name}_escalated_at", 0)
     if now - last_escalated >= ESCALATION_COOLDOWN_SEC:
         slack_ceo(
-            f"[ELLIOT] Watchdog: {name} — non-standard tool auto-approved: {tool_str[:120]}\n"
+            f"[ELLIOT] Watchdog: {name} — non-standard tool auto-approved: {_redact_secrets(tool_str[:120])}\n"
             "Tab sent — agent unblocked. Review if unexpected."
         )
         state[f"{name}_escalated_at"] = now

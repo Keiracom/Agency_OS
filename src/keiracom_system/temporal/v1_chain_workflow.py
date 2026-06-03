@@ -28,6 +28,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 from uuid import uuid4
 
+import httpx
+
 try:
     from temporalio import activity, workflow
     from temporalio.common import RetryPolicy
@@ -50,6 +52,18 @@ CHAIN_STEP_TO_CALLSIGN: dict[str, str] = {
 }
 
 _USD_TO_AUD = 1.55  # LAW II: 1 USD = 1.55 AUD
+
+# Interceptor reroute (Head-of-Ops directive 2026-06-03): route chain hops
+# through the local dispatcher's interceptor proxy instead of calling the
+# Anthropic SDK directly. The interceptor runs governance + spend + rate
+# checks then forwards to LiteLLM (governance_tier_fast → gpt-4o-mini under
+# Dave's 2026-05-20 provider policy). Replaces the dead direct-Anthropic
+# auth path. Override via INTERCEPTOR_URL env for tests.
+_INTERCEPTOR_URL_ENV = "INTERCEPTOR_URL"
+_DEFAULT_INTERCEPTOR_URL = "http://127.0.0.1:4001/interceptor/forward"
+_INTERCEPTOR_TIMEOUT_S = 300.0
+_INTERCEPTOR_MODEL = "governance_tier_fast"
+_INTERCEPTOR_TIER = "starter"
 
 
 @dataclass
@@ -146,8 +160,6 @@ async def run_chain_step(inp: ChainStepInput) -> ChainStepOutput:
 
     try:
         from src.keiracom_system.vault.api_agent_cold_start import (  # noqa: PLC0415
-            call_anthropic,
-            compute_cost,
             fetch_persona,
             insert_attribution,
         )
@@ -157,28 +169,46 @@ async def run_chain_step(inp: ChainStepInput) -> ChainStepOutput:
             raise RuntimeError(
                 f"run_chain_step: fetch_persona returned None for callsign={inp.callsign!r}"
             )
-        persona, persona_token_count = persona_result
+        persona, _persona_token_count = persona_result
 
-        api_key = os.environ["ANTHROPIC_API_KEY"]
+        interceptor_url = os.environ.get(_INTERCEPTOR_URL_ENV, _DEFAULT_INTERCEPTOR_URL)
+        body = {
+            "tenant_id": inp.task_id or "proof-chain",
+            "prompt": inp.brief,
+            "model": _INTERCEPTOR_MODEL,
+            "tier": _INTERCEPTOR_TIER,
+            "messages": [
+                {"role": "system", "content": persona},
+                {"role": "user", "content": inp.brief},
+            ],
+        }
+
+        def _post() -> dict:
+            with httpx.Client(timeout=_INTERCEPTOR_TIMEOUT_S) as client:
+                resp = client.post(interceptor_url, json=body)
+                resp.raise_for_status()
+                return resp.json()
+
         started_at = time.monotonic()
-        (
-            _text,
-            input_tokens,
-            output_tokens,
-            cache_read_tokens,
-            cache_write_tokens,
-            rate_limit_retries,
-        ) = await asyncio.to_thread(
-            call_anthropic,
-            api_key,
-            persona,
-            inp.brief,
-            task_id=inp.task_id,
-            callsign=inp.callsign,
-            persona_token_count=persona_token_count,
-        )
+        response = await asyncio.to_thread(_post)
         latency_ms = (time.monotonic() - started_at) * 1000.0
-        cost_usd, cost_aud = compute_cost(input_tokens, output_tokens)
+
+        choices = response.get("choices") or []
+        if not choices:
+            raise RuntimeError(
+                f"run_chain_step: interceptor returned no choices, "
+                f"body_keys={sorted(response.keys())!r}"
+            )
+        _text = (choices[0].get("message") or {}).get("content") or ""
+        usage = response.get("usage") or {}
+        input_tokens = int(usage.get("prompt_tokens", 0))
+        output_tokens = int(usage.get("completion_tokens", 0))
+        cache_read_tokens = int(usage.get("cache_read_tokens", 0))
+        cache_write_tokens = int(usage.get("cache_write_tokens", 0))
+        rate_limit_retries = 0
+        cost_cents_aud = int(response.get("cost_cents_aud", 0))
+        cost_aud = cost_cents_aud / 100.0
+        cost_usd = cost_aud / _USD_TO_AUD if cost_aud else 0.0
 
     finally:
         hb_task.cancel()

@@ -80,6 +80,19 @@ RC_TASK_ABSENT = 3
 NATS_URL = os.environ.get("NATS_URL", "nats://127.0.0.1:4222")
 HANDOFF_SUBJECT = "keiracom.agent.handoff"
 
+# Phase 1 verdict-enforcement publisher wire-up (nova-verdict-publisher-wire).
+# Reviewer callsigns whose handoff atoms carry a verdict (APPROVE / HOLD /
+# REJECT). Mirrors v1_chain_orchestrator.REVIEWER_STEPS via FROM_TO_STEP:
+#   max   -> max_challenge
+#   orion -> orion_spec
+#   atlas -> atlas_safety
+# Source of truth for the chain side is v1_chain_orchestrator.REVIEWER_STEPS;
+# duplicated as callsigns here to avoid importing the chain module at handoff
+# publish (lazy import in _attach_verdict_if_reviewer keeps the cold-start path
+# DB-free for envelope build). Drift is caught by
+# test_publisher_reviewer_callsigns_match_chain_reviewer_steps.
+_REVIEWER_HANDOFF_CALLSIGNS: frozenset[str] = frozenset({"max", "orion", "atlas"})
+
 
 def _dsn() -> str:
     dsn = os.environ.get("DATABASE_URL") or os.environ.get("SUPABASE_DB_DSN")
@@ -320,6 +333,50 @@ def notify_complete(
         logger.exception("notify_complete: unexpected error for task=%s", task_id)
 
 
+def _attach_verdict_if_reviewer(payload: dict, *, from_callsign: str, atom_id: str) -> None:
+    """Phase 1 verdict-enforcement publisher wire-up (nova-verdict-publisher-wire).
+
+    Mutates ``payload`` in place: when ``from_callsign`` is a reviewer (max /
+    orion / atlas) and ``atom_id`` is non-empty, calls
+    ``parse_reviewer_verdict(atom_id)`` and sets payload['verdict'] +
+    payload['verdict_reason']. The orchestrator consumer
+    (_consumer_handle_envelope_async) reads these keys and forwards them to
+    advance_step, where PR #1418's REJECT/HOLD halt+loop enforcement fires.
+
+    Fail-open: any error (import miss, AtomStore unreachable, parse exception)
+    leaves payload untouched. The consumer treats missing-verdict on a reviewer
+    completion as legacy clean-advance — that's the safe-default behaviour for
+    handoffs published before this wire-up, and remains correct when the parse
+    fails: advance_step itself does NOT switch on verdict for non-reviewer
+    steps, so the only impact of a missed reviewer parse is "advances when it
+    should halt". Atlas's PR #1418 covers that exact race: HOLD is the
+    safe-default verdict returned by parse_reviewer_verdict on fetch failure,
+    so when the call succeeds it returns HOLD; only an outer raise (import
+    missing, etc.) skips attachment entirely.
+
+    No-op for non-reviewer callsigns (aiden / nova / face).
+    """
+    if from_callsign.lower() not in _REVIEWER_HANDOFF_CALLSIGNS:
+        return
+    if not atom_id:
+        return
+    try:
+        from src.keiracom_system.chain.reviewer_atom import (  # noqa: PLC0415
+            parse_reviewer_verdict,
+        )
+
+        ra = parse_reviewer_verdict(atom_id)
+        payload["verdict"] = ra.verdict
+        payload["verdict_reason"] = ra.rationale
+    except Exception as exc:  # noqa: BLE001 — fail-open: handoff must never block
+        logger.warning(
+            "agent_cold_start: verdict-attach failed for atom_id=%s callsign=%s: %s",
+            atom_id,
+            from_callsign,
+            exc,
+        )
+
+
 def _publish_handoff(*, task_id: str, atom_id: str, to_callsign: str = "") -> bool:
     """zr7e.9 — publish an AtomV1 handoff pointer to NATS keiracom.agent.handoff.
 
@@ -331,16 +388,23 @@ def _publish_handoff(*, task_id: str, atom_id: str, to_callsign: str = "") -> bo
     comes from AGENT_CALLSIGN (set by the dispatcher at spawn). to_callsign
     defaults to "" — subscribers on the single keiracom.agent.handoff subject
     self-route by their chain role until chain-progression wiring lands.
+
+    Phase 1 verdict-enforcement (nova-verdict-publisher-wire): when the
+    completing agent is a reviewer (max / orion / atlas), the payload is
+    enriched with ``verdict`` + ``verdict_reason`` parsed from the atom. The
+    orchestrator consumer reads these and forwards to advance_step's halt+loop
+    enforcement (PR #1418). Non-reviewer callsigns are unaffected.
     """
-    payload = json.dumps(
-        {
-            "task_id": task_id,
-            "atom_id": atom_id,
-            "from_callsign": os.environ.get("AGENT_CALLSIGN", ""),
-            "to_callsign": to_callsign,
-            "ts": int(time.time()),
-        }
-    ).encode()
+    from_callsign = os.environ.get("AGENT_CALLSIGN", "")
+    payload_dict: dict = {
+        "task_id": task_id,
+        "atom_id": atom_id,
+        "from_callsign": from_callsign,
+        "to_callsign": to_callsign,
+        "ts": int(time.time()),
+    }
+    _attach_verdict_if_reviewer(payload_dict, from_callsign=from_callsign, atom_id=atom_id)
+    payload = json.dumps(payload_dict).encode()
     try:
         import asyncio  # noqa: PLC0415 — lazy, mirrors save_exit_atoms / fleet_supervisor
 

@@ -161,3 +161,4 @@ pytest-timeout>=2.3.0  # KEI-132: chaos harness — bound each scenario to <60s
 fakeredis[lua]>=2.20.0  # work-loop consumer tests (Agency_OS-s3ye/innu) — async Valkey + Lua; [lua] pulls lupa for EVAL (bare fakeredis has no Lua → CI 'unknown command eval')
 fuzzywuzzy>=0.18.0
 python-Levenshtein>=0.21.0
+testcontainers[postgres]>=4.14,<5

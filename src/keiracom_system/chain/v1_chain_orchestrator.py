@@ -110,6 +110,17 @@ _DISPATCHER_URL = os.environ.get("DISPATCHER_URL", "http://127.0.0.1:4001")
 # load-bearing for the V1 battery.
 _TASK_COST_CEILING_AUD = float(os.environ.get("V1_TASK_COST_CEILING_AUD", "10.00"))
 
+# Verdict-enforcement nucleus (Phase 1 — atlas-verdict-enforcement-phase1).
+# Reviewer steps return a verdict atom; REJECT/HOLD halts forward progression
+# and re-dispatches aiden_plan with the reviewer's context as the loop brief.
+# Bounded retries: after V1_VERDICT_MAX_RETRIES iterations the chain escalates
+# to Dave via /dispatcher/verdict_halt + state=halted_max_retries. GOV-12: the
+# runtime conditional lives in advance_step below — this is not a comment-only
+# enforcement.
+REVIEWER_STEPS: frozenset[str] = frozenset({"max_challenge", "orion_spec", "atlas_safety"})
+VERDICT_HALT_SET: frozenset[str] = frozenset({"REJECT", "HOLD"})
+V1_VERDICT_MAX_RETRIES = int(os.environ.get("V1_VERDICT_MAX_RETRIES", "3"))
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
@@ -210,6 +221,71 @@ def _post_ceiling_breach(
         )
     except Exception:  # noqa: BLE001 — must not break halt-state save
         log.warning("ceiling_breach notify: unexpected error for chain=%s", chain_id, exc_info=True)
+
+
+def _post_verdict_halt(
+    entry: dict,
+    chain_id: str,
+    rejecting_step: str,
+    verdict: str,
+    retry_count: int,
+    *,
+    escalated: bool,
+    verdict_reason: str | None = None,
+    dispatcher_url: str = _DISPATCHER_URL,
+) -> None:
+    """Phase 1 verdict-enforcement notify — POST to /dispatcher/verdict_halt.
+
+    Fired in two cases:
+    - escalated=False: chain looped back to aiden_plan with reviewer context.
+      One #ceo line per loop iteration so Dave can see the retry chain.
+    - escalated=True: retry budget exhausted (>= V1_VERDICT_MAX_RETRIES) —
+      chain is halted permanently and needs Dave's call.
+
+    Fail-open: dispatcher unreachable / non-2xx is logged + swallowed. A notify
+    failure must NEVER block the halt-state save (mirrors _post_ceiling_breach).
+    """
+    import urllib.error  # noqa: PLC0415
+    import urllib.request  # noqa: PLC0415
+
+    payload = json.dumps(
+        {
+            "task_id": entry.get("task_id") or "?",
+            "chain_id": chain_id,
+            "brief": entry.get("brief") or "(no brief)",
+            "rejecting_step": rejecting_step,
+            "verdict": verdict,
+            "verdict_reason": verdict_reason or "",
+            "retry_count": retry_count,
+            "max_retries": V1_VERDICT_MAX_RETRIES,
+            "escalated": escalated,
+            "steps_done": list(entry.get("steps_done") or []),
+            "rejections": list(entry.get("rejections") or []),
+        }
+    ).encode()
+    url = f"{dispatcher_url.rstrip('/')}/dispatcher/verdict_halt"
+    try:
+        req = urllib.request.Request(
+            url, data=payload, headers={"Content-Type": "application/json"}, method="POST"
+        )
+        with urllib.request.urlopen(req, timeout=10) as resp:  # noqa: S310 — fixed loopback host
+            log.info(
+                "verdict_halt notify: dispatcher status=%d chain=%s step=%s verdict=%s "
+                "retry=%d/%d escalated=%s",
+                resp.status,
+                chain_id,
+                rejecting_step,
+                verdict,
+                retry_count,
+                V1_VERDICT_MAX_RETRIES,
+                escalated,
+            )
+    except (urllib.error.URLError, OSError):
+        log.warning(
+            "verdict_halt notify: dispatcher unreachable for chain=%s", chain_id, exc_info=True
+        )
+    except Exception:  # noqa: BLE001 — must not break halt-state save
+        log.warning("verdict_halt notify: unexpected error for chain=%s", chain_id, exc_info=True)
 
 
 def _post_chain_complete(
@@ -462,6 +538,8 @@ def advance_step(
     completed_step: str,
     atom_id: str,
     *,
+    verdict: str | None = None,
+    verdict_reason: str | None = None,
     clock: Callable[[], float] = time.time,
 ) -> list[dict]:
     """Record a step completion and dispatch the next step(s).
@@ -470,12 +548,21 @@ def advance_step(
         chain_id: Identifies the chain in the state file.
         completed_step: The step that just finished (e.g. "aiden_plan").
         atom_id: The atom_id returned by the completing agent for this step.
+        verdict: Optional reviewer verdict. When ``completed_step`` is a
+            reviewer step (max_challenge, orion_spec, atlas_safety) and the
+            verdict is REJECT or HOLD, the chain halts forward progression and
+            re-dispatches aiden_plan with the reviewer's context as the loop
+            brief. Bounded by V1_VERDICT_MAX_RETRIES — after that the chain
+            escalates to Dave (state=halted_max_retries). None / any other
+            value = no enforcement (clean advance).
+        verdict_reason: Optional one-liner the reviewer attaches to a non-clean
+            verdict. Surfaced in the loop brief and the #ceo halt post.
         clock: Injectable for tests.
 
     Returns:
         List of envelope dicts that were dispatched (empty list if no dispatch
-        occurred — either the chain is waiting on parallel partners, or it has
-        reached ``complete``).
+        occurred — either the chain is waiting on parallel partners, has
+        reached ``complete``, or hit the retry-budget escalation).
     """
     state = _load_state()
     entry = state.get(chain_id)
@@ -502,6 +589,100 @@ def advance_step(
         entry["pending"].remove(completed_step)
 
     dispatched: list[dict] = []
+
+    # Phase 1 verdict-enforcement nucleus. Runtime conditional (GOV-12):
+    # if a reviewer step returned REJECT or HOLD, halt forward progression
+    # and either (a) re-dispatch aiden_plan with the reviewer's context as a
+    # loop brief, or (b) escalate to Dave when the retry budget is exhausted.
+    # Must run BEFORE the ceiling check + fan-out so a rejecting parallel
+    # partner cannot trigger further dispatches downstream.
+    normalized_verdict = str(verdict).strip().upper() if verdict else ""
+    if completed_step in REVIEWER_STEPS and normalized_verdict in VERDICT_HALT_SET:
+        retries_so_far = int(entry.get("retry_count", 0) or 0)
+        rejections = list(entry.get("rejections") or [])
+        rejections.append(
+            {
+                "step": completed_step,
+                "atom_id": atom_id,
+                "verdict": normalized_verdict,
+                "reason": verdict_reason or "",
+                "loop_at": retries_so_far,
+                "ts": clock(),
+            }
+        )
+        entry["rejections"] = rejections
+        # Cancel any in-flight parallel partner. We can't recall an already
+        # published NATS envelope, but clearing pending here prevents the next
+        # advance_step (from the partner's later completion) from falling
+        # through to the "last parallel step" branch and marking complete.
+        entry["pending"] = []
+
+        if retries_so_far >= V1_VERDICT_MAX_RETRIES:
+            # Retry budget exhausted — halt permanently and escalate.
+            entry["current_step"] = "halted_max_retries"
+            entry["verdict_halt"] = {
+                "rejecting_step": completed_step,
+                "verdict": normalized_verdict,
+                "reason": verdict_reason or "",
+                "retry_count": retries_so_far,
+                "max_retries": V1_VERDICT_MAX_RETRIES,
+                "escalated": True,
+            }
+            try:
+                _post_verdict_halt(
+                    entry,
+                    chain_id,
+                    completed_step,
+                    normalized_verdict,
+                    retries_so_far,
+                    escalated=True,
+                    verdict_reason=verdict_reason,
+                )
+            except Exception:  # noqa: BLE001 — must not break halt-state save
+                log.warning(
+                    "v1_chain verdict-halt(escalated): post raised for chain=%s",
+                    chain_id,
+                    exc_info=True,
+                )
+            _save_state(state)
+            return []
+
+        # Within retry budget — halt forward progression and loop back to
+        # aiden_plan with the rejecter's atom + reason as the brief context.
+        entry["retry_count"] = retries_so_far + 1
+        entry["current_step"] = "aiden_plan"
+        # Fresh slate for the next iteration. atom_ids per step is last-write-
+        # wins (dict) so we leave the keys alone — the rejection list above is
+        # the authoritative history.
+        entry["steps_done"] = []
+        loop_brief = (
+            f"{entry.get('brief') or ''}\n\n"
+            f"[verdict loop {retries_so_far + 1}/{V1_VERDICT_MAX_RETRIES}] "
+            f"Reviewer {completed_step} returned {normalized_verdict}. "
+            f"Reason: {verdict_reason or '(none given)'}. "
+            f"Prior atom: {atom_id}. Re-plan addressing this feedback."
+        )
+        env = _build_envelope(entry["task_id"], chain_id, "aiden_plan", atom_id, loop_brief, clock)
+        _publish_envelope(env, "aiden")
+        dispatched.append(env)
+        try:
+            _post_verdict_halt(
+                entry,
+                chain_id,
+                completed_step,
+                normalized_verdict,
+                retries_so_far + 1,
+                escalated=False,
+                verdict_reason=verdict_reason,
+            )
+        except Exception:  # noqa: BLE001 — must not break loop-state save
+            log.warning(
+                "v1_chain verdict-halt(loop): post raised for chain=%s",
+                chain_id,
+                exc_info=True,
+            )
+        _save_state(state)
+        return dispatched
 
     # V1-battery Gate 1 — per-task A$10 ceiling. Query SUM(cost_aud) for
     # this task_id; halt + post #ceo if exceeded. Runs BEFORE the dispatch
@@ -603,6 +784,8 @@ async def _advance_step_async(
     completed_step: str,
     atom_id: str,
     *,
+    verdict: str | None = None,
+    verdict_reason: str | None = None,
     clock: Callable[[], float] = time.time,
 ) -> list[dict]:
     """Async entrypoint for the V1 consumer loop (Atlas oevr).
@@ -620,9 +803,19 @@ async def _advance_step_async(
     event loop, which runs single-threaded: only one coroutine can observe
     `complete_posted is False` and flip it, so only one post fires.
     Race fixed 2026-05-30 (Elliot diagnosis).
+
+    ``verdict`` / ``verdict_reason`` are forwarded verbatim into advance_step
+    so the Phase 1 verdict-enforcement nucleus can halt + loop on REJECT/HOLD
+    from a reviewer step.
     """
     envelopes = await asyncio.to_thread(
-        advance_step, chain_id, completed_step, atom_id, clock=clock
+        advance_step,
+        chain_id,
+        completed_step,
+        atom_id,
+        verdict=verdict,
+        verdict_reason=verdict_reason,
+        clock=clock,
     )
     # Single-threaded serialisation point — only one coroutine wins the flip.
     state = _load_state()
@@ -677,8 +870,18 @@ async def _consumer_handle_envelope_async(envelope: dict) -> list[dict]:
         if step is None:
             log.warning("v1_chain consumer: unknown from_callsign=%s — skip", from_callsign)
             return []
+        # Phase 1 verdict-enforcement (atlas-verdict-enforcement-phase1): the
+        # handoff envelope may carry a reviewer's verdict + one-liner reason.
+        # Forwarded verbatim — advance_step's runtime conditional decides
+        # whether to halt+loop or advance.
+        verdict = envelope.get("verdict")
+        verdict_reason = envelope.get("verdict_reason")
         envelopes = await _advance_step_async(
-            chain_id=task_id, completed_step=step, atom_id=atom_id
+            chain_id=task_id,
+            completed_step=step,
+            atom_id=atom_id,
+            verdict=verdict,
+            verdict_reason=verdict_reason,
         )
         log.info(
             "v1_chain consumer: chain=%s step=%s -> %d dispatch(es)",

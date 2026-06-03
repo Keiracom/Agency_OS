@@ -654,20 +654,71 @@ def revive_agent(name: str, target: str, reason: str, last_task: str = "") -> No
     `last_task` (when Elliot writes state[f"{name}_last_task"] at dispatch
     time) tells the revived agent EXACTLY what to resume — falls back to
     `bd ready` when blank.
+
+    context_checkpoint_resume (gate_roadmap 952c8d0d):
+      1. BEFORE /clear — capture pane + last_task into a checkpoint row
+         (fail-open: any failure does NOT block /clear).
+      2. AFTER /clear — if an open checkpoint exists for this callsign,
+         REPLACE the static REVIVED text with the checkpoint resume block
+         (carries position + pane excerpt + task_id). Mark the row consumed.
+         If no checkpoint OR fetch fails, fall through to the static text.
     """
-    # Send /clear (no prompt-wait needed — stuck agent is at ❯ already)
+    # 1. Capture checkpoint BEFORE /clear (fail-open).
+    from scripts.orchestrator.checkpoint_writer import (  # noqa: PLC0415
+        extract_position_hint,
+        write_checkpoint,
+    )
+
+    try:
+        pre_pane = pane_capture(target)
+        position = extract_position_hint(pre_pane)
+        write_checkpoint(
+            callsign=name,
+            source="watchdog",
+            task_id=last_task or None,
+            pane_tail=pre_pane[-3000:],
+            position_text=position,
+        )
+    except Exception:  # noqa: BLE001 — fail-open; never block /clear
+        pass
+
+    # 2. Send /clear (no prompt-wait needed — stuck agent is at ❯ already).
     safe_send(target, "/clear", skip_prompt_wait=True, wait_prompt=0)
-    # Wait for new ❯ (Stop hook may delay the new context — same race as Elliot)
+    # Wait for new ❯ (Stop hook may delay the new context — same race as Elliot).
     if not wait_for_prompt(target, timeout=30.0):
         slack_ceo(f"[ELLIOT] Watchdog: {name} /clear hung (❯ not seen 30s). Revive skipped.")
         return
-    task_hint = f" Last task: {last_task}." if last_task else ""
-    revive_msg = (
-        f"REVIVED by watchdog ({reason}).{task_hint} Read IDENTITY.md, "
-        "check bd ready, resume last task. No paid chain runs without approval."
+
+    # 3. Build REVIVED text — prefer checkpoint resume block if open row exists.
+    from scripts.orchestrator.checkpoint_reader import (  # noqa: PLC0415
+        fetch_open_checkpoint,
+        format_resume_block,
+        mark_consumed,
     )
+
+    revive_msg: str
+    used_checkpoint = False
+    try:
+        checkpoint = fetch_open_checkpoint(name)
+    except Exception:  # noqa: BLE001 — fail-open
+        checkpoint = None
+    if checkpoint:
+        revive_msg = f"REVIVED by watchdog ({reason}).\n\n" + format_resume_block(checkpoint)
+        try:
+            mark_consumed(checkpoint["id"], "session_start_injected")
+        except Exception:  # noqa: BLE001 — fail-open
+            pass
+        used_checkpoint = True
+    else:
+        task_hint = f" Last task: {last_task}." if last_task else ""
+        revive_msg = (
+            f"REVIVED by watchdog ({reason}).{task_hint} Read IDENTITY.md, "
+            "check bd ready, resume last task. No paid chain runs without approval."
+        )
+
     safe_send(target, revive_msg, skip_prompt_wait=True)
-    slack_ceo(f"[ELLIOT] Watchdog revived {name} ({reason}).")
+    cp_tag = " [checkpoint-injected]" if used_checkpoint else ""
+    slack_ceo(f"[ELLIOT] Watchdog revived {name} ({reason}){cp_tag}.")
 
 
 def _flap_state_path(name: str) -> Path:

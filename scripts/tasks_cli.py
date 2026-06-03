@@ -263,9 +263,13 @@ def _build_ready_sql(agent: str, callsign: str, phase_max: int, limit: int) -> t
             (agent, phase_max, callsign, limit) if callsign else (agent, phase_max, limit)
         )
         return sql, params
-    # KEI-97 — exclusion clause splices in identically on the non-personalised path.
+    # KEI-97 — exclusion clause splices in identically on the non-personalised
+    # path. The FROM is aliased `tasks t` so the `t.excluded_callsign`
+    # reference in exclusion_clause resolves; without the alias the query
+    # raises `UndefinedTable: missing FROM-clause entry for table "t"` whenever
+    # --callsign is passed (anchor: bd ready --callsign scout 2026-06-03).
     sql = (
-        f"SELECT {_READY_COLUMNS} FROM public.tasks "
+        f"SELECT {_READY_COLUMNS} FROM public.tasks t "
         "WHERE status = 'available' AND claimed_by IS NULL "
         "AND phase <= %s "
         f"{exclusion_clause}"

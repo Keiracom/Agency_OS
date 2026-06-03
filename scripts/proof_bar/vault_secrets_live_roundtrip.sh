@@ -1,8 +1,10 @@
 #!/usr/bin/env bash
 # vault_secrets_live_roundtrip.sh
 #
-# LIVE proof for gate_roadmap id=00770e74-ad22-4da4-aaca-38b70d53b2b1
-# (component=vault_secrets). Bound as the proof_gate_contract.cmd value —
+# LIVE proof for gate_roadmap id=7d85635a (component=vault_backend_live —
+# the backend-liveness gate split from vault_secrets; vault_secrets, the full
+# 75-env-carve-out migration, remains not_started and is NOT proven by this
+# script). Bound as the proof_gate_contract.cmd value —
 # running this script against the live HashiCorp Vault produces the
 # contract-required run_output substrings:
 #   - "VAULT_LIVE_CONFIRMED="          (sealed=false, initialized=true)
@@ -21,7 +23,7 @@
 # Exit code: 0 on a verified live roundtrip + passing negative self-test;
 # 2 if a required token is missing (proof failed); 3 on environment errors.
 #
-# ref: NOVA vault_secrets built->proven (gate 00770e74).
+# ref: NOVA vault_backend_live built->proven (gate 7d85635a).
 
 set -u
 

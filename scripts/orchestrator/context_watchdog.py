@@ -86,6 +86,15 @@ def is_context_full(pane: str) -> bool:
 # is_genuinely_stuck (the loose-substring check is unreliable as a
 # permission signal in isolation).
 
+# Flap-guard (agent_activity wire-up — nova-agent-activity-watchdog-wire).
+# If the same agent is classified as needing wake N times within a rolling
+# window, STOP auto-waking and post #ceo so a human triages the blocker.
+# Per-agent state lives in /tmp/watchdog-flap-<callsign>.json so a stuck
+# single agent does not contaminate the shared watchdog state file.
+FLAP_WINDOW_SEC = 30 * 60  # 30-minute rolling window
+FLAP_THRESHOLD = 3  # 3 wakes in window → flap
+FLAP_STATE_PATH_TEMPLATE = "/tmp/watchdog-flap-{name}.json"
+
 PERMISSION_PROMPT_TOKENS = ("⏵⏵", "bypass permiss")
 GENUINE_STALL_INDICATORS = (
     "Error:",
@@ -661,6 +670,85 @@ def revive_agent(name: str, target: str, reason: str, last_task: str = "") -> No
     slack_ceo(f"[ELLIOT] Watchdog revived {name} ({reason}).")
 
 
+def _flap_state_path(name: str) -> Path:
+    return Path(FLAP_STATE_PATH_TEMPLATE.format(name=name))
+
+
+def load_flap_events(name: str, now: float) -> list[float]:
+    """Return wake-event timestamps for `name` within FLAP_WINDOW_SEC of `now`.
+
+    Drops events outside the window and silently swallows read errors — the
+    flap signal is advisory, not load-bearing.
+    """
+    path = _flap_state_path(name)
+    if not path.exists():
+        return []
+    try:
+        data = json.loads(path.read_text())
+        events = data.get("events", [])
+    except Exception:
+        return []
+    return [t for t in events if isinstance(t, (int, float)) and (now - t) < FLAP_WINDOW_SEC]
+
+
+def record_flap_event(name: str, now: float) -> None:
+    """Append a wake event for `name` at `now`; prune the file to the active window."""
+    events = load_flap_events(name, now)
+    events.append(now)
+    try:
+        _flap_state_path(name).write_text(json.dumps({"events": events}))
+    except Exception:
+        pass
+
+
+def is_flap_tripped(name: str, now: float) -> bool:
+    """True iff `name` has been woken FLAP_THRESHOLD+ times within the window.
+
+    Threshold check uses >= so the third wake inside the window arms the guard
+    — the fourth wake is the one that's suppressed. This matches the dispatch's
+    'woken 3x' phrasing (the 3rd wake is the alarm trigger; further wakes are
+    blocked until events age out of the window).
+    """
+    return len(load_flap_events(name, now)) >= FLAP_THRESHOLD
+
+
+# tmux session name → DB callsign mapping. Most agents match 1:1 (atlas, orion,
+# aiden, scout, nova) but Max's tmux session is "maxbot" while tool_call_log
+# rows are written with callsign="max" (verified via SELECT COUNT(*) — 2824
+# rows under "max", 0 under "maxbot"). Without this mapping the activity
+# lookup for Max would always return no_data and the wire-up would silently
+# skip auto-wake for Max — defeating the false-green-fix Max himself was
+# affected by.
+_PANE_TO_DB_CALLSIGN: dict[str, str] = {"maxbot": "max"}
+
+
+def _db_callsign(pane_name: str) -> str:
+    return _PANE_TO_DB_CALLSIGN.get(pane_name, pane_name)
+
+
+def _try_classify_activity(name: str) -> str:
+    """Best-effort wrapper around scripts.orchestrator.agent_activity.
+
+    Translates the watchdog's tmux session name into the canonical DB
+    callsign (e.g. "maxbot" -> "max") before querying, so each agent's
+    activity_state row is actually found.
+
+    Returns 'no_data' on any error (import miss, DB unreachable, callsign
+    absent). The fail-open contract lets the watchdog fall through to its
+    existing pane-based detection (is_genuinely_stuck) when the activity
+    signal is uninformative.
+    """
+    try:
+        from scripts.orchestrator.agent_activity import (  # noqa: PLC0415
+            compute_activity_state,
+        )
+
+        return compute_activity_state(_db_callsign(name))
+    except Exception as exc:  # noqa: BLE001 — fail-open: never block watchdog cycle
+        print(f"[watchdog] activity-state lookup failed for {name}: {exc}")
+        return "no_data"
+
+
 def check_other_agents(state: dict) -> dict:
     """Check non-Elliot agents for context-full or stuck.
 
@@ -716,7 +804,8 @@ def check_other_agents(state: dict) -> dict:
         if is_context_full(pane):
             revive_agent(name, target, "context-full", last_task=last_task)
             state[key_revive] = now
-        elif is_genuinely_stuck(pane):
+            continue
+        if is_genuinely_stuck(pane):
             # Ground-truth gate: if the fleet is shipping work in the recent
             # window, individual pane idleness is not a stall — skip revive.
             if check_ground_truth_progress(IDLE_TIMEOUT_MIN * 60):
@@ -724,6 +813,56 @@ def check_other_agents(state: dict) -> dict:
                 continue
             revive_agent(name, target, "error-detected", last_task=last_task)
             state[key_revive] = now
+            continue
+
+        # Activity-state wire-up (nova-agent-activity-watchdog-wire). The
+        # pane-hash-stable false-green that masked Scout + Nova idle for 48-51min
+        # is closed here: tool_call_log activity (per Scout's compute_activity_
+        # state) is the finer signal that the pane cannot reveal — an agent
+        # sitting at a quiet ❯ with 0 tool calls in 10 min is silent regardless
+        # of whether the pane bytes changed.
+        #
+        # Five-class dispatch:
+        #   active                -> skip (calls in the last 10 min)
+        #   idle_with_work_queued -> revive (inbox has dispatch waiting; the
+        #                             inbox-watcher delivers on wake)
+        #   idle                  -> leave (NO THRASH — no inbox = no fresh work)
+        #   no_data               -> skip (DB / helper unavailable; the
+        #                             pane-based context-full + genuine-stuck
+        #                             branches above already covered the
+        #                             pane-visible failure modes)
+        #
+        # Flap guard: 3 wakes in FLAP_WINDOW_SEC for the same agent suspends
+        # further auto-wakes and posts #ceo — protects against thrash when a
+        # wake fails to land work (agent stalls again immediately).
+        activity_state = _try_classify_activity(name)
+        if activity_state == "idle_with_work_queued":
+            if is_flap_tripped(name, now):
+                flap_key = f"{name}_flap_alerted_at"
+                last_alert = state.get(flap_key, 0)
+                if now - last_alert >= ESCALATION_COOLDOWN_SEC:
+                    slack_ceo(
+                        f"[ELLIOT] FLAP: {name} woken {FLAP_THRESHOLD}x in "
+                        f"{FLAP_WINDOW_SEC // 60}min — possible blocker. "
+                        "Auto-wake suspended until events age out of window."
+                    )
+                    state[flap_key] = now
+                print(f"[watchdog] {name} FLAP guard tripped — wake suspended")
+                continue
+            revive_agent(name, target, "idle_with_work_queued", last_task=last_task)
+            state[key_revive] = now
+            record_flap_event(name, now)
+            print(f"[watchdog] {name} idle_with_work_queued — wake injected")
+        elif activity_state == "active":
+            # Tool calls within the last 10 min — agent is doing work.
+            pass
+        elif activity_state == "idle":
+            # No work queued — NO THRASH. Leaving the agent untouched is the
+            # whole point of the inbox check: an agent that finished its work
+            # cleanly and is awaiting dispatch must not be repeatedly woken.
+            print(f"[watchdog] {name} idle (no inbox) — leave (no-thrash)")
+        # activity_state == "no_data" falls through silently (pane-based
+        # branches above are the safety net).
     return state
 
 
@@ -763,16 +902,40 @@ def main() -> None:
             )
             state["elliot_wake_sent"] = 0  # reset to avoid spam loop
     elif not wake_sent:
-        # No active wake; check for idle-too-long (Problem B standalone)
-        idle_secs = now - state.get("elliot_last_hash_ts", now)
-        if idle_secs > IDLE_TIMEOUT_MIN * 60:
-            # Ground-truth gate: fleet shipping work means Elliot isn't the
-            # blocker — skip the wake. Prevents nuisance pings during deep
-            # multi-agent work where Elliot's pane is correctly quiet.
-            if check_ground_truth_progress(IDLE_TIMEOUT_MIN * 60):
-                print("[watchdog] elliot idle but ground-truth shows progress — skip wake")
+        # No active wake. Check tool_call_log first — the 10-min activity-
+        # signal supersedes the 40-min pane-hash idle check (the pane-hash was
+        # the false-green source that masked Scout/Nova for 48-51min; pane
+        # bytes can stay stable at a quiet ❯ while the agent makes zero tool
+        # calls). Pane-hash kept ONLY as the no_data fallback below.
+        activity_state = _try_classify_activity("elliot")
+        if activity_state == "idle_with_work_queued":
+            if is_flap_tripped("elliot", now):
+                last_alert = state.get("elliot_flap_alerted_at", 0)
+                if now - last_alert >= ESCALATION_COOLDOWN_SEC:
+                    slack_ceo(
+                        f"[ELLIOT] FLAP: elliot woken {FLAP_THRESHOLD}x in "
+                        f"{FLAP_WINDOW_SEC // 60}min — possible blocker. "
+                        "Auto-wake suspended until events age out of window."
+                    )
+                    state["elliot_flap_alerted_at"] = now
+                print("[watchdog] elliot FLAP guard tripped — wake suspended")
             else:
                 state = wake_idle_elliot(state, now)
+                record_flap_event("elliot", now)
+                print("[watchdog] elliot idle_with_work_queued — wake injected")
+        elif activity_state == "idle":
+            # No inbox work → leave (NO THRASH).
+            print("[watchdog] elliot idle (no inbox) — leave (no-thrash)")
+        elif activity_state == "active":
+            # Tool calls within 10 min — Elliot is driving the fleet.
+            pass
+        else:  # no_data — fall back to the legacy pane-hash idle check.
+            idle_secs = now - state.get("elliot_last_hash_ts", now)
+            if idle_secs > IDLE_TIMEOUT_MIN * 60:
+                if check_ground_truth_progress(IDLE_TIMEOUT_MIN * 60):
+                    print("[watchdog] elliot idle but ground-truth shows progress — skip wake")
+                else:
+                    state = wake_idle_elliot(state, now)
 
     # ── Other agents ─────────────────────────────────────────────────────
     state = check_other_agents(state)

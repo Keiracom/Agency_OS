@@ -77,8 +77,8 @@ def test_generate_passes_model_through():
             return SimpleNamespace(content=[SimpleNamespace(text="x")])
 
     with patch.object(hyde, "_get_client", return_value=SimpleNamespace(messages=_Msgs())):
-        hyde.generate_hypothetical("q", model="claude-haiku-4-5")
-    assert captured["model"] == "claude-haiku-4-5"
+        hyde.generate_hypothetical("q", model="governance_tier_fast")
+    assert captured["model"] == "governance_tier_fast"
     assert captured["max_tokens"] == hyde.MAX_TOKENS
 
 

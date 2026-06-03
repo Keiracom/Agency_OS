@@ -139,5 +139,18 @@
   },
   "permissions": {
     "defaultMode": "bypassPermissions"
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/stop_hook.py"
+          }
+        ]
+      }
+    ]
   }
 }

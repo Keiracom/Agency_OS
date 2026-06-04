@@ -67,6 +67,37 @@ DEAD_DIRS = (
 # dispatcher's DISPATCHER_AGENT_COMMAND spawn target.
 EXTRA_SEEDS = ("src/keiracom_system/vault/agent_cold_start.py",)
 
+# V1.0 PRODUCT subsystems (keiracom-core = FLEET + PRODUCT per
+# ceo:agency_os_keiracom_separation_v1 + ceo:decision:repo_split_light_keiracom_
+# core_2026-06-04). These ship to customers but are DORMANT (not systemd-wired
+# yet), so the live-systemd closure can't see them — they MUST be seeded
+# explicitly or the product (incl the MAL) is wrongly archived. Each cites its
+# carveout-doc §4.8 / canonical classification.
+PRODUCT_SEED_DIRS = (
+    "src/memory",  # MAL V1 (§4.8 P + ceo:memory_abstraction_layer_v1)
+    "src/keiracom_system/mcp",  # MCP servers (product dispatcher integration, §4.8 mcp-servers=P)
+    "src/keiracom_system/memory",  # MAL impl behind the MCP API (PRODUCT per MAL rule)
+    "src/keiracom_system/tenant",  # multi-tenant onboarding (PRODUCT — carveout doc)
+    "src/keiracom_system/metering",  # usage metering / billing (PRODUCT SaaS)
+    "src/keiracom_system/cache",  # semantic cache + litellm-router (PRODUCT SaaS)
+    "src/keiracom_system/chat",  # product chat surface (PRODUCT)
+    "src/keiracom_system/atomization",  # AtomV1 capture (PRODUCT memory layer)
+)
+PRODUCT_SEED_FILES = (
+    "src/security/customer_api_keys.py",  # BYOK (proven #1462)
+    "src/api/routes/customer_api_keys.py",  # BYOK API surface
+    "src/api/webhooks/paddle.py",  # Paddle billing webhook (SaaS)
+)
+
+
+def product_seed_files() -> list[str]:
+    out: list[str] = []
+    for d in PRODUCT_SEED_DIRS:
+        if (REPO / d).is_dir():
+            out += [os.path.relpath(str(p), str(REPO)) for p in (REPO / d).rglob("*.py")]
+    out += [f for f in PRODUCT_SEED_FILES if (REPO / f).is_file()]
+    return sorted(set(out))
+
 
 def _rel(p: str) -> str:
     return WORKTREE_RE.sub("", p).lstrip("./")
@@ -238,11 +269,19 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--json", default=None)
     ap.add_argument("--extra-seed", action="append", default=[])
+    ap.add_argument(
+        "--include-product",
+        action="store_true",
+        help="seed V1.0 PRODUCT subsystems too (keiracom-core = FLEET + PRODUCT)",
+    )
     args = ap.parse_args()
 
     seeds, dangling = discover_seeds()
     seeds = sorted(set(seeds) | {s for s in args.extra_seed if (REPO / s).is_file()})
-    keep = build_closure(seeds)
+    psf = product_seed_files() if args.include_product else []
+    if psf:
+        print(f"product subsystem seed files added: {len(psf)}")
+    keep = build_closure(sorted(set(seeds) | set(psf)))
 
     all_src = {os.path.relpath(str(p), str(REPO)) for p in (REPO / "src").rglob("*.py")}
     remove = sorted(all_src - keep)

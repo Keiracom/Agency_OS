@@ -122,8 +122,8 @@ SECRET_MANIFEST: tuple[tuple[str, str, str], ...] = (
 # env var by resolve_into_env after the manifest pass.
 #   alias_env_var -> canonical_env_var
 SECRET_ALIASES: dict[str, str] = {
-    "SUPABASE_DB_DSN": "DATABASE_URL",   # env: "copied from DATABASE_URL"
-    "OPENAI_APIKEY": "OPENAI_API_KEY",   # typo-variant; flagged for code cleanup
+    "SUPABASE_DB_DSN": "DATABASE_URL",  # env: "copied from DATABASE_URL"
+    "OPENAI_APIKEY": "OPENAI_API_KEY",  # typo-variant; flagged for code cleanup
 }
 
 

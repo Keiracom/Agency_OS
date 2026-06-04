@@ -31,6 +31,7 @@ SET LOCAL agency_os.callsign = 'scout';
 
 UPDATE public.gate_roadmap
    SET built_by_callsign = 'scout',
+       deploy_trigger = 'migration:20260603_agent_activity_signal.sql + ci:check_no_orphan_merge + proof_bar:agent_activity_signal_live_proof.sh',
        proof_gate_contract = '{
         "check_id": "agent_activity_signal_live_v1",
         "cmd": "bash scripts/proof_bar/agent_activity_signal_live_proof.sh",

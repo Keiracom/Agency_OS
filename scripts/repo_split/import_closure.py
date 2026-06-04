@@ -224,6 +224,36 @@ def discover_seeds() -> tuple[list[str], list[str]]:
     return sorted(existing), sorted(set(dangling))
 
 
+def discover_hook_seeds() -> list[str]:
+    """Claude Code hook entrypoints — .claude/settings.json + .claude/hooks/*.sh.
+    Hooks invoke python two ways: a .py file target, OR an inline heredoc that
+    `import src.*`. Both are LIVE fleet entrypoints invisible to systemd. Parse
+    both forms -> repo-relative seed files. (Atlas's non-systemd entrypoint class
+    1; covers the session_store / session_resumption / bot_common / relay fleet
+    code the systemd-only closure is blind to.)"""
+    out: set[str] = set()
+    cfg = REPO / ".claude"
+    files = glob.glob(f"{cfg}/hooks/*.sh") + [
+        str(cfg / "settings.json"),
+        str(cfg / "settings.local.json"),
+    ]
+    py_re = re.compile(r"((?:scripts|src)/[A-Za-z0-9_./]+\.py)")
+    mod_re = re.compile(r"(?:from|import)\s+(src\.[A-Za-z0-9_.]+)")
+    for f in files:
+        try:
+            text = Path(f).read_text(errors="ignore")
+        except OSError:
+            continue
+        for mp in py_re.findall(text):
+            if (REPO / mp).is_file():
+                out.add(mp)
+        for mod in mod_re.findall(text):
+            fp = module_to_file(mod)
+            if fp:
+                out.add(fp)
+    return sorted(out)
+
+
 def ancestors_init(rel: str) -> set[str]:
     """Every ancestor __init__.py from src/ down to the file's dir."""
     out: set[str] = set()
@@ -274,14 +304,35 @@ def main() -> int:
         action="store_true",
         help="seed V1.0 PRODUCT subsystems too (keiracom-core = FLEET + PRODUCT)",
     )
+    ap.add_argument(
+        "--confirmed-keep-file",
+        default=None,
+        help="file of HoO-confirmed keep paths (§4.8 F fleet code invoked via hooks/"
+        "agent-runtime, not systemd-reached) — seeded so they + deps land in KEEP",
+    )
     args = ap.parse_args()
 
-    seeds, dangling = discover_seeds()
-    seeds = sorted(set(seeds) | {s for s in args.extra_seed if (REPO / s).is_file()})
-    psf = product_seed_files() if args.include_product else []
-    if psf:
-        print(f"product subsystem seed files added: {len(psf)}")
-    keep = build_closure(sorted(set(seeds) | set(psf)))
+    systemd_seeds, dangling = discover_seeds()
+    hook_seeds = discover_hook_seeds()
+    extra = {s for s in args.extra_seed if (REPO / s).is_file()}
+    psf = set(product_seed_files()) if args.include_product else set()
+    confirmed: set[str] = set()
+    if args.confirmed_keep_file and Path(args.confirmed_keep_file).is_file():
+        for ln in Path(args.confirmed_keep_file).read_text().splitlines():
+            ln = ln.strip()
+            if ln and not ln.startswith("#") and (REPO / ln).is_file():
+                confirmed.add(ln)
+        print(f"HoO confirmed-keep seeds: {len(confirmed)}")
+    # EXPANDED ENTRYPOINT SET (Atlas+Elliot consolidated): systemd + Claude Code
+    # hooks + product subsystems (+ extra). kept-MCP are node/external (only
+    # keiracom_system/mcp is src, in product) ; all Prefect deployments are BDR
+    # (archive) ; cron = clean. The neg-test uses THIS SAME set.
+    seeds = sorted(set(systemd_seeds) | set(hook_seeds) | extra | psf | confirmed)
+    print(
+        f"systemd seeds: {len(systemd_seeds)} | hook seeds: {len(hook_seeds)} | "
+        f"product seeds: {len(psf)} | total entrypoint seeds: {len(seeds)}"
+    )
+    keep = build_closure(seeds)
 
     all_src = {os.path.relpath(str(p), str(REPO)) for p in (REPO / "src").rglob("*.py")}
     remove = sorted(all_src - keep)

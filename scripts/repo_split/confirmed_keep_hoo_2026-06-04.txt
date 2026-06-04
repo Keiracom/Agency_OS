@@ -1,0 +1,39 @@
+# HoO-confirmed KEEP 2026-06-04 — §4.8 F/P fleet code invoked via Claude Code
+# hooks / inline governance / agent-runtime (NOT systemd-dep-reached). Seeded
+# so the closure keeps them + their deps; neg-test verifies they import.
+src/bot_common/concur_gate.py
+src/bot_common/session_end_gate.py
+src/bot_common/state_store.py
+src/bot_common/verify_gate.py
+src/cognee/__init__.py
+src/cognee/client.py
+src/dispatcher/container_jwt.py
+src/dispatcher/container_monitor.py
+src/dispatcher/heartbeat_reaper.py
+src/dispatcher/heartbeat_watchdog.py
+src/dispatcher/ratified_hash.py
+src/governance/_mcp_helpers.py
+src/governance/claim_injection.py
+src/governance/contracts/__init__.py
+src/governance/contracts/completion_claim_contract.py
+src/governance/contracts/directive_contract.py
+src/governance/contracts/peer_review_contract.py
+src/governance/coordinator.py
+src/governance/discovery_validation.py
+src/governance/freeze.py
+src/governance/gatekeeper.py
+src/governance/loader.py
+src/governance/restate_service.py
+src/governance/router.py
+src/governance/rules_client.py
+src/governance/tg_alert.py
+src/relay/envelope_schema.py
+src/relay/paused_tasks.py
+src/relay/redis_relay.py
+src/relay/relay_consumer.py
+src/relay/spawn_composer.py
+src/skill_gen/__init__.py
+src/skill_gen/extractor.py
+src/skill_gen/gemini_invoke.py
+src/skill_gen/generator.py
+src/slack_bot/direct_post.py

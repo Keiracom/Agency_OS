@@ -219,11 +219,18 @@ def build_closure(seed_files: list[str]) -> set[str]:
         if not f.startswith("src/") or f in keep:
             continue
         keep.add(f)
+        # Follow this file's imports.
         for imp in first_party_imports(f):
             if imp not in keep:
                 work.append(imp)
-    for f in list(keep):
-        keep |= ancestors_init(f)
+        # Ancestor __init__.py files RUN on package import — enqueue them so the
+        # BFS follows what THEY import (e.g. a package __init__ doing
+        # `from .submod import X` makes submod load-bearing). Folding this into
+        # the worklist (not a post-hoc keep) is what makes the closure sound:
+        # keeping __init__ without following its imports under-keeps -> ImportError.
+        for init in ancestors_init(f):
+            if init not in keep:
+                work.append(init)
     return keep
 
 

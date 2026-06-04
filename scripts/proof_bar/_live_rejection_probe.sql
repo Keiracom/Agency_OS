@@ -43,7 +43,7 @@ BEGIN
     SET LOCAL agency_os.callsign = 'aiden';
     INSERT INTO public.gate_proof_runs (
         gate_roadmap_id, attestation_kind, run_cmd, run_output, output_sha256,
-        exit_code, attesting_callsign, attester_session_uuid
+        exit_code, attesting_callsign, attester_session_uuid, repo_sha
     ) VALUES (
         v_gate_id,
         'binding_reviewer',
@@ -52,7 +52,11 @@ BEGIN
         encode(sha256(v_gate_id::text::bytea), 'hex'),
         0,
         'aiden',
-        v_session_uuid::text
+        v_session_uuid::text,
+        -- repo_sha placeholder: required by the binding-row constraint (R1,
+        -- merge_to_proven bind-gate). Irrelevant here — this probe tests
+        -- Check A (cmd_mismatch), which raises before repo_sha is read.
+        'liverej_repo_sha_unused_for_check_a'
     ) RETURNING id INTO v_run_id;
 
     SET LOCAL agency_os.callsign = 'dave';

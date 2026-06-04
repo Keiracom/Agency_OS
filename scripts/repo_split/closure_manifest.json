@@ -411,19 +411,7 @@
     "src/utils/encryption.py",
     "src/utils/log_safe.py"
   ],
-  "remove": [
-    "src/models/campaign.py",
-    "src/models/campaign_suggestion.py",
-    "src/models/client_persona.py",
-    "src/models/digest_log.py",
-    "src/models/lead.py",
-    "src/models/lead_pool.py",
-    "src/models/lead_social_post.py",
-    "src/models/linkedin_connection.py",
-    "src/models/linkedin_credential.py",
-    "src/models/linkedin_seat.py",
-    "src/models/resource_pool.py"
-  ],
+  "remove": [],
   "dead_dirs": [
     "frontend"
   ],

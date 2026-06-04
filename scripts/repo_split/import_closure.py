@@ -105,7 +105,7 @@ def _rel(p: str) -> str:
 
 def module_to_file(mod: str) -> str | None:
     """Dotted first-party module -> repo-relative file, or None. Tries the full
-    name then shorter prefixes (so `import src.a.b.attr` resolves to src/a/b.py)."""
+    name then shorter prefixes (so `import pkg.a.b.attr` resolves to pkg/a/b.py)."""
     if not mod.startswith("src"):
         return None
     parts = mod.split(".")
@@ -166,7 +166,7 @@ def first_party_imports(rel: str) -> set[str]:
             if not mod.startswith("src"):
                 continue
             keep(mod)
-            for a in node.names:  # `from src.a.b import c` -> also try src.a.b.c
+            for a in node.names:  # `from pkg.a.b import c` -> also try pkg.a.b.c
                 keep(f"{mod}.{a.name}")
     return out
 

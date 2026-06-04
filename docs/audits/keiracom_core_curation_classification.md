@@ -104,3 +104,61 @@ NEG-TEST PASS (compile+resolve+zero-ref+mapper over 165 entrypoints, 238 kept, 1
 ```
 Reproduce: `python3 scripts/repo_split/import_closure.py --include-product --confirmed-keep-file scripts/repo_split/confirmed_keep_hoo_2026-06-04.txt --json scripts/repo_split/closure_manifest.json && python3 scripts/repo_split/neg_test.py`
 **READY for Atlas gate-2 RE-PASS** (independent neg_test.py re-run over the 165-set + C3 fresh-clone zero-dead-BDR assert).
+
+---
+
+## §8 GATE-2 ROUND-2 — scripts/ dead-BDR archival (2026-06-04)
+Atlas's stronger **full-absent-set zero-ref** caught a second bleed one level over:
+dead-BDR **scripts/** are entrypoint-class — not import-reached, so the import-closure
++ 165-entrypoint neg-test are structurally blind to them. §4.6 classification:
+a script is KEEP only if it is a LIVE entrypoint (systemd/hook/cron/timer seed) OR a
+current fleet-ops tool; else, if dead-BDR (GMB/ABN/business-universe/campaign/lead-gen/
+enrichment/Pipeline-F/old-BDR-directive-tests), ARCHIVE. Traced each (no mass-remove).
+
+**ARCHIVED — 44 dead-BDR scripts** (none a live seed; verified):
+GMB pilots (gmb_pilot2/2_resume/2_retry/3/3_resume/4/_sydney, gmb_process_snapshot(_v2)),
+GMB enrich (t2_gmb_enrich(_v2), test_gmb_match_live, test_gmb_match_with_scraper),
+ABN/BU (abn_match_sweep, load_business_universe, load_abr_names, backfill_300_to_bu,
+backfill_test_data_to_bu, backfill_t5_log, migrate_leads_to_pool), campaign_sender,
+enrichment vendor tests (301_email_discovery, 302_contactout_validation,
+fm_stage2_contactout_search, zoominfo_actual_company_test, zoominfo_au_coverage_test,
+test_keyword_discovery, test_t125_efficient_media, rescore_113_drafts_2026_05_08),
+pipeline-stage tests (335_1_stage_8, 335_bd_company_test, 336_v2_pipeline, 338_1_stage_9,
+integration_test_300, seed_demo_tenant [seeds BDR campaigns], preflight_check [Pipeline F v2.1]),
+old-BDR directive tests (directive_048_dm_tiers/validation/validation_part2,
+directive_144_live_waterfall_test [imports archived bright_data_client],
+directive_144_waterfall_test_mock, directive_243_part2, directive_243_serp_research,
+directive_244_qual_gate).
+
+**EXCLUDED — kept (live entrypoint OR fleet-ops, NOT dead-BDR):**
+- `orchestrator/ceo_decision_sweeper.py` (Atlas false-positive; fleet/CEO governance).
+- `classifier/discovery_log_classifier.py`, `fix_dead_refs_listener_seed_v1.py`,
+  `seed_claude_md_facts.py`, `alerts/pipeline_failure_alert.py` (fleet-ops).
+- `session_store/userpromptsubmit_handler.py` (fleet Claude Code hook; "serp" is a
+  substring false-positive inside "u·serp·rompt").
+
+**TWO RESIDUALS FLAGGED — NOT dead-BDR-archival (need a ruling, out of my scope):**
+1. `scripts/alerts/lead_quality_anomaly.py` — BDR-flavored (24h propensity pass-rate),
+   BUT its `agency-os-alert-lead-quality.timer` is **enabled + active** → a LIVE scheduled
+   entrypoint right now. Per the KEEP rule (live timer seed) it stays. Its retirement is a
+   **host-side systemd decision** (disable the timer first), not a repo archival —
+   archiving the script would break an enabled timer. (Sibling `daily-digest.timer` is
+   *disabled*; `budget-threshold`/`pipeline-failure` enabled.)
+2. `scripts/spawn_nova.py` — FLEET tool (spawns Nova) importing `src.fleet.session_manager`,
+   which **never existed in this repo** (no git history). Pre-existing dangling fleet
+   forward-ref, NOT BDR, NOT produced by this curation. Flagged for fleet-owner triage.
+
+**VERIFICATION (verbatim):**
+```
+closure: src/ 238 KEEP / 0 REMOVE; EDGE CHECK PASS (4 live-edges in KEEP)
+(a) COMPILE: 238 kept src/*.py compiled, 0 failures
+(b) RESOLVE: 165 entrypoints, walked 255 files, 0 imports pointing at a MISSING module
+(c) ZERO-REF: removed modules referenced in curated tree = 0
+(d) MAPPER: kept ORM models import + configure_mappers() = OK
+NEG-TEST PASS
+C3 BDR-name sweep (scripts/+src/): 2 hits, both KEEP — lead_quality (live timer, flagged) +
+  userpromptsubmit_handler (serp-substring false-positive)
+FULL-ABSENT-SET zero-ref (scripts/+src/): 1 residual — spawn_nova->src.fleet.session_manager
+  (flagged pre-existing fleet dangling; import_closure doc-examples neutralized)
+```
+**READY for Atlas gate-2 round 3** with the two flagged residuals for ruling.

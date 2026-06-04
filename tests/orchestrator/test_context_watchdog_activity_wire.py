@@ -94,7 +94,7 @@ def test_flap_state_file_corruption_falls_back_to_empty(cw, tmp_path):
 def _install_seams(cw, monkeypatch, *, activity_state: str, pane: str = "idle ❯") -> dict:
     """Stub the pane + activity-state seams. Returns a dict where the test
     can observe whether revive_agent was called and the args it received."""
-    calls: dict = {"revives": [], "slack": []}
+    calls: dict = {"revives": [], "refeeds": [], "slack": []}
 
     monkeypatch.setattr(cw, "pane_capture", lambda _t: pane)
     monkeypatch.setattr(cw, "_try_classify_activity", lambda _name: activity_state)
@@ -105,42 +105,53 @@ def _install_seams(cw, monkeypatch, *, activity_state: str, pane: str = "idle �
     def _record_revive(name, target, reason, last_task=""):  # noqa: ANN001
         calls["revives"].append({"name": name, "reason": reason, "last_task": last_task})
 
+    def _record_refeed(name, target, callsign):  # noqa: ANN001
+        calls["refeeds"].append({"name": name, "callsign": callsign})
+        return True  # injected a task
+
     monkeypatch.setattr(cw, "revive_agent", _record_revive)
+    monkeypatch.setattr(cw, "refeed_agent", _record_refeed)
     monkeypatch.setattr(cw, "slack_ceo", lambda msg: calls["slack"].append(msg))
     # Restrict the agent set so one assertion = one agent.
     monkeypatch.setattr(cw, "AGENTS", {"nova": "nova:0.0"})
     return calls
 
 
-def test_idle_with_work_queued_triggers_revive(cw, monkeypatch):
+def test_idle_with_work_queued_triggers_refeed(cw, monkeypatch):
+    """idle_with_work_queued must RE-FEED (inject the task), not tab-clear/revive."""
     calls = _install_seams(cw, monkeypatch, activity_state="idle_with_work_queued")
     cw.check_other_agents({})
-    assert len(calls["revives"]) == 1
-    assert calls["revives"][0]["name"] == "nova"
-    assert calls["revives"][0]["reason"] == "idle_with_work_queued"
+    assert len(calls["refeeds"]) == 1
+    assert calls["refeeds"][0]["name"] == "nova"
+    assert calls["refeeds"][0]["callsign"] == "nova"
+    # Must NOT /clear-revive a cleanly-idle agent.
+    assert calls["revives"] == []
 
 
-def test_idle_no_inbox_does_NOT_revive(cw, monkeypatch):
+def test_idle_no_inbox_does_NOT_refeed(cw, monkeypatch):
     """No-thrash invariant: pure idle (no inbox) MUST be left untouched. This
     is the negative path the dispatch's proof gate requires."""
     calls = _install_seams(cw, monkeypatch, activity_state="idle")
     cw.check_other_agents({})
+    assert calls["refeeds"] == []
     assert calls["revives"] == []
 
 
-def test_active_does_NOT_revive(cw, monkeypatch):
+def test_active_does_NOT_refeed(cw, monkeypatch):
     calls = _install_seams(cw, monkeypatch, activity_state="active")
     cw.check_other_agents({})
+    assert calls["refeeds"] == []
     assert calls["revives"] == []
 
 
-def test_no_data_does_NOT_revive(cw, monkeypatch):
+def test_no_data_does_NOT_refeed(cw, monkeypatch):
     """no_data is the pane-based safety-net fall-through. With genuine_stuck=
     False and context_full=False (set by _install_seams), no_data → no action
     here. The existing pane branches (tested in test_context_watchdog.py) own
     the no_data failure modes."""
     calls = _install_seams(cw, monkeypatch, activity_state="no_data")
     cw.check_other_agents({})
+    assert calls["refeeds"] == []
     assert calls["revives"] == []
 
 
@@ -158,6 +169,7 @@ def test_flap_tripped_suppresses_revive_and_posts_slack(cw, monkeypatch):
     calls = _install_seams(cw, monkeypatch, activity_state="idle_with_work_queued")
     state = cw.check_other_agents({})
 
+    assert calls["refeeds"] == []  # flap guard suppresses the re-feed
     assert calls["revives"] == []
     assert len(calls["slack"]) == 1
     assert "FLAP" in calls["slack"][0]
@@ -184,14 +196,14 @@ def test_flap_slack_alert_obeys_escalation_cooldown(cw, monkeypatch):
     assert len(calls["slack"]) == 1  # unchanged
 
 
-def test_revive_records_flap_event(cw, monkeypatch):
-    """A successful idle_with_work_queued revive must record a flap event so
+def test_refeed_records_flap_event(cw, monkeypatch):
+    """A successful idle_with_work_queued re-feed must record a flap event so
     the threshold can be reached on subsequent cycles."""
     now = 5000.0
     monkeypatch.setattr("time.time", lambda: now)
     calls = _install_seams(cw, monkeypatch, activity_state="idle_with_work_queued")
     cw.check_other_agents({})
-    assert len(calls["revives"]) == 1
+    assert len(calls["refeeds"]) == 1
     events = cw.load_flap_events("nova", now)
     assert len(events) == 1
     assert events[0] == pytest.approx(now)

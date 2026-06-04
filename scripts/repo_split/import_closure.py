@@ -176,7 +176,10 @@ def discover_seeds() -> tuple[list[str], list[str]]:
     for kind, val in sorted(targets):
         if kind in ("module", "uvicorn"):
             f = module_to_file(val.split(":")[0])
-            (existing.add(f) if f else dangling.append(val))
+            if f:
+                existing.add(f)
+            elif val.startswith("src"):
+                dangling.append(val)  # src.* module referenced but file ABSENT
         else:
             rel = _rel(val)
             if (REPO / rel).is_file():

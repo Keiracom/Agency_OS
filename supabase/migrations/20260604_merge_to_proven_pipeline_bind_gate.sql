@@ -177,10 +177,13 @@ END;
 $fn$;
 
 -- ── Seed the merge_to_proven_pipeline component (built; attesters flip) ──────
+-- Idempotent: skip if the component already exists (re-apply over already-
+-- present prod, or a fresh-DB rebuild from migration history). Never seeds a
+-- duplicate; never resets an already-proven row back to 'built'.
 INSERT INTO public.gate_roadmap
     (id, component, phase, subphase, proof_gate, proof_gate_contract,
      status, required_attestation_kind, owner, built_by_callsign, deploy_trigger)
-VALUES (
+SELECT
     gen_random_uuid(),
     'merge_to_proven_pipeline', '4_infra', 'gates',
     'repo_sha mandatory for binding proofs; deployed-state (running_sha+deployed_at) recorded; fn_verify_before_proven enforces deployed_at + proof.repo_sha==running_sha (3-way); CI blocks orphan merges (component bound to proof path without a deploy_trigger). Both negatives proven live.',
@@ -199,6 +202,8 @@ VALUES (
     }'::jsonb,
     'built', 'binding_reviewer', 'elliot', 'atlas',
     'migration:20260604_merge_to_proven_pipeline_bind_gate.sql + ci:check_no_orphan_merge + proof_bar:merge_to_proven_pipeline_bind_proof.sh'
+WHERE NOT EXISTS (
+    SELECT 1 FROM public.gate_roadmap WHERE component = 'merge_to_proven_pipeline'
 );
 
 -- ============================================================================

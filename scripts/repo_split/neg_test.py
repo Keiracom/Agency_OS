@@ -143,8 +143,34 @@ def main() -> int:
             print(f"    REF {rel} -> {mod}")
         ok = ok and not refs
 
+    # (d) MAPPER: import every kept ORM model + configure_mappers(). A relationship
+    # referencing an ARCHIVED model by string forward-ref ("Lead") compiles and
+    # imports fine but fails at mapper configuration — invisible to (a)/(b)/(c).
+    # This is the runtime guarantee that the kept model graph is self-contained.
+    mapper_err = None
+    try:
+        import importlib
+
+        sys.path.insert(0, str(REPO))
+        for f in sorted(str(p.relative_to(REPO)) for p in (REPO / "src" / "models").glob("*.py")):
+            if f.endswith("__init__.py"):
+                continue
+            importlib.import_module(f[:-3].replace("/", "."))
+        from sqlalchemy.orm import configure_mappers
+
+        configure_mappers()
+    except Exception as e:  # noqa: BLE001 - any mapper/import failure is a real defect
+        mapper_err = f"{type(e).__name__}: {str(e).splitlines()[0]}"
     print(
-        f"\nNEG-TEST {'PASS' if ok else 'FAIL'} (compile+resolve+zero-ref over "
+        f"(d) MAPPER: kept ORM models import + configure_mappers() = "
+        f"{'OK' if mapper_err is None else 'FAIL'}"
+    )
+    if mapper_err:
+        print(f"    MAPPER-ERR {mapper_err}")
+    ok = ok and mapper_err is None
+
+    print(
+        f"\nNEG-TEST {'PASS' if ok else 'FAIL'} (compile+resolve+zero-ref+mapper over "
         f"{len(seeds)} entrypoints, {len(kept)} kept, {len(removed)} removed)"
     )
     return 0 if ok else 1

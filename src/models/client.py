@@ -19,7 +19,7 @@ RULES APPLIED:
 """
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 from uuid import UUID
 
 from sqlalchemy import JSON, TIMESTAMP, Boolean, DateTime, ForeignKey, Integer, String, Text
@@ -38,16 +38,10 @@ from src.models.base import (
 )
 
 if TYPE_CHECKING:
-    from src.models.campaign import Campaign
-    from src.models.campaign_suggestion import CampaignSuggestion
-    from src.models.client_persona import ClientPersona
-    from src.models.digest_log import DigestLog
-    from src.models.lead import Lead
-    from src.models.lead_pool import LeadPool
-    from src.models.linkedin_credential import LinkedInCredential
-    from src.models.linkedin_seat import LinkedInSeat
+    # [repo_split curation] dead-BDR model type-imports removed (campaign,
+    # campaign_suggestion, client_persona, digest_log, lead, lead_pool,
+    # linkedin_credential, linkedin_seat, resource_pool).
     from src.models.membership import Membership
-    from src.models.resource_pool import ClientResource
     from src.models.sdk_usage_log import SDKUsageLog
 
 
@@ -238,53 +232,10 @@ class Client(Base, UUIDMixin, TimestampMixin, SoftDeleteMixin):
         back_populates="client",
         lazy="selectin",
     )
-    campaigns: Mapped[list["Campaign"]] = relationship(
-        "Campaign",
-        back_populates="client",
-        lazy="selectin",
-    )
-    leads: Mapped[list["Lead"]] = relationship(
-        "Lead",
-        back_populates="client",
-        lazy="selectin",
-    )
-    linkedin_credential: Mapped[Optional["LinkedInCredential"]] = relationship(
-        "LinkedInCredential",
-        back_populates="client",
-        uselist=False,
-        lazy="selectin",
-    )
-    pool_leads: Mapped[list["LeadPool"]] = relationship(
-        "LeadPool",
-        back_populates="client",
-        foreign_keys="LeadPool.client_id",
-        lazy="selectin",
-    )
-    resources: Mapped[list["ClientResource"]] = relationship(
-        "ClientResource",
-        back_populates="client",
-        lazy="selectin",
-    )
-    personas: Mapped[list["ClientPersona"]] = relationship(
-        "ClientPersona",
-        back_populates="client",
-        lazy="selectin",
-    )
-    linkedin_seats: Mapped[list["LinkedInSeat"]] = relationship(
-        "LinkedInSeat",
-        back_populates="client",
-        lazy="selectin",
-    )
-    campaign_suggestions: Mapped[list["CampaignSuggestion"]] = relationship(
-        "CampaignSuggestion",
-        back_populates="client",
-        lazy="selectin",
-    )
-    digest_logs: Mapped[list["DigestLog"]] = relationship(
-        "DigestLog",
-        back_populates="client",
-        lazy="selectin",
-    )
+    # [repo_split curation] dead-BDR relationships removed (campaigns, leads,
+    # linkedin_credential, pool_leads, resources, personas, linkedin_seats,
+    # campaign_suggestions, digest_logs) — the SaaS tenant does not own lead-gen /
+    # outreach entities. Kept: memberships + sdk_usage_logs (product/metering).
     sdk_usage_logs: Mapped[list["SDKUsageLog"]] = relationship(
         "SDKUsageLog",
         back_populates="client",

@@ -58,3 +58,49 @@ NOT YET RUN (no removal applied — holding for confirm). On confirm: apply remo
 NEG-TEST PASS (compile+resolve+zero-ref over 165 entrypoints, 422 kept, 201 removed)
 ```
 Reproduce: `python3 scripts/repo_split/neg_test.py`. Hand-off for Atlas gate-2 (independent re-run over the same set). Dangling units (coo_bot_service.py, telegram_bot/*) = separate cleanup, not closure.
+
+---
+
+## §7 GATE-2 C3 FIX — dead-BDR bleed eliminated (2026-06-04)
+Atlas gate-2 C3 (founder-eyeball / fresh-clone zero-dead-BDR) caught ~121 dead-BDR
+files still KEPT after §6 — neg-test passed (tree was *consistent*) but a kept-but-dead
+subgraph slipped through (C3 checks *completeness*, neg-test only *consistency*).
+
+**Root cause (two layers):**
+1. **Aggregator `__init__` re-export bleed.** `src/api/routes/__init__.py`, `src/services/`,
+   `src/models/`, `src/integrations/` `__init__`s imported *all* submodules, so one
+   reached product/fleet submodule dragged the whole dead-BDR package into KEEP. FIX:
+   slimmed each aggregator `__init__` to only genuinely-used submodules. Result:
+   `orchestration`/`pipeline`/`engines` → 0 KEEP; dead BDR `src/api` routes archived
+   (live `webhooks/linear` + product `customer_api_keys`/`paddle` retained).
+2. **`TYPE_CHECKING` model-relationship re-bleed.** The `Client` tenant model + `SDKUsageLog`
+   carried stale BDR SQLAlchemy relationships (campaigns, leads, linkedin_*, pool_leads,
+   resources, personas, campaign_suggestions, digest_logs, lead) — `TYPE_CHECKING`-only
+   imports + `relationship("…")` string forward-refs. These are NOT runtime deps of the
+   SaaS tenant (the product does not own lead-gen/outreach entities). FIX: decoupled —
+   removed the 9 BDR relationships from `client.py` + the `lead` relationship from
+   `sdk_usage_log.py` + their type-imports. `lead_id`/`campaign_id` remain as plain FK
+   columns (string table-refs) for the product migration phase.
+
+**Model classification (all 11 archived = BDR; only sdk_usage_log = PRODUCT):**
+campaign, campaign_suggestion, client_persona (sender identities/outreach), digest_log
+(daily campaign digest), lead, lead_pool, lead_social_post, linkedin_{connection,
+credential,seat}, resource_pool (email distribution). KEPT models: base, client,
+membership, user, sdk_usage_log (SDK metering — product).
+
+**New neg-test check (d) MAPPER** added — imports every kept ORM model + `configure_mappers()`.
+A relationship referencing an archived class by string forward-ref compiles + imports fine
+but fails at mapper configuration; (a)/(b)/(c) are blind to it. Check (d) caught
+`SDKUsageLog.lead -> 'Lead'` after the type-import was removed — proving the gap is real.
+
+**FINAL state — branch `orion/keiracom-core-curation` (Agency_OS untouched; reversible):**
+src/ KEEP **238**, zero dead-BDR path signals across the entire KEEP set.
+```
+(a) COMPILE: 238 kept src/*.py compiled, 0 failures
+(b) RESOLVE: 165 entrypoints, walked 255 files, 0 imports pointing at a MISSING (removed) module
+(c) ZERO-REF: removed modules referenced in curated tree = 0
+(d) MAPPER: kept ORM models import + configure_mappers() = OK
+NEG-TEST PASS (compile+resolve+zero-ref+mapper over 165 entrypoints, 238 kept, 11 removed)
+```
+Reproduce: `python3 scripts/repo_split/import_closure.py --include-product --confirmed-keep-file scripts/repo_split/confirmed_keep_hoo_2026-06-04.txt --json scripts/repo_split/closure_manifest.json && python3 scripts/repo_split/neg_test.py`
+**READY for Atlas gate-2 RE-PASS** (independent neg_test.py re-run over the 165-set + C3 fresh-clone zero-dead-BDR assert).

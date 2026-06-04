@@ -20,8 +20,9 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from src.models.base import Base
 
 if TYPE_CHECKING:
+    # [repo_split curation] dead-BDR Lead type-import removed; lead_id/campaign_id
+    # remain as plain FK columns (string table-refs) for the product migration phase.
     from src.models.client import Client
-    from src.models.lead import Lead
 
 
 def _now_utc() -> datetime:
@@ -127,7 +128,8 @@ class SDKUsageLog(Base):
 
     # Relationships
     client: Mapped[Client] = relationship(back_populates="sdk_usage_logs")
-    lead: Mapped[Lead | None] = relationship(back_populates="sdk_usage_logs")
+    # [repo_split curation] dead-BDR `lead` relationship removed; lead_id FK column
+    # retained (string table-ref) for the product migration phase.
 
     def __repr__(self) -> str:
         return f"<SDKUsageLog {self.agent_type} ${self.cost_aud:.4f}>"

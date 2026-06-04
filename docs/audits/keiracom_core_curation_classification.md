@@ -162,3 +162,63 @@ FULL-ABSENT-SET zero-ref (scripts/+src/): 1 residual — spawn_nova->src.fleet.s
   (flagged pre-existing fleet dangling; import_closure doc-examples neutralized)
 ```
 **READY for Atlas gate-2 round 3** with the two flagged residuals for ruling.
+
+---
+
+## §9 GATE-2 ROUND-3 — EXHAUSTIVE TOP-LEVEL CLASSIFICATION (2026-06-04, convergent last pass)
+Atlas C3 round-3 caught the 4th completeness bleed: ROOT-level loose files + dirs were
+never curated (closure is src/-only). Per elliot's convergent directive, EVERY top-level
+entry is now classified KEEP/ARCHIVE — nothing left uncovered.
+
+### KEEP — fleet/product runtime, governance, infra (dirs)
+`src` `scripts` `tests` `supabase` (206 canonical migrations) `keiracom_system` (fleet
+Hindsight/MAL infra) `memory` `personas` `skills` `governance` `infra` `systemd` `config`
+`docs` `hooks` `mcp-servers` (fleet servers) `agents` `projects` `app-data` `mcp-servers`
++ fleet dotdirs `.beads .claude .clawdbot .clawdhub .openclaw .gates .githooks .github .cache`
+
+### KEEP — files
+14 fleet docs: AGENTS, ARCHITECTURE, BOOTSTRAP, CLAUDE, CLAUDE_DESKTOP, CONTRIBUTING,
+DEFINITION_OF_DONE, DEPLOYMENT, ENFORCE, HEARTBEAT, README, SOUL, TOOLS, USER .md (+IDENTITY).
+Infra/config: docker-compose.yml, Dockerfile{,.dispatcher,.prefect,.worker}, ecosystem.config.cjs,
+package{,-lock}.json, prefect.yaml, pytest.ini, railway{,.prefect,.worker}.toml, ruff.toml,
+conftest.py, requirements.txt, .gitignore, .mcp.json, .pre-commit-config.yaml, .railway_deploy,
+.railwayignore.
+
+### ARCHIVED — dead-BDR / obvious-dead (this pass): 69 loose files + 6 dirs
+- **Dirs (6):** `frontend/` (residual tsbuildinfo; BDR Next.js dashboard — keiracom.com product
+  site is a separate Dave decision), `data/` (founding_20_prospects.csv, gmb_pilot_results.jsonl),
+  `migrations/` (40 BDR sales_pipeline/founding/demo — supabase/migrations is canonical; NO
+  alembic.ini/Docker/prefect reference), `alembic/` (10 BDR outreach/domain migrations, unreferenced),
+  `SKILLS/` (uppercase stray dup; canonical is `skills/`), `prompts/` (historical CC ICP/phase/UI/
+  outreach build prompts + landing copy — all dead Agency-OS build artifacts).
+- **Loose files (69):** 21 dashboard/landing/prototype `.html` + 9 dashboard `.png` +
+  agency-os-prototype.zip + original-*.mp4 + 4 strays (_test_token.txt, test_triage_output.txt,
+  test_icp_extraction.py, prefect-snapshot-2026-04-04.txt) + **vercel.json** (deploys the archived
+  frontend; product-site deploy is a separate decision) + 32 dead `.md` (audits: AUDIT_GAPS/
+  AUDIT_REPORT/CODE_AUDIT_COMPLETE/CODEBASE_AUDIT/DOCS_AUDIT/FINANCE_AUDIT/GAP_AUDIT/INFRA_AUDIT/
+  CLAUDE_CODE_AUDIT; plans: AUTONOMOUS/MASTER/INTEGRATION_MASTER/PHASE_2_REMEDIATION/PHASE_21/
+  PROJECT_BLUEPRINT{,_FULL_ARCHIVE}/SYNC_ALIGNMENT; BDR: ABN_FIELD_VERIFICATION/AGENCY_OS_STRATEGY/
+  CLAUDE_CODE_PROMPT_CIS_DATA_GAPS/GAP_ANALYSIS/unipile; strays: CEO_QUESTIONS/DAVE_INPUT_FORM/
+  DEPLOYMENT_ISSUES/INFRA_FIX_REPORT/FILE_TREE/«C:\AI…FILE_TREE»/HANDOFF[deprecated]/PROGRESS/
+  progress_backup/progress_18b_append).
+
+### FLAGGED — dead-BDR but LIVE-config-referenced (rulings needed; NOT unilaterally actioned)
+1. `mcp-servers/{dataforseo,prospeo,salesforge,telnyx,unipile,vapi}-mcp` — BDR enrichment/
+   distribution vendors, but **`.mcp.json` still wires all 6**. Archiving them requires editing the
+   central live MCP config; recommend a COUPLED archival + `.mcp.json` cleanup (parallel to
+   frontend↔vercel.json) as a ruling, to avoid broken refs. Fleet MCPs kept: gmail, keiradrive,
+   memory, prefect, railway, resend, vercel, telegram (+ supabase/redis).
+2. `scripts/alerts/lead_quality_anomaly.py` — BDR-flavored but timer ENABLED+ACTIVE (host-side retire).
+3. `scripts/spawn_nova.py` — fleet tool, pre-existing `src.fleet.session_manager` dangling ref (never in repo).
+
+### VERIFICATION (verbatim, hardened sweep over src + scripts + ROOT)
+```
+closure: src/ 238 KEEP / 0 REMOVE; EDGE CHECK PASS (4 live-edges)
+(a) COMPILE 238 0-fail  (b) RESOLVE 165 entrypoints 0-broken  (c) ZERO-REF 0  (d) MAPPER OK  -> NEG-TEST PASS
+ROOT dead-BDR-signal sweep: ZERO dead-BDR-signal root files
+FULL-ABSENT zero-ref (src+scripts): 1 residual = spawn_nova->src.fleet.session_manager (flagged)
+kept-file -> archived-entry references: 0 real (2 matches both false-positive: import_closure DEAD_DIRS
+  config + a prose comment in vault_secrets_migrate.py)
+```
+**READY for Atlas gate-2 round-4** (final fresh-clone eyeball + hardened sweep). Modulo the 3 flagged
+live-referenced residuals (each with rationale + a ruling), the repo top-level is zero-actionable-dead-BDR.

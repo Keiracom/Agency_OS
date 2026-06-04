@@ -12,44 +12,10 @@ RULES APPLIED:
 """
 
 # Agency OS - Models Package
-from src.models.activity import Activity, ActivityStats
 from src.models.base import Base, PatternType, SoftDeleteMixin, TimestampMixin
-from src.models.campaign import Campaign, CampaignResource, CampaignSequence, CampaignType
-from src.models.campaign_suggestion import (
-    CampaignSuggestion,
-    CampaignSuggestionHistory,
-    SuggestionStatus,
-    SuggestionType,
-)
 from src.models.client import Client
-from src.models.client_intelligence import ClientIntelligence
-from src.models.client_persona import PERSONA_ALLOCATIONS, ClientPersona
-from src.models.conversion_patterns import ConversionPattern, ConversionPatternHistory
-from src.models.digest_log import DigestLog
-from src.models.icp_refinement_log import IcpRefinementLog
-from src.models.lead import ClientSuppression, DomainSuppression, GlobalSuppression, Lead
-from src.models.lead_pool import EmailStatus, LeadPool, PoolStatus
-from src.models.lead_social_post import LeadSocialPost
-from src.models.linkedin_connection import LinkedInConnection, LinkedInConnectionStatus
-from src.models.linkedin_credential import LinkedInCredential
-from src.models.linkedin_seat import LINKEDIN_WARMUP_SCHEDULE, LinkedInSeat, LinkedInSeatStatus
 from src.models.membership import Membership
-from src.models.persona import PERSONA_TIER_ALLOCATIONS, Persona, PersonaStatus
-from src.models.resource_pool import (
-    HEALTH_DAILY_LIMITS,
-    HEALTH_THRESHOLDS,
-    TIER_ALLOCATIONS,
-    ClientResource,
-    HealthStatus,
-    ResourcePool,
-    ResourceStatus,
-    ResourceType,
-)
-from src.models.sdk_usage_log import SDKUsageLog
-from src.models.url_validation import URLValidationResult
 from src.models.user import User
-from src.models.vendor_usage_log import VendorUsageLog
-from src.models.voice_call import VoiceCall, VoiceCallContext, VoiceCallOutcome
 
 __all__ = [
     # Base
@@ -124,3 +90,5 @@ __all__ = [
     "VoiceCallContext",
     "VoiceCallOutcome",
 ]
+
+# [repo_split curation] dead-BDR submodule imports removed (20); kept only: ['base', 'client', 'membership', 'user']

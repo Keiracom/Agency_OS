@@ -15,14 +15,9 @@ NOTE: T3 email and T5 mobile enrichment provided by Leadmagic.
 
 # Agency OS - Integrations Package
 
-from src.integrations.abn_client import ABNClient, get_abn_client
-from src.integrations.elevenagents_client import ElevenAgentsClient, get_elevenagents_client
-from src.integrations.elevenlabs import ElevenLabsClient, get_elevenlabs_client
-from src.integrations.leadmagic import LeadmagicClient, get_leadmagic_client
 
 # Billing & Booking (stripe_billing.py removed — canonical file is stripe.py)
 # The active billing router lives in src/api/routes/billing.py
-from src.integrations.vapi import VapiClient, get_vapi_client
 
 __all__ = [
     "ABNClient",
@@ -41,3 +36,5 @@ __all__ = [
     # Routers for FastAPI
     "calendar_booking_router",
 ]
+
+# [repo_split curation] dead-BDR submodule imports removed (5); kept only: ['anthropic', 'redis', 'supabase']

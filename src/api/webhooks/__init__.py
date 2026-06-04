@@ -1,8 +1,7 @@
-"""
-FILE: src/api/webhooks/__init__.py
-PURPOSE: Webhook handlers package
+"""Webhook handlers package.
+
+Repo-split curation (keiracom-core): the dead BDR elevenagents (voice) webhook
+import was removed; live/product webhooks (linear, paddle) are imported directly.
 """
 
-from src.api.webhooks.elevenagents import router as elevenagents_router
-
-__all__ = ["elevenagents_router"]
+__all__: list[str] = []

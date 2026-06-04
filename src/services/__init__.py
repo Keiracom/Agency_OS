@@ -63,103 +63,6 @@ Phone Provisioning additions:
 - PhoneProvisioningService: Automated phone number provisioning via Twilio
 """
 
-from src.services.buyer_signal_service import BuyerScoreBoost, BuyerSignal, BuyerSignalService
-from src.services.content_qa_service import (
-    ContentChannel,
-    ContentQAService,
-    QAIssue,
-    QAResult,
-    QAStatus,
-    get_content_qa_service,
-    validate_email_content,
-    validate_linkedin_content,
-    validate_sms_content,
-    validate_voice_script,
-)
-from src.services.conversation_analytics_service import ConversationAnalyticsService
-from src.services.crm_push_service import CRMPushResult, CRMPushService, LeadData, MeetingData
-from src.services.customer_import_service import ColumnMapping, CustomerImportService, ImportResult
-from src.services.digest_service import DigestService
-from src.services.domain_capacity_service import (
-    DomainCapacityResult,
-    DomainCapacityService,
-    get_domain_capacity_service,
-)
-from src.services.domain_health_service import (
-    DomainHealthResult,
-    DomainHealthService,
-    get_domain_health_service,
-)
-from src.services.email_events_service import EmailEventsService
-from src.services.email_signature_service import (
-    append_signature_to_body,
-    generate_signature_html,
-    generate_signature_text,
-    get_display_name,
-    get_display_name_for_persona,
-    get_signature_for_client,
-    get_signature_for_persona,
-)
-from src.services.jit_validator import JITValidationResult, JITValidator
-from src.services.lead_allocator_service import LeadAllocatorService
-from src.services.lead_pool_service import LeadPoolService
-from src.services.phone_provisioning_service import (
-    VOICE_WARMUP_SCHEDULE,
-    PhoneProvisioningService,
-    get_phone_provisioning_service,
-    get_voice_daily_limit,
-)
-from src.services.reply_analyzer import ReplyAnalyzer
-from src.services.resource_assignment_service import (
-    add_resource_to_pool,
-    assign_resources_to_client,
-    check_buffer_and_alert,
-    complete_warmup,
-    get_client_resource_values,
-    get_client_resources,
-    get_pool_stats,
-    record_resource_usage,
-    release_client_resources,
-    retire_resource,
-    start_warmup,
-)
-from src.services.response_timing_service import (
-    BUSINESS_HOURS_DELAY_MAX,
-    BUSINESS_HOURS_DELAY_MIN,
-    DEFAULT_TIMEZONE,
-    OUTSIDE_HOURS_DELAY_MAX,
-    OUTSIDE_HOURS_DELAY_MIN,
-    ResponseTimingService,
-    calculate_response_delay,
-    calculate_send_time,
-    is_business_hours,
-)
-from src.services.send_limiter import SendLimiter, send_limiter
-from src.services.sequence_generator_service import (
-    SequenceGeneratorService,
-    get_sequence_generator_service,
-)
-from src.services.suppression_service import SuppressionResult, SuppressionService
-from src.services.thread_service import ThreadService
-from src.services.timezone_service import (
-    AUSTRALIAN_STATE_TIMEZONES,
-    TimezoneService,
-    detect_australian_timezone,
-    get_optimal_send_time,
-    get_timezone_service,
-)
-from src.services.voice_retry_service import (
-    MAX_RETRIES,
-    RETRY_DELAYS,
-    RETRYABLE_OUTCOMES,
-    VoiceRetryService,
-    get_voice_retry_service,
-)
-from src.services.who_refinement_service import (
-    MIN_CONFIDENCE_THRESHOLD,
-    WhoRefinementService,
-    get_who_refined_criteria,
-)
 
 # Note: CampaignConfigBuilder not exported here to avoid circular import with enrichment module
 # Import directly: from src.services.campaign_config_builder import CampaignConfigBuilder
@@ -264,3 +167,5 @@ __all__ = [
     "get_voice_daily_limit",
     "VOICE_WARMUP_SCHEDULE",
 ]
+
+# [repo_split curation] dead-BDR submodule imports removed (24); kept only: ['sdk_usage_service']

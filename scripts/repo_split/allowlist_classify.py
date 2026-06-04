@@ -34,6 +34,32 @@ KEEP_DIR_PREFIXES = (
     "supabase/", "systemd/", "infra/", "governance/", "config/",
     "personas/", "keiracom_system/", "agents/", "app-data/", "hooks/",
     "projects/", "mcp-servers/",  # dead-vendor mcp dirs already archived
+    # non-.py under these kept (BDR-signal files still archive via step 4 first):
+    "src/", "memory/", "tests/",  # fleet session logs/decisions/discovery, src+test assets
+)
+
+# ── docs/ that are dead-BDR by SUBDIR (BDR pipeline/build artefacts) ──
+# Cleanly-BDR doc subdirs (wholesale archive). research/wave2/wave3 are MIXED (fleet
+# Hindsight/KEI-governance + BDR) -> NOT wholesale; resolved per-file by BDR_SIG/FLEET_DOC.
+ARCHIVE_DOC_DIRS = (
+    "docs/e2e/", "docs/phases/", "docs/finance/", "docs/strategy/", "docs/pitch/",
+    "docs/launch/", "docs/landing-variants/", "docs/voice/",
+    "docs/specs/engines/",   # BDR outreach engines (closer/scorer/scout/email/linkedin/sms/voice…)
+    "docs/specs/phase16/",   # BDR conversion-intelligence (what/when/how detectors)
+)
+# ── docs/ that are dead-BDR by NAME (root-level BDR docs the path-sig misses) ──
+BDR_DOC = re.compile(
+    r"voice_ai|user-journey|smoke_test|roadmap_launch|roadmap_2026|r&d_evidence|"
+    r"p3_cleanup|ignition|fixed_costs|demo_dry|build_verify|^docs/b[12]_|^docs/a[67]_|"
+    r"api-pricing|directive-241|documentation_audit|docs/index\.html|sales_infra|"
+    r"nationwide|founding|/pitch|/launch",
+    re.I,
+)
+# ── docs/ fleet/product subtrees kept (active architecture/governance/product) ──
+KEEP_DOC_DIRS = (
+    "docs/architecture/", "docs/archive/", "docs/progress/", "docs/roadmap/",
+    "docs/advice/", "docs/integrations/", "docs/scoping/", "docs/drafts/",
+    "docs/voice/",  # overridden by ARCHIVE_DOC_DIRS above; kept here harmless
 )
 
 # ── fleet/product doc subtrees kept (everything else under docs/ -> archive/flag) ──
@@ -62,9 +88,19 @@ KEEP_DOC_FILES = {
 BDR_SIG = re.compile(
     r"campaign|/lead|lead_|gmb|/abn|abn_|business_universe|prospect|enrich|waterfall|"
     r"dataforseo|prospeo|salesforge|telnyx|unipile|vapi|brightdata|smartlead|pipedrive|"
-    r"hubspot|zoominfo|contactout|leadmagic|siege|outreach|/cis|cis_|icp|sourcing|serp|"
-    r"dashboard|landing|marketing|/voice/|pilot|founding_2|distribution|scoring|"
-    r"smartlead_migration|sales_infrastructure|nationwide",
+    r"hubspot|zoominfo|contactout|leadmagic|siege|outreach|/cis|cis_|icp|sourcing|"
+    r"serp_|serpapi|dashboard|landing|marketing|/voice/|gmb_pilot|founding_2|distribution|"
+    r"scoring|smartlead_migration|sales_infrastructure|nationwide|"
+    r"clay|clicksend|elevenlabs|heyreach|infraforge|postmark|twilio|warmforge",
+    re.I,
+)
+# fleet/product doc signal — keeps fleet content that lives in otherwise-mixed doc dirs
+# (research/, wave2/, wave3/): MAL/Hindsight, atom, persona, chain, governance KEIs, memory.
+FLEET_DOC = re.compile(
+    r"hindsight|atom|persona|/chain|\bmal\b|memory|governance|kei\d|boot_state|concur|"
+    r"claim_protocol|staleness|epsilon|deprecation|recall|reingest|go_sidecar|llamaindex|"
+    r"discovery_validation|drive_retired|crash_diagnosis|embedding|managed_agents|openclaw|"
+    r"routines|vault|weaviate|cognee|temporal|null_raw",
     re.I,
 )
 # explicit fleet-skill allowlist (LAW XII canonical fleet/product skills)
@@ -114,17 +150,34 @@ def classify() -> dict:
     return {"keep": keep, "archive": archive, "flag": flag}
 
 
+# ── ABSOLUTE guardrails — append-only/immutable/fleet infra; EXEMPT from BDR matching.
+#    supabase/migrations is immutable history: deleting a historical CREATE mid-chain
+#    breaks a fresh-DB replay even when the table is dead-BDR (forward drop migration
+#    is the right tool, out of split scope). .beads = fleet issue tracker (issue text
+#    may mention BDR but the tracker stays). These short-circuit BEFORE any name match.
+ABSOLUTE_KEEP_PREFIXES = (
+    "supabase/", ".beads/", ".github/", ".githooks/", ".gates/",
+)
+# scripts/.py that are BDR but carry no generic BDR keyword (numbered pipeline / provider tests)
+SCRIPT_BDR_EXTRA = re.compile(r"^scripts/\d{3}[_a-z]|provider_test|_stage_\d", re.I)
+
+
 def _classify_one(f: str, seeds: set[str]) -> tuple[str, str]:
+    # 0) ABSOLUTE guardrails first — exempt from all BDR name/content matching
+    if f.startswith(ABSOLUTE_KEEP_PREFIXES):
+        return ("KEEP", "guardrail-absolute")
     # 1) tooling + the curation artefacts always KEEP
     if f.startswith("scripts/repo_split/") or "keiracom_core_curation" in f:
         return ("KEEP", "curation-tooling")
-    # 2) .py — curated set: src kept (closure already purged), scripts seeds/fleet-ops,
+    # 2) .py — curated set: src kept (closure purged), scripts seeds/proof_bar/fleet-ops,
     #    tests of kept code. BDR-signal .py NOT a seed -> archive.
     if f.endswith(".py"):
         if f.startswith("src/"):
             return ("KEEP", "src-closure") if not BDR_SIG.search(f) else ("FLAG", "src-py-bdr-signal")
         if f in seeds:
             return ("KEEP", "live-entrypoint-seed")
+        if f.startswith("scripts/proof_bar/"):
+            return ("KEEP", "live-gate-proof-bar")
         if f.startswith("tests/"):
             imps = src_imports(f)
             if imps and any(not src_exists(i) and not src_exists(".".join(i.split(".")[:-1])) for i in imps):
@@ -133,33 +186,40 @@ def _classify_one(f: str, seeds: set[str]) -> tuple[str, str]:
                 return ("ARCHIVE", "test-bdr-signal")
             return ("KEEP", "test-of-kept-code")
         if f.startswith("scripts/"):
-            if BDR_SIG.search(f):
+            if BDR_SIG.search(f) or SCRIPT_BDR_EXTRA.search(f):
                 return ("ARCHIVE", "script-bdr-signal")
-            # non-BDR non-seed script: fleet-ops tool -> keep, but flag for eyeball
             return ("KEEP", "fleet-ops-script")
         return ("KEEP", "py-other")
     # 3) dead-BDR .claude skills
     if DEAD_CLAUDE.search(f):
         return ("ARCHIVE", "dead-bdr-claude-skill")
-    # 4) BDR-signal anywhere -> archive (the leak the denylist missed)
+    # 4) docs — fleet-doc signal wins first (keeps fleet content in mixed dirs), then
+    #    cleanly-BDR subdirs/terms archive, then fleet allowlist, else flag.
+    if f.startswith("docs/"):
+        if FLEET_DOC.search(f):
+            return ("KEEP", "fleet-doc-signal")
+        if f.startswith(ARCHIVE_DOC_DIRS) or BDR_DOC.search(f) or BDR_SIG.search(f):
+            return ("ARCHIVE", "bdr-doc")
+        if f.startswith(KEEP_DOC_DIRS) or f.startswith(tuple(KEEP_DOC_PREFIXES)) or f in KEEP_DOC_FILES:
+            return ("KEEP", "fleet-doc")
+        return ("FLAG", "doc-uncertain")  # keep+flag (inverse-risk) — human ruling
+    # 5) BDR-signal anywhere -> archive (the leak the denylist missed)
     if BDR_SIG.search(f):
         return ("ARCHIVE", "bdr-signal-path")
-    # 5) wholesale-keep fleet dirs
+    # 6) wholesale-keep fleet dirs (incl src/ memory/ tests/ non-.py assets)
     if f.startswith(KEEP_DIR_PREFIXES) or f.startswith(".claude/"):
         return ("KEEP", "fleet-dir")
-    # 6) skills allowlist
+    # 7) skills allowlist
     if f.startswith("skills/"):
         top = "/".join(f.split("/")[:2])
         return ("KEEP", "fleet-skill") if (top in KEEP_SKILLS or f in KEEP_SKILLS) else ("ARCHIVE", "non-allowlist-skill")
-    # 7) docs allowlist
-    if f.startswith("docs/"):
-        if f.startswith(tuple(KEEP_DOC_PREFIXES)) or f in KEEP_DOC_FILES:
-            return ("KEEP", "fleet-doc")
-        return ("FLAG", "doc-uncertain")  # keep+flag (inverse-risk) — human ruling
     # 8) root infra/config + fleet docs
     if "/" not in f:
         return ("KEEP", "root-fleet-or-config")
-    # 9) memory/ + everything else uncertain -> FLAG (keep, surface)
+    # 9) scripts non-.py (proof_bar .sh, fleet shell/config) -> keep (BDR already archived above)
+    if f.startswith("scripts/"):
+        return ("KEEP", "fleet-script-asset")
+    # 10) residual genuinely-uncertain -> FLAG (kept, surfaced for Dave's eyeball)
     return ("FLAG", "uncertain-keep")
 
 

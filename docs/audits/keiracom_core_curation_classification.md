@@ -293,3 +293,29 @@ APPLICATION HELD pending HoO confirmation of the method switch. Next on confirm:
 fleet-doc + memory allowlist to shrink FLAG to genuinely-uncertain, then apply archive-rest +
 neg-test (kept .py boot) + a NOT-ARCHIVED-FLEET/PRODUCT inverse check + Atlas terminal gate-2
 (BOTH directions: zero dead-BDR AND zero fleet/product wrongly archived).
+
+### §11.1 FLAG refinement (497 -> 29) + Atlas guardrail/inverse-risk fixes (still HELD)
+Refined the allowlist classifier (still non-destructive). Counts: **KEEP 2430 / ARCHIVE 395 /
+FLAG 29**. Atlas-caught fixes applied + verified:
+- **GUARDRAILS ABSOLUTE** — supabase/migrations (all 206), .beads, .github, .githooks, .gates
+  short-circuit to KEEP BEFORE any BDR name/content match (migration history is append-only/
+  immutable — deleting a historical CREATE breaks fresh-DB replay). 0 migrations in ARCHIVE.
+- **300_provider_test.py** (numbered BDR pipeline test, survived in neither list) -> ARCHIVE
+  (added SCRIPT_BDR_EXTRA: numbered-pipeline / provider_test / _stage_N).
+- **scripts/proof_bar/** (18 live gate proof scripts) -> KEEP (explicit), 0 flagged.
+- Inverse-risk false-positives fixed: dropped over-broad `pilot` (was archiving fleet
+  atomization_pilot/autopilot/copilot) + bounded `serp_` (was matching "u·serp·rompt");
+  removed research/wave2/wave3 from wholesale-archive (mixed fleet Hindsight/KEI-governance +
+  BDR) — added FLEET_DOC signal (hindsight/atom/persona/kei-governance/memory/vault/weaviate/
+  cognee/temporal) so fleet content in mixed dirs KEEPS; BDR within them still archives.
+- Tightened: docs/specs/engines (BDR outreach engines) + docs/specs/phase16 (conversion
+  intelligence) -> ARCHIVE; BDR integration vendors (clay/clicksend/elevenlabs/heyreach/
+  infraforge/postmark/twilio/warmforge) -> ARCHIVE; fleet infra integration docs
+  (anthropic/redis/supabase) KEPT.
+
+**FLAG 29** = genuinely-ambiguous, KEPT for Dave's eyeball (specs: PRICING_TIERS/TIER_PRICING/
+FULL_SYSTEM_ARCHITECTURE/UI_UX/DEEP_RESEARCH/b3_self_healing/p4_build/onboarding_email +
+database/{ACTIVITIES,CLIENTS_USERS,CONVERSION_PATTERNS,EMAIL_INFRASTRUCTURE,SCHEMA_OVERVIEW} +
+integrations/{ANTHROPIC,REDIS,SUPABASE,RESEND,INDEX} + research/{opposition_11x,enderfga,
+workforce,composio,phase3_*} + test_migration_guide/test_triage). None block a clean tree
+(kept). APPLICATION STILL HELD pending HoO method-switch confirmation.

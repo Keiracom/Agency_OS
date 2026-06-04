@@ -1022,79 +1022,24 @@ def build_task_prompt(task_id: str, title: str, description: str) -> str:
     )
 
 
-_SONAR_PROJECT_KEY = "Keiracom_Agency_OS"
-_SONAR_BASE = "https://sonarcloud.io/api"
-
-
-def fetch_sonar_status(pr_number: int) -> dict[str, Any]:
-    """KEI-189: dual-endpoint Sonar verify — issues + Quality Gate.
-
-    /api/issues/search returns S-rule findings (bugs/code smells/vulnerabilities).
-    /api/qualitygates/project_status returns the QG verdict including SEPARATE
-    conditions like new_duplicated_lines_density that the issues endpoint
-    does NOT surface.
-
-    Anchored on PRs #940/#963/#981 today where issues=0 but QG=ERROR on
-    dup-density — three of us missed the gap because we only checked /issues.
-    Encodes the feedback_sonarcloud_verify_pattern memory pin mechanically.
-
-    Returns {"issues_total": int, "qg_status": str, "qg_failing": list[str]}
-    on success; {} on any fetch failure (fail-open — review still proceeds,
-    agent sees missing-data in brief and can run curl themselves).
-    """
-    out: dict[str, Any] = {}
-    issues_url = f"{_SONAR_BASE}/issues/search?componentKeys={_SONAR_PROJECT_KEY}&pullRequest={pr_number}&resolved=false"
-    qg_url = f"{_SONAR_BASE}/qualitygates/project_status?projectKey={_SONAR_PROJECT_KEY}&pullRequest={pr_number}"
-    try:
-        with urllib.request.urlopen(issues_url, timeout=10) as resp:
-            data = json.loads(resp.read())
-        out["issues_total"] = int(data.get("total", 0))
-    except Exception as exc:
-        log.warning("Sonar /issues fetch failed for PR #%d: %s", pr_number, exc)
-    try:
-        with urllib.request.urlopen(qg_url, timeout=10) as resp:
-            data = json.loads(resp.read())
-        ps = data.get("projectStatus", {})
-        out["qg_status"] = ps.get("status", "UNKNOWN")
-        out["qg_failing"] = [
-            f"{c.get('metricKey')}={c.get('actualValue')} (>{c.get('errorThreshold')})"
-            for c in ps.get("conditions", [])
-            if c.get("status") == "ERROR"
-        ]
-    except Exception as exc:
-        log.warning("Sonar /qualitygates fetch failed for PR #%d: %s", pr_number, exc)
-    return out
-
-
-def _format_sonar_brief(sonar: dict[str, Any]) -> str:
-    """Format Sonar status for inclusion in the review brief. Returns empty
-    string if no data fetched (fail-open — reviewer runs curl themselves)."""
-    if not sonar:
-        return ""
-    lines = ["", "Sonar (BOTH endpoints — issues + QG — checked at brief-emit time):"]
-    if "issues_total" in sonar:
-        lines.append(f"  • /api/issues/search → total NEW unresolved: {sonar['issues_total']}")
-    if "qg_status" in sonar:
-        lines.append(f"  • /api/qualitygates/project_status → status: {sonar['qg_status']}")
-        for cond in sonar.get("qg_failing", []) or []:
-            lines.append(f"      FAIL: {cond}")
-    lines.append(
-        "  ⚠ APPROVE requires BOTH endpoints clean (issues=0 AND QG=OK). "
-        "QG can ERROR on dimensions like new_duplicated_lines_density that issues misses."
-    )
-    return "\n".join(lines)
-
-
 def build_review_prompt(pr_number: int, pr_title: str, pr_url: str, callsign: str) -> str:
-    """Emit the review-claim prompt. KEI-189: includes Sonar issues + QG snapshot."""
-    sonar = fetch_sonar_status(pr_number)
-    sonar_block = _format_sonar_brief(sonar)
+    """Emit the review-claim prompt.
+
+    Agency_OS-6b2s (2026-06-03): the legacy KEI-189 dual-endpoint Sonar
+    snapshot (fetch_sonar_status + _format_sonar_brief) was dropped from
+    this prompt. SonarCloud's CI workflow was removed in PR #1138; spot
+    checks across PRs #1414–#1431 confirm no SonarCloud check fires on
+    Agency_OS PRs anymore (CodeQL is the sole code-analysis gate). The
+    fetch was therefore live code calling a dead API — every review
+    prompt burned two HTTP timeouts logging warnings to no benefit.
+    Reviewer instructions now point at CI alone.
+    """
     return (
         f"You auto-claimed review of PR #{pr_number}: {pr_title}. "
         f"URL: {pr_url}. "
-        f"Run `gh pr view {pr_number}` + check CI/Sonar, "
+        f"Run `gh pr view {pr_number}` + check CI, "
         f"post [REVIEW:{callsign}] APPROVE or HOLD with verbatim evidence. "
-        f"Don't ask — execute.{sonar_block}"
+        "Don't ask — execute."
     )
 
 

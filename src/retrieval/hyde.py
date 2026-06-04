@@ -14,7 +14,7 @@ the hypothetical becomes part of the `query` text and is embedded by the
 realisation for a text-in retrieval backend.
 
 Contract:
-  * generate_hypothetical(query, model='claude-haiku-4-5') -> str
+  * generate_hypothetical(query, model='governance_tier_fast') -> str
         One-paragraph hypothetical answer document; "" on any error.
   * expand_query(query, model=...) -> str
         The search text: raw query fused with the hypothetical when HyDE is
@@ -40,7 +40,11 @@ from typing import Any
 logger = logging.getLogger(__name__)
 
 HYDE_ENABLED_ENV = "RETRIEVAL_HYDE_ENABLED"
-DEFAULT_MODEL = "claude-haiku-4-5"
+# Routes through the LiteLLM governance-tier proxy alias (gate_roadmap
+# litellm_routing cb31edd9, C3). The proxy serves only governance_tier_{fast,
+# premium}; the prior 'claude-haiku-4-5' literal had no model group there and
+# 400'd on every routed call. governance_tier_fast → openai/gpt-4o-mini.
+DEFAULT_MODEL = "governance_tier_fast"
 MAX_TOKENS = 256
 
 _HYDE_PROMPT = (

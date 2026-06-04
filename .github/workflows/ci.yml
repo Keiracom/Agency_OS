@@ -183,6 +183,26 @@ jobs:
         run: ./scripts/ci/check_no_governance_policy_in_hindsight.sh
 
   # ============================================
+  # Guard: No orphan merges (merge_to_proven_pipeline bind-gate, part d)
+  # ============================================
+  # A migration that binds a gate_roadmap component to the proof path
+  # (proof_gate_contract / gate_roadmap INSERT) MUST also wire a deploy_trigger.
+  # Closes the #1427 gap one rung up: provable + mergeable but never deployed.
+  # Spec: ceo:merge_to_proven_pipeline_guardrails. Diff-based, fails closed.
+  orphan-merge-guard:
+    name: No Orphan Merges (proof-path bind needs deploy_trigger)
+    runs-on: ubuntu-latest
+    needs: backend-lint
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Block a proof-path bind that wires no deploy_trigger
+        env:
+          BASE_REF: ${{ github.base_ref || 'main' }}
+        run: ./scripts/ci/check_no_orphan_merge.sh
+
+  # ============================================
   # Guard: Phase A7 cache discipline (CB-10)
   # ============================================
   # Source: docs/architecture/design/a7_cache_architecture.md §13 CB-10.

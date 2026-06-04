@@ -80,7 +80,51 @@ SECRET_MANIFEST: tuple[tuple[str, str, str], ...] = (
     # Billing
     ("STRIPE_SECRET_KEY", "stripe", "secret_key"),
     ("CLOUDFLARE_API_TOKEN", "cloudflare", "api_token"),
+    # vault_secrets full migration Phase 1 (Nova, gate 00770e74) — service
+    # secrets seeded from .env via scripts/vault_secrets_migrate.py.
+    ("APOLLO_API_KEY", "apollo", "api_key"),
+    ("BETTERSTACK_API_KEY", "betterstack", "api_key"),
+    ("BRAVE_API_KEY", "brave", "api_key"),
+    ("COO_BOT_TOKEN", "telegram", "coo_bot_token"),
+    ("CREDENTIAL_ENCRYPTION_KEY", "internal", "credential_encryption_key"),
+    ("CSB_API_KEY", "csb", "api_key"),
+    ("DISPATCHER_JWT_SECRET", "dispatcher", "jwt_secret"),
+    ("EMBEDDING_API_KEY", "embedding", "api_key"),
+    ("GEMINI_API_KEY_BACKUP", "gemini", "api_key_backup"),
+    ("GITHUB_TOKEN", "github", "token"),
+    ("GOOGLE_API_KEY", "google", "api_key"),
+    ("GOOGLE_CLIENT_SECRET", "google", "client_secret"),
+    ("GOOGLE_GMAIL_CLIENT_SECRET", "google", "gmail_client_secret"),
+    ("HEYREACH_API_KEY", "heyreach", "api_key"),
+    ("LINEAR_API_KEY", "linear", "api_key"),
+    ("LLM_API_KEY", "llm", "api_key"),
+    ("MEM0_API_KEY", "mem0", "api_key"),
+    ("NAMECHEAP_API_KEY", "namecheap", "api_key"),
+    ("OPENROUTER_API_KEY", "openrouter", "api_key"),
+    ("PROSPEO_API_KEY", "prospeo", "api_key"),
+    ("SALESFORGE_API_KEY", "salesforge", "api_key"),
+    ("SLACK_BOT_TOKEN", "slack", "bot_token"),
+    ("SLACK_ENFORCER_APP_TOKEN", "slack", "enforcer_app_token"),
+    ("SUPABASE_ACCESS_TOKEN", "supabase", "access_token"),
+    ("UNIPILE_API_KEY", "unipile", "api_key"),
+    ("UPSTASH_API_KEY", "upstash", "api_key"),
+    ("VAPI_API_KEY", "vapi", "api_key"),
+    ("VERCEL_TOKEN", "vercel", "token"),
+    ("VULTR_API_KEY", "vultr", "api_key"),
+    ("WEBSHARE_API_KEY", "webshare", "api_key"),
+    ("YOUTUBE_CLIENT_SECRET", "youtube", "client_secret"),
+    ("ZEROBOUNCE_API_KEY", "zerobounce", "api_key"),
 )
+
+
+# Alias env vars that share another secret's value (no separate Vault path —
+# keeps SECRET_MANIFEST paths unique). Resolved transitively from the canonical
+# env var by resolve_into_env after the manifest pass.
+#   alias_env_var -> canonical_env_var
+SECRET_ALIASES: dict[str, str] = {
+    "SUPABASE_DB_DSN": "DATABASE_URL",  # env: "copied from DATABASE_URL"
+    "OPENAI_APIKEY": "OPENAI_API_KEY",  # typo-variant; flagged for code cleanup
+}
 
 
 @dataclass
@@ -145,6 +189,10 @@ def resolve_into_env(*, manifest=SECRET_MANIFEST) -> ResolveResult:
     result = resolve(addr, token, manifest=manifest)
     for env_var, val in result.resolved.items():
         os.environ[env_var] = val
+    # Apply aliases transitively from their canonical env var (now in environ).
+    for alias, canonical in SECRET_ALIASES.items():
+        if canonical in os.environ:
+            os.environ[alias] = os.environ[canonical]
     logger.info(
         "cold-resolve: %d resolved, %d missing, %d errors",
         len(result.resolved),

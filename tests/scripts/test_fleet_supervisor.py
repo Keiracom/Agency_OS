@@ -888,96 +888,37 @@ def test_agent_has_reviewed_skips_pr_with_hold_comment(monkeypatch):
     assert fs.agent_has_reviewed(pr, "scout") is True
 
 
-# ─── KEI-189: Sonar QG dual-endpoint check ───────────────────────────────────
+# Agency_OS-6b2s (2026-06-03): the legacy KEI-189 Sonar QG dual-endpoint
+# tests have been removed alongside fetch_sonar_status / _format_sonar_brief
+# in fleet_supervisor.py. SonarCloud's CI workflow was deleted in PR #1138;
+# CodeQL is the sole code-analysis gate on Agency_OS PRs. The new
+# test_build_review_prompt_no_longer_calls_sonar regression check below
+# pins that the prompt does not mention Sonar (catches accidental
+# re-introduction of the dead code path).
 
 
-def test_fetch_sonar_status_returns_both_dimensions(monkeypatch):
-    """KEI-189: fetch_sonar_status reads issues + QG endpoints."""
-
-    class _Resp:
-        def __init__(self, body):
-            self._body = body
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, *_):
-            return None
-
-        def read(self):
-            return self._body
-
-    def fake_urlopen(req, timeout=10):
-        url = req if isinstance(req, str) else getattr(req, "full_url", "")
-        if "issues/search" in url:
-            return _Resp(b'{"total": 3, "issues": []}')
-        if "qualitygates/project_status" in url:
-            return _Resp(
-                b'{"projectStatus": {"status": "ERROR", "conditions": ['
-                b'{"metricKey": "new_duplicated_lines_density", "status": "ERROR",'
-                b'"actualValue": "19.3", "errorThreshold": "3"}]}}'
-            )
-        return _Resp(b"{}")
-
-    monkeypatch.setattr(fs.urllib.request, "urlopen", fake_urlopen)
-    out = fs.fetch_sonar_status(981)
-    assert out["issues_total"] == 3
-    assert out["qg_status"] == "ERROR"
-    assert any("new_duplicated_lines_density" in c for c in out["qg_failing"])
-
-
-def test_fetch_sonar_status_fail_open(monkeypatch):
-    """Sonar fetch failure → empty dict, never raises."""
-
-    def bad_urlopen(*_a, **_k):
-        raise RuntimeError("network down")
-
-    monkeypatch.setattr(fs.urllib.request, "urlopen", bad_urlopen)
-    out = fs.fetch_sonar_status(999)
-    # Empty dict — fail-open, no fields set, no exception
-    assert out == {}
-
-
-def test_format_sonar_brief_renders_both_endpoints():
-    sonar = {
-        "issues_total": 2,
-        "qg_status": "ERROR",
-        "qg_failing": ["new_duplicated_lines_density=19.3 (>3)"],
-    }
-    text = fs._format_sonar_brief(sonar)
-    assert "/api/issues/search" in text
-    assert "total NEW unresolved: 2" in text
-    assert "/api/qualitygates/project_status" in text
-    assert "status: ERROR" in text
-    assert "new_duplicated_lines_density" in text
-    assert "BOTH endpoints" in text
-
-
-def test_format_sonar_brief_empty_when_no_data():
-    assert fs._format_sonar_brief({}) == ""
-
-
-def test_build_review_prompt_includes_sonar_block(monkeypatch):
-    """KEI-189 acceptance: review brief includes BOTH Sonar dimensions."""
-    monkeypatch.setattr(
-        fs,
-        "fetch_sonar_status",
-        lambda _n: {
-            "issues_total": 0,
-            "qg_status": "ERROR",
-            "qg_failing": ["new_duplicated_lines_density=19.3 (>3)"],
-        },
-    )
+def test_build_review_prompt_no_longer_calls_sonar():
+    """Agency_OS-6b2s: build_review_prompt must not reference SonarCloud."""
     prompt = fs.build_review_prompt(
         pr_number=981,
         pr_title="[ORION] feat(kei152): paddle",
         pr_url="https://github.com/x/y/pull/981",
         callsign="aiden",
     )
-    assert "Sonar" in prompt
-    assert "issues_total" in prompt or "total NEW" in prompt
-    assert "qg_status" in prompt or "status: ERROR" in prompt
-    assert "BOTH endpoints" in prompt
+    lowered = prompt.lower()
+    assert "sonar" not in lowered, (
+        "build_review_prompt mentions Sonar — the dead-API fetch was supposed "
+        "to be dropped in Agency_OS-6b2s (CodeQL is the sole code-analysis "
+        f"gate now). Prompt: {prompt!r}"
+    )
+    assert not hasattr(fs, "fetch_sonar_status"), (
+        "fleet_supervisor still exposes fetch_sonar_status — dead code "
+        "should have been removed in Agency_OS-6b2s."
+    )
+    assert not hasattr(fs, "_format_sonar_brief"), (
+        "fleet_supervisor still exposes _format_sonar_brief — dead code "
+        "should have been removed in Agency_OS-6b2s."
+    )
 
 
 # ---------------------------------------------------------------------------

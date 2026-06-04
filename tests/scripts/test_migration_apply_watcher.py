@@ -204,3 +204,88 @@ def test_within_timeout_window_no_alert():
     ):
         maw.process_migration(conn, "supabase/migrations/m.sql", _FRESH_TS, now=_NOW, dry_run=False)
     mock_alert.assert_not_called()
+
+
+# ── tracking-drift axis (bind-gate follow-up 2026-06-04) ─────────────────────
+
+
+def test_is_tracked_exact_match():
+    tracked = {"20260604_my_migration", "add_proven_revocation_path"}
+    assert maw.is_tracked("20260604_my_migration", tracked) is True
+
+
+def test_is_tracked_suffix_match_short_name():
+    # File carries a date prefix; tracked under the short name.
+    tracked = {"add_proven_revocation_path"}
+    assert maw.is_tracked("20260603_add_proven_revocation_path", tracked) is True
+
+
+def test_is_tracked_no_match_is_untracked():
+    tracked = {"some_other_migration"}
+    assert maw.is_tracked("20260604_merge_to_proven_pipeline_bind_gate", tracked) is False
+
+
+def test_is_tracked_empty_basename_and_empty_tracked():
+    assert maw.is_tracked("", set()) is False
+    assert maw.is_tracked("anything", set()) is False
+
+
+def test_compute_untracked_filters_only_unmatched():
+    basenames = ["20260604_a", "20260604_b", "20260604_c"]
+    tracked = {"20260604_a", "20260604_c"}
+    assert maw.compute_untracked(basenames, tracked) == ["20260604_b"]
+
+
+def test_check_tracking_drift_empty_tracking_skips(capsys):
+    # No tracking rows → fail-open skip, no alert, no debt write.
+    conn = MagicMock()
+    with (
+        patch.object(maw, "fetch_tracked_names", return_value=set()),
+        patch.object(maw, "emit_tracking_drift_alert") as mock_alert,
+        patch.object(maw, "_upsert_tracking_debt") as mock_debt,
+    ):
+        maw.check_tracking_drift(conn, dry_run=False)
+    mock_alert.assert_not_called()
+    mock_debt.assert_not_called()
+
+
+def test_check_tracking_drift_fires_on_functional_but_untracked():
+    conn = MagicMock()
+    with (
+        patch.object(maw, "fetch_tracked_names", return_value={"tracked_one"}),
+        patch.object(
+            maw, "list_migration_basenames", return_value=["tracked_one", "ghost_untracked"]
+        ),
+        patch.object(maw, "_file_functionally_applied", return_value=True),
+        patch.object(maw, "get_debt_row", return_value=None),
+        patch.object(maw, "emit_tracking_drift_alert") as mock_alert,
+        patch.object(maw, "_upsert_tracking_debt") as mock_debt,
+    ):
+        maw.check_tracking_drift(conn, dry_run=False)
+    mock_alert.assert_called_once()
+    mock_debt.assert_called_once()
+
+
+def test_check_tracking_drift_idempotent_when_pending():
+    conn = MagicMock()
+    with (
+        patch.object(maw, "fetch_tracked_names", return_value={"tracked_one"}),
+        patch.object(maw, "list_migration_basenames", return_value=["ghost_untracked"]),
+        patch.object(maw, "_file_functionally_applied", return_value=True),
+        patch.object(maw, "get_debt_row", return_value={"status": "pending"}),
+        patch.object(maw, "emit_tracking_drift_alert") as mock_alert,
+    ):
+        maw.check_tracking_drift(conn, dry_run=False)
+    mock_alert.assert_not_called()
+
+
+def test_check_tracking_drift_resolves_when_clear():
+    conn = MagicMock()
+    with (
+        patch.object(maw, "fetch_tracked_names", return_value={"tracked_one"}),
+        patch.object(maw, "list_migration_basenames", return_value=["tracked_one"]),
+        patch.object(maw, "get_debt_row", return_value={"status": "pending"}),
+        patch.object(maw, "_upsert_tracking_debt") as mock_debt,
+    ):
+        maw.check_tracking_drift(conn, dry_run=False)
+    mock_debt.assert_called_once_with(status="resolved", total=1, untracked=0, applied=0, sample=[])

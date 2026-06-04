@@ -32,6 +32,7 @@ SET LOCAL agency_os.callsign = 'scout';
 
 UPDATE public.gate_roadmap
    SET built_by_callsign = 'scout',
+       deploy_trigger = 'docs-artifact:docs/launch/KEI-131_gtm_launch_kit.md + ci:check_no_orphan_merge + proof_bar:product_gtm_proof.sh',
        proof_gate_contract = '{
         "check_id": "product_gtm_ready_v1",
         "cmd": "bash scripts/proof_bar/product_gtm_proof.sh",

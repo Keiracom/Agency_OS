@@ -670,6 +670,84 @@ def revive_agent(name: str, target: str, reason: str, last_task: str = "") -> No
     slack_ceo(f"[ELLIOT] Watchdog revived {name} ({reason}).")
 
 
+# ── Re-feed (watchdog_reaper) — the "keep a healthy agent fed" half ──────────
+# A cleanly-idle agent with queued work must RESUME real work, not be tab-cleared.
+# revive_agent() above /clear's the pane (correct for context-full / stuck agents,
+# wrong for clean-idle: it destroys good context and feeds nothing). refeed_agent()
+# injects the ACTUAL next task (inbox brief, else bd-ready) with NO /clear, so the
+# agent picks the work back up and emits a fresh tool_call_log row.
+REFEED_INBOX_TEMPLATE = "/tmp/telegram-relay-{callsign}/inbox"
+REFEED_GUARD = (
+    " — [watchdog re-feed] resume this work now. "
+    "No paid chain / spend / risky exec without explicit Dave approval."
+)
+
+
+def _bd_ready_top(callsign: str) -> dict | None:
+    """Top unblocked bd-ready task eligible for `callsign` (None on any failure).
+    Fallback only — used when the inbox file can't be parsed."""
+    try:
+        cp = subprocess.run(
+            ["bd", "ready", "--json"], capture_output=True, text=True, timeout=10
+        )
+        data = json.loads(cp.stdout) if cp.stdout.strip() else []
+        items = data if isinstance(data, list) else data.get("issues", [])
+        for it in items:
+            assignee = (it.get("assignee") or "").lower()
+            if assignee and assignee != callsign:
+                continue
+            return it
+    except Exception:
+        return None
+    return None
+
+
+def _next_queued_work(callsign: str) -> tuple[str, str] | None:
+    """Return (task_text, source) for the oldest queued inbox dispatch's brief,
+    else a bd-ready fallback, else None. Read-only: does NOT consume/move the
+    inbox file (the inbox-watcher owns delivery; this re-feeds a stalled-idle
+    agent that did not pick the work up)."""
+    inbox = Path(REFEED_INBOX_TEMPLATE.format(callsign=callsign))
+    try:
+        files = sorted(
+            (p for p in inbox.iterdir() if p.is_file() and p.suffix == ".json"),
+            key=lambda p: p.stat().st_mtime,
+        )
+    except OSError:
+        files = []
+    for f in files:
+        try:
+            payload = json.loads(f.read_text())
+        except Exception:
+            continue
+        brief = str(payload.get("brief") or payload.get("subject") or "").strip()
+        if brief:
+            return brief, f"inbox:{f.name}"
+    task = _bd_ready_top(callsign)
+    if task:
+        tid = task.get("id", "?")
+        title = str(task.get("title") or "")
+        return (f"Next unblocked bd task: {tid} — {title}. Run `bd show {tid}`, then resume.", f"bd:{tid}")
+    return None
+
+
+def refeed_agent(name: str, target: str, callsign: str) -> bool:
+    """Re-feed a cleanly-idle agent that has queued work: inject the actual next
+    task into the pane WITHOUT /clear (preserve its context). Returns True iff a
+    task was injected. NEVER sends an approval/spend keystroke — only the task
+    text plus the no-spend guard."""
+    work = _next_queued_work(callsign)
+    if work is None:
+        return False
+    task_text, source = work
+    # Cleanly-idle agent should already be at ❯; verify briefly, never force.
+    if not wait_for_prompt(target, timeout=10.0):
+        return False
+    safe_send(target, task_text + REFEED_GUARD, skip_prompt_wait=True)
+    slack_ceo(f"[ELLIOT] Watchdog re-fed {name} ({source}) — resumed real work.")
+    return True
+
+
 def _flap_state_path(name: str) -> Path:
     return Path(FLAP_STATE_PATH_TEMPLATE.format(name=name))
 
@@ -824,8 +902,10 @@ def check_other_agents(state: dict) -> dict:
         #
         # Five-class dispatch:
         #   active                -> skip (calls in the last 10 min)
-        #   idle_with_work_queued -> revive (inbox has dispatch waiting; the
-        #                             inbox-watcher delivers on wake)
+        #   idle_with_work_queued -> RE-FEED: inject the actual next task (inbox
+        #                             brief / bd-ready) so the agent resumes real
+        #                             work. NO /clear — context is fine; the bug
+        #                             this fixes was tab-clearing without feeding.
         #   idle                  -> leave (NO THRASH — no inbox = no fresh work)
         #   no_data               -> skip (DB / helper unavailable; the
         #                             pane-based context-full + genuine-stuck
@@ -849,10 +929,16 @@ def check_other_agents(state: dict) -> dict:
                     state[flap_key] = now
                 print(f"[watchdog] {name} FLAP guard tripped — wake suspended")
                 continue
-            revive_agent(name, target, "idle_with_work_queued", last_task=last_task)
-            state[key_revive] = now
-            record_flap_event(name, now)
-            print(f"[watchdog] {name} idle_with_work_queued — wake injected")
+            # RE-FEED (not tab-clear): a cleanly-idle agent with queued work
+            # resumes real work via task injection — no /clear, context kept.
+            if refeed_agent(name, target, _db_callsign(name)):
+                state[key_revive] = now
+                record_flap_event(name, now)
+                print(f"[watchdog] {name} idle_with_work_queued — RE-FED (task injected)")
+            else:
+                # No resolvable task (inbox file vanished / unparseable + no bd
+                # ready) — leave rather than thrash.
+                print(f"[watchdog] {name} idle_with_work_queued — no resolvable task, left")
         elif activity_state == "active":
             # Tool calls within the last 10 min — agent is doing work.
             pass

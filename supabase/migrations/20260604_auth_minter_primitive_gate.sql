@@ -25,7 +25,8 @@ SET LOCAL agency_os.callsign = 'nova';
 
 INSERT INTO public.gate_roadmap (
     component, phase, gate_id, proof_gate, status,
-    owner, built_by_callsign, required_attestation_kind, proof_gate_contract, notes
+    owner, built_by_callsign, required_attestation_kind, proof_gate_contract,
+    deploy_trigger, notes
 ) VALUES (
     'auth_minter_primitive',
     '1_nucleus',
@@ -55,12 +56,21 @@ INSERT INTO public.gate_roadmap (
         "role_sep": {"builder": "nova", "attester": ["aiden", "max"]},
         "negative_test_required": true
     }'::jsonb,
-    'Primitive proven; broad auth_minter gate (00..) integration UNWIRED. '
-      || 'RELATED FINDING (same class): spend_tracker gate says "over-budget call '
-      || 'rejected end-to-end" but record() is WARN-ONLY by KEI-212 spec (no '
-      || 'rejection); rejection would be interceptor_proxy. Both nucleus '
-      || 'components have correct primitives but unwired enforcement integrations.'
+    'migration:supabase/migrations/20260604_auth_minter_primitive_gate.sql'
+      || ' + ci:check_no_orphan_merge + proof_bar:scripts/proof_bar/auth_minter_live.sh',
+    'SCOPE (attesters check THIS, not full integration): proven=auth_minter '
+      || 'PRIMITIVE; dispatcher-integration clause ("validated on every dispatcher '
+      || 'call") DEFERRED to post-reboot/launcher-live — broad auth_minter gate '
+      || 'stays not_started. built_by=nova (proof-stager; KEI-209 code predates '
+      || 'nova). Broad auth_minter owner=atlas is UNCONTESTED (atlas is '
+      || 'reboot-driver/validator, not working auth_minter) — no collision. '
+      || 'RELATED FINDING (same class): spend_tracker gate says "over-budget '
+      || 'rejected end-to-end" but record() is WARN-ONLY (KEI-212 spec). Both '
+      || 'nucleus components have correct primitives, unwired enforcement.'
 )
-ON CONFLICT (component) DO NOTHING;
+ON CONFLICT (component) DO UPDATE SET
+    deploy_trigger = EXCLUDED.deploy_trigger,
+    proof_gate_contract = EXCLUDED.proof_gate_contract,
+    notes = EXCLUDED.notes;
 
 COMMIT;

@@ -1,10 +1,14 @@
 # Design: `vault-envwrap` launcher — Vault-resolved service boot (vault_secrets Phase 2)
 
 **Status:** DRAFT FOR REVIEW — no build, no service changes. Awaiting Aiden architecture
-review + Dave approach sign-off.
-**Author:** NOVA · 2026-06-03 · **Gate:** `vault_secrets` (00770e74)
+review + Dave approach sign-off. **Now finalized for SPLIT-RESILIENCE (§11)** per Dave's
+order: launcher → merge_to_proven → repo-split.
+**Author:** NOVA · 2026-06-03 (split-resilience finalized 2026-06-04) · **Gate:**
+`vault_secrets` (00770e74)
 **Risk class:** boot-path-structural (a bad launcher = fleet-wide startup crash-loop).
 Execution requires an attended window, NOT swap-100% / unattended.
+**Scope note:** Dave decided STAY on Supabase (self-hosted Postgres dropped) — this is a
+SECRETS gate (where creds resolve from), independent of the DB host; unaffected.
 
 ---
 
@@ -37,18 +41,24 @@ Alternatives rejected:
 
 ## 3. Proposed approach
 
-A thin wrapper invoked as the systemd `ExecStart`:
+A thin wrapper invoked as the systemd `ExecStart`, referenced through a **stable,
+repo-independent path** (a `~/.local/bin` shim, same pattern as the `bd` shim) and a
+single env pointer `${AGENCY_OS_REPO}` — NOT a hardcoded repo path (see §11):
 
 ```
-ExecStart=/…/vault-envwrap -- /…/.venv/bin/python /…/script.py
+ExecStart=%h/.local/bin/vault-envwrap -- ${AGENCY_OS_REPO}/.venv/bin/python ${AGENCY_OS_REPO}/scripts/foo.py
 ```
 
-`vault-envwrap` (proposed `scripts/vault_envwrap.py`):
-1. Reads `VAULT_ADDR` + `VAULT_TOKEN` from the (now minimal) environment.
-2. Calls `kv_resolver.resolve_into_env()` → pulls all manifest secrets + aliases into
+`vault-envwrap` (proposed `scripts/vault_envwrap.py`, fronted by the `~/.local/bin`
+shim):
+1. Self-locates its repo root from `Path(__file__).resolve().parents[1]` (precedent:
+   `context_watchdog.py:31` `REPO = Path(__file__).resolve().parents[2]`) — so the
+   `kv_resolver` import resolves wherever the repo lives.
+2. Reads `VAULT_ADDR` + `VAULT_TOKEN` from the (now minimal) environment.
+3. Calls `kv_resolver.resolve_into_env()` → pulls all manifest secrets + aliases into
    `os.environ`.
-3. Asserts completeness (configurable required-set); logs `resolved/missing/errors`.
-4. `os.execvp(cmd[0], cmd)` — replaces the process image, so the service inherits the
+4. Asserts completeness (configurable required-set); logs `resolved/missing/errors`.
+5. `os.execvp(cmd[0], cmd)` — replaces the process image, so the service inherits the
    Vault-populated environment with no `.env` dependency.
 
 Modes:
@@ -203,3 +213,52 @@ proof_bar asserts a wrapped service resolves a secret from Vault with `.env` abs
 2. **Aiden:** Vault HA/auto-unseal sufficiency for a boot-path dependency; token renewal.
 3. **Dave:** approach sign-off + when the attended rollout window can be scheduled.
 4. Should the launcher cache last-good resolution to ride out a transient Vault blip?
+5. **Aiden + Max (split-resilience axis, §11):** does the `AGENCY_OS_REPO` single-pointer
+   + Vault-network secrets + self-locating wrapper make the repo-split a clean one-value
+   re-point with zero launcher re-migration?
+
+## 11. Split-resilience — Aiden + Max review axis (Dave order: launcher → merge_to_proven → repo-split)
+
+The launcher lands BEFORE the repo-split. It must be built so that when the split
+re-points every path (fleet / product / archive), the launcher units **come along
+cleanly with no re-migration**. Three properties guarantee that:
+
+**(a) Secret source is path-decoupled (the core win).**
+Secrets resolve from Vault over the network — keyed by the logical address
+`secret/keiracom/<service>/<key>` via `VAULT_ADDR`, never by a filesystem path. A repo
+move changes **nothing** about secret resolution. Contrast the status quo:
+`EnvironmentFile=…/agency-os/.env` is host-path-coupled — the split would have to chase
+that file for all 80 units. Moving secrets to Vault-at-boot *removes* the only
+path-coupled secret dependency from the boot path. This is why doing the launcher first
+de-risks the split rather than adding to it.
+
+**(b) One env pointer, not N hardcoded paths.**
+Unit `ExecStart` lines reference `${AGENCY_OS_REPO}` (an existing convention — `bd` shim,
+`completion_sync_worker.py`, etc. all default it to the repo root) instead of a literal
+`/home/elliotbot/clawd/Agency_OS/...`. The repo-split updates **exactly one value** —
+`AGENCY_OS_REPO` in the minimal bootstrap env — and all wrapped units follow with **no
+per-unit edit**. `%h` (systemd home specifier) covers the `~/.local/bin/vault-envwrap`
+shim path so even the wrapper reference is host/repo-relative.
+
+**(c) The wrapper self-locates.**
+`vault_envwrap.py` derives its repo root from `Path(__file__).resolve().parents[1]` (same
+pattern proven in `context_watchdog.py:31`), so the `kv_resolver` import resolves from
+wherever the script physically lives after the split — no PYTHONPATH surgery, no embedded
+absolute import root.
+
+**Net: the split's launcher-facing surface is a single `AGENCY_OS_REPO` re-point.**
+`VAULT_ADDR`/`VAULT_TOKEN` are network/identity, unchanged by a move. The 79 boot-order
+drop-ins (§4b) reference the Vault unit by **unit name** (`keiracom-vault-unseal.service`),
+not a path — also move-invariant. No secret re-migration, no per-unit rewrite, no
+re-running the pilot/tranches after the split.
+
+**Bootstrap-env composition (honesty note for the gate, §9):** post-migration the minimal
+`.env` holds the **secret** allowlist (`VAULT_ADDR`, `VAULT_TOKEN`) PLUS **non-secret**
+operational pointers (`AGENCY_OS_REPO`). `AGENCY_OS_REPO` is a path, not a credential, so
+it is **outside** the "zero secret carve-outs" gate — `git grep` for hardcoded secrets in
+`src/` stays clean; the gate measures secrets, not config pointers.
+
+**Sequencing tie-in:** because (a)+(b)+(c) hold, Dave's order (launcher → merge_to_proven →
+repo-split) is the safe one: the launcher removes the path-coupled secret dependency and
+collapses the repo reference to one pointer, so the subsequent split is a one-value change
+the launcher units inherit automatically — not a second migration.

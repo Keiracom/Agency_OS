@@ -40,3 +40,21 @@ NOT YET RUN (no removal applied — holding for confirm). On confirm: apply remo
 ## §5 Findings
 - Dangling systemd entrypoints (units reference absent files): `scripts/coo_bot_service.py`, `src/telegram_bot/{chat_bot,enforcer_bot}.py`.
 - Closure bug fixed pre-handoff: ancestor `__init__.py` imports were not followed (would under-keep package submodules → boot break); fix raised KEEP 118→187 (fleet-only) before product seeds.
+
+---
+
+## §6 EXECUTED + VALIDATED (HoO confirmed 2026-06-04 — keep-42 / archive-202)
+**Closure (complete trigger set):** 56 systemd + 5 hooks + 68 product + 36 HoO-confirmed-keep = 165 entrypoint seeds. **src/ KEEP 422 / ARCHIVE 201.** All 4 live-edges + all 42 fleet-risk in KEEP.
+**Removed on branch `orion/keiracom-core-curation` (Agency_OS untouched; reversible):**
+- 201 dead-BDR `src/` files (pipeline/outreach/integrations/intelligence-CIS/services-BDR/engines/voice/api-BDR + BDR Prefect flows).
+- 10 dead top-level dirs (agency-os-html/-prototype, builds, campaigns, canvas, competitive, frontend, landing-page-analysis, maya-concepts, research).
+- 30 dead-BDR `scripts/` (BDR test/run/readiness/ingest/voice — provably dead: import only removed BDR modules, none are live entrypoints). Full list in `closure_manifest.json:dead_scripts`.
+
+**NEG-TEST over the COMPLETE entrypoint set (HoO standard, not services-only) — PASS, exit 0:**
+```
+(a) COMPILE: 422 kept src/*.py compiled, 0 failures
+(b) RESOLVE: 165 entrypoints, walked 266 files, 0 imports pointing at a MISSING (removed) module
+(c) ZERO-REF: removed modules referenced in curated tree = 0
+NEG-TEST PASS (compile+resolve+zero-ref over 165 entrypoints, 422 kept, 201 removed)
+```
+Reproduce: `python3 scripts/repo_split/neg_test.py`. Hand-off for Atlas gate-2 (independent re-run over the same set). Dangling units (coo_bot_service.py, telegram_bot/*) = separate cleanup, not closure.

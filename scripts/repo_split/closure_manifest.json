@@ -810,5 +810,37 @@
     "maya-concepts",
     "research"
   ],
-  "edge_check_failed": []
+  "edge_check_failed": [],
+  "dead_scripts": [
+    "scripts/317_live_validation.py",
+    "scripts/327_canonical_run.py",
+    "scripts/328_stage_1_rerun.py",
+    "scripts/backfill_abn_for_existing_rows.py",
+    "scripts/backfill_stage0.py",
+    "scripts/bu_readiness_check.py",
+    "scripts/f_cohort_100.py",
+    "scripts/f_refactor_e2e.py",
+    "scripts/governance_hooks.py",
+    "scripts/ingest_austender.py",
+    "scripts/integration_test_300b.py",
+    "scripts/integration_test_300c.py",
+    "scripts/integration_test_300d.py",
+    "scripts/integration_test_300e.py",
+    "scripts/integration_test_300f.py",
+    "scripts/integration_test_300g_h.py",
+    "scripts/integration_test_300g_v2.py",
+    "scripts/integration_test_300i_j.py",
+    "scripts/integration_test_300k.py",
+    "scripts/integration_test_301.py",
+    "scripts/isolate_persist_stage8.py",
+    "scripts/live_pipeline_test.py",
+    "scripts/live_pipeline_test_c.py",
+    "scripts/live_test_v2.py",
+    "scripts/phase3_readiness_check.py",
+    "scripts/run_campaign.py",
+    "scripts/run_cd_player.py",
+    "scripts/smoke_email_backend.py",
+    "scripts/stage_subset_runner.py",
+    "scripts/start_voice.py"
+  ]
 }

@@ -319,3 +319,20 @@ database/{ACTIVITIES,CLIENTS_USERS,CONVERSION_PATTERNS,EMAIL_INFRASTRUCTURE,SCHE
 integrations/{ANTHROPIC,REDIS,SUPABASE,RESEND,INDEX} + research/{opposition_11x,enderfga,
 workforce,composio,phase3_*} + test_migration_guide/test_triage). None block a clean tree
 (kept). APPLICATION STILL HELD pending HoO method-switch confirmation.
+
+### §11.2 APPLIED (HoO confirmed method switch 2026-06-04)
+Allowlist-keep/archive-rest APPLIED on branch (Agency_OS untouched, reversible). git rm 395.
+Tree 2851 -> 2459 tracked. FLAG-29 KEPT per elliot+Atlas ruling (genuinely-ambiguous-leaning-
+fleet/product; surfaced to Dave's eyeball as the explicit '29 ambiguous-kept' set, not archived).
+
+POST-APPLY VERIFICATION (verbatim):
+```
+NEG-TEST: (a) 238 compile 0-fail  (b) 165 entrypoints 0-broken  (c) zero-ref  (d) MAPPER OK -> PASS
+INVERSE CHECK (zero fleet/product wrongly-archived):
+  supabase/migrations: 206 present (0 archived)   scripts/proof_bar: 18 present
+  keiramail backing gmail-mcp: present             fleet mcp dirs (memory/prefect/railway/telegram): present
+  .claude/settings.json + .mcp.json: present       canonical fleet files missing: NONE
+  .mcp.json servers: supabase/redis/prefect/railway/memory/keiramail/keiradrive (zero dead-vendor)
+  FLAG-29: 29/29 kept-present
+```
+READY for Atlas TERMINAL gate-2 (binding, both directions on the actual applied tree).

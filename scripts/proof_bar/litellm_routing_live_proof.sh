@@ -214,13 +214,16 @@ BEGIN
     SET LOCAL agency_os.callsign = 'aiden';
     INSERT INTO public.gate_proof_runs
         (gate_roadmap_id, attestation_kind, run_cmd, run_output, output_sha256,
-         exit_code, attesting_callsign, attester_session_uuid)
+         exit_code, attesting_callsign, attester_session_uuid, repo_sha)
     VALUES (
         v_gate, 'binding_reviewer',
         'pytest tests/retrieval/test_hyde.py -v',
         'mock pytest output — padded to satisfy the >=32 char run_output check here',
         encode(sha256(v_gate::text::bytea), 'hex'),
-        0, 'aiden', v_session::text)
+        -- repo_sha placeholder: required by the binding-row constraint (R1,
+        -- merge_to_proven bind-gate). Irrelevant to this probe, which tests
+        -- Check A (cmd_mismatch) — Check A raises before Check D ever reads it.
+        0, 'aiden', v_session::text, 'c5probe_repo_sha_unused_for_check_a')
     RETURNING id INTO v_run;
     SET LOCAL agency_os.callsign = 'dave';
     UPDATE public.gate_roadmap SET status = 'proven', proof_run_id = v_run WHERE id = v_gate;

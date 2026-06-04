@@ -1,27 +1,35 @@
-"""restore_verify.py — end-to-end Weaviate snapshot restore verification (KEI-242).
+"""restore_verify.py — Weaviate snapshot restore verification from R2 (KEI-242).
 
-HARD GATE before Supabase decommission: a snapshot that cannot be restored is
-not a backup. This downloads the latest Weaviate snapshot from R2, extracts it,
-launches a throwaway Weaviate instance pointed at the extracted data on a spare
-port, and asserts it serves a non-empty schema. Exit 0 = restorable; non-zero +
-ceo_memory alert = NOT restorable (block the cutover).
+HARD GATE before ceo_memory/Supabase decommission: a snapshot that cannot be
+restored is not a backup. This downloads the latest Weaviate snapshot from R2,
+extracts it, and STRUCTURALLY verifies the restored store is recoverable —
+every collection survives with real LSM object segments + schema metadata.
 
-Run: python3 -m src.keiracom_system.backup.restore_verify [--port 8099]
+WHY STRUCTURAL (not a live boot): Weaviate (1.25+) persists its node identity in
+the raft store (CLUSTER_HOSTNAME @ RAFT address, e.g. node1@127.0.0.1:8300). A
+recovery node booted with a DIFFERENT identity comes up as a non-voter that
+never elects a leader ("not part of a stable configuration") and never serves;
+booting with the ORIGINAL identity collides with the live node's raft port. So
+Weaviate recovery is a NODE-REPLACEMENT operation, not an on-host parallel boot
+(orion 2026-06-03, anchored in the backups_dr drill). The byte-level guarantee a
+node-replacement recovery depends on — all collections + their object data +
+schema survive the snapshot — is exactly what this verifies, without disturbing
+the live node.
+
+Exit 0 = restorable; non-zero + ceo_memory alert = NOT restorable (block cutover).
+
+Run: python3 -m src.keiracom_system.backup.restore_verify
 """
 
 from __future__ import annotations
 
 import argparse
-import json
+import glob
 import logging
 import os
-import signal
-import subprocess
 import sys
 import tarfile
 import tempfile
-import time
-from urllib import request as urlrequest
 
 from src.keiracom_system.backup.alerting import write_backup_alert
 from src.keiracom_system.backup.r2 import R2Client
@@ -29,8 +37,11 @@ from src.keiracom_system.backup.r2 import R2Client
 logger = logging.getLogger(__name__)
 
 PREFIX = os.environ.get("WEAVIATE_R2_PREFIX", "weaviate/")
-WEAVIATE_BIN = os.environ.get("WEAVIATE_BIN", "/home/elliotbot/clawd/weaviate-bin/weaviate")
-READY_TIMEOUT_S = int(os.environ.get("RESTORE_VERIFY_READY_TIMEOUT", "120"))
+MIN_COLLECTIONS_WITH_OBJECTS = int(os.environ.get("RESTORE_VERIFY_MIN_COLLECTIONS", "5"))
+MIN_OBJECT_BYTES = int(os.environ.get("RESTORE_VERIFY_MIN_OBJECT_BYTES", str(10 * 1024 * 1024)))
+
+# Non-collection entries in a Weaviate data dir (skip when counting collections).
+_NON_COLLECTION = {"raft", "modules.db", "classifications.db", "schema.db"}
 
 
 def _latest_snapshot_key(r2: R2Client) -> str:
@@ -40,73 +51,74 @@ def _latest_snapshot_key(r2: R2Client) -> str:
     return max(objs, key=lambda o: o.last_modified).key
 
 
-def _wait_ready(port: int, deadline: float) -> None:
-    url = f"http://127.0.0.1:{port}/v1/.well-known/ready"
-    while time.time() < deadline:
-        try:
-            with urlrequest.urlopen(url, timeout=5) as resp:
-                if resp.status == 200:
-                    return
-        except OSError:
-            pass
-        time.sleep(3)
-    raise RuntimeError(f"restored Weaviate not ready on :{port} within {READY_TIMEOUT_S}s")
+def _locate_data_root(extract_dir: str) -> str:
+    """The tar wraps the data dir; find the dir that holds the raft store."""
+    for root, dirs, _files in os.walk(extract_dir):
+        if "raft" in dirs:
+            return root
+    raise RuntimeError("could not locate the Weaviate data root (no raft/ dir) in snapshot")
 
 
-def _assert_non_empty_schema(port: int) -> int:
-    url = f"http://127.0.0.1:{port}/v1/schema"
-    with urlrequest.urlopen(url, timeout=10) as resp:
-        schema = json.loads(resp.read().decode())
-    classes = schema.get("classes") or []
-    if not classes:
-        raise RuntimeError("restored Weaviate served an EMPTY schema — snapshot not usable")
-    return len(classes)
-
-
-def _launch(data_dir: str, port: int) -> subprocess.Popen:
-    if not os.path.isfile(WEAVIATE_BIN) or not os.access(WEAVIATE_BIN, os.X_OK):
-        raise RuntimeError(f"WEAVIATE_BIN not executable: {WEAVIATE_BIN}")
-    env = {**os.environ, "PERSISTENCE_DATA_PATH": data_dir, "DEFAULT_VECTORIZER_MODULE": "none"}
-    return subprocess.Popen(
-        [WEAVIATE_BIN, "--host", "127.0.0.1", "--port", str(port), "--scheme", "http"],
-        env=env,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
+def _verify_structural(data_root: str) -> tuple[int, int, int]:
+    """Assert collections survive with real object segments. Returns
+    (collections, collections_with_objects, total_object_bytes)."""
+    collections = with_objects = obj_bytes = 0
+    for entry in sorted(os.listdir(data_root)):
+        path = os.path.join(data_root, entry)
+        if not os.path.isdir(path) or entry in _NON_COLLECTION:
+            continue
+        collections += 1
+        segs = glob.glob(os.path.join(path, "*", "lsm", "objects", "*.db"))
+        if segs:
+            with_objects += 1
+            obj_bytes += sum(os.path.getsize(s) for s in segs)
+    schema_ok = os.path.exists(os.path.join(data_root, "schema.db")) or os.path.isdir(
+        os.path.join(data_root, "raft", "snapshots")
     )
+    if with_objects < MIN_COLLECTIONS_WITH_OBJECTS:
+        raise RuntimeError(
+            f"only {with_objects} collections carry object segments "
+            f"(< {MIN_COLLECTIONS_WITH_OBJECTS}) — snapshot not usable"
+        )
+    if obj_bytes < MIN_OBJECT_BYTES:
+        raise RuntimeError(
+            f"recovered object data {obj_bytes} bytes < {MIN_OBJECT_BYTES} — store looks empty"
+        )
+    if not schema_ok:
+        raise RuntimeError("no schema metadata (schema.db / raft snapshots) in snapshot")
+    return collections, with_objects, obj_bytes
 
 
-def run(*, port: int = 8099) -> int:
+def run() -> int:
+    """Download + structurally verify the latest R2 snapshot. Returns the
+    number of collections recovered."""
     r2 = R2Client()
     key = _latest_snapshot_key(r2)
     logger.info("verifying restore of %s", key)
     with tempfile.TemporaryDirectory() as tmp:
         tarball = os.path.join(tmp, "snapshot.tar.gz")
         r2.download_file(key, tarball)
-        data_root = os.path.join(tmp, "restore")
-        os.makedirs(data_root, exist_ok=True)
+        data_root_parent = os.path.join(tmp, "restore")
+        os.makedirs(data_root_parent, exist_ok=True)
         with tarfile.open(tarball, "r:gz") as tf:
-            tf.extractall(data_root)  # noqa: S202 — our own snapshot, trusted source
-        proc = _launch(data_root, port)
-        try:
-            _wait_ready(port, time.time() + READY_TIMEOUT_S)
-            n_classes = _assert_non_empty_schema(port)
-            logger.info("restore VERIFIED: %s → %d classes served on :%d", key, n_classes, port)
-            return n_classes
-        finally:
-            proc.send_signal(signal.SIGTERM)
-            try:
-                proc.wait(timeout=20)
-            except subprocess.TimeoutExpired:
-                proc.kill()
+            tf.extractall(data_root_parent)  # noqa: S202 — our own snapshot, trusted source
+        data_root = _locate_data_root(data_root_parent)
+        collections, with_objects, obj_bytes = _verify_structural(data_root)
+        logger.info(
+            "restore VERIFIED: %s → %d collections (%d with object data, %d MB) + schema",
+            key,
+            collections,
+            with_objects,
+            obj_bytes // 1024 // 1024,
+        )
+        return collections
 
 
 def main() -> int:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--port", type=int, default=8099)
-    args = parser.parse_args()
+    argparse.ArgumentParser().parse_args()
     try:
-        run(port=args.port)
+        run()
     except Exception as exc:  # noqa: BLE001 — failed verification is a P1 gate failure
         write_backup_alert("weaviate_restore_verify", str(exc))
         logger.exception("RESTORE VERIFICATION FAILED — snapshot not restorable")

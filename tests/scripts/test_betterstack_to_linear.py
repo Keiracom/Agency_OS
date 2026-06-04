@@ -22,6 +22,14 @@ def mod():
     return m
 
 
+@pytest.fixture(autouse=True)
+def _unretire_linear(monkeypatch):
+    """Default every test to the un-retired writer path. The retirement guard
+    (LINEAR_RETIRED default-on, added in the Linear-retirement tail) is covered
+    explicitly by test_handle_incident_linear_retired_noop below."""
+    monkeypatch.setenv("LINEAR_RETIRED", "0")
+
+
 def test_state_path_under_allowed_root(mod, tmp_path, monkeypatch):
     """tmp_path lives under /tmp, an allowed root."""
     state = tmp_path / "bs.json"
@@ -47,7 +55,16 @@ def test_handle_incident_idempotent_skip(mod, monkeypatch, tmp_path):
 
     monkeypatch.setattr(mod, "_linear_graphql", _no_graphql)
     monkeypatch.setenv("LINEAR_API_KEY", "test-key")
-    rc = mod.handle_incident({"incident_id": "964390352", "monitor_name": "x", "cause": "c", "monitor_url": "u", "monitor_id": "m", "started_at": "t"})
+    rc = mod.handle_incident(
+        {
+            "incident_id": "964390352",
+            "monitor_name": "x",
+            "cause": "c",
+            "monitor_url": "u",
+            "monitor_id": "m",
+            "started_at": "t",
+        }
+    )
     assert rc == 0
 
 
@@ -55,7 +72,16 @@ def test_handle_incident_no_api_key_returns_2(mod, monkeypatch, tmp_path):
     """Missing LINEAR_API_KEY → return 2 (operator misconfig signal for systemd logs)."""
     monkeypatch.setenv("AGENCY_OS_BS_INCIDENTS_STATE", str(tmp_path / "bs.json"))
     monkeypatch.delenv("LINEAR_API_KEY", raising=False)
-    rc = mod.handle_incident({"incident_id": "x", "monitor_name": "y", "cause": "z", "monitor_url": "u", "monitor_id": "m", "started_at": "t"})
+    rc = mod.handle_incident(
+        {
+            "incident_id": "x",
+            "monitor_name": "y",
+            "cause": "z",
+            "monitor_url": "u",
+            "monitor_id": "m",
+            "started_at": "t",
+        }
+    )
     assert rc == 2
 
 
@@ -70,20 +96,37 @@ def test_handle_incident_creates_linear_issue(mod, monkeypatch, tmp_path):
     def _fake(api_key, query, variables=None):
         captured.append((query, variables))
         if "team(id" in query:
-            return {"data": {"team": {"states": {"nodes": [{"id": "state-started", "type": "started"}]}}}}
+            return {
+                "data": {
+                    "team": {"states": {"nodes": [{"id": "state-started", "type": "started"}]}}
+                }
+            }
         if "issueCreate" in query:
-            return {"data": {"issueCreate": {"success": True, "issue": {"id": "lin-uuid", "identifier": "KEI-99", "url": "https://linear.app/keiracom/issue/KEI-99/x"}}}}
+            return {
+                "data": {
+                    "issueCreate": {
+                        "success": True,
+                        "issue": {
+                            "id": "lin-uuid",
+                            "identifier": "KEI-99",
+                            "url": "https://linear.app/keiracom/issue/KEI-99/x",
+                        },
+                    }
+                }
+            }
         return {"data": {"users": {"nodes": []}}}
 
     monkeypatch.setattr(mod, "_linear_graphql", _fake)
-    rc = mod.handle_incident({
-        "incident_id": "964390352",
-        "monitor_name": "railway-prefect",
-        "cause": "DNS lookup failure",
-        "monitor_url": "https://prefect.keiracom.app/api/health",
-        "monitor_id": "4400119",
-        "started_at": "2026-05-12T12:48:08Z",
-    })
+    rc = mod.handle_incident(
+        {
+            "incident_id": "964390352",
+            "monitor_name": "railway-prefect",
+            "cause": "DNS lookup failure",
+            "monitor_url": "https://prefect.keiracom.app/api/health",
+            "monitor_id": "4400119",
+            "started_at": "2026-05-12T12:48:08Z",
+        }
+    )
     assert rc == 0
     # state file should have the mapping
     state = json.loads(state_path.read_text())
@@ -97,6 +140,31 @@ def test_handle_incident_creates_linear_issue(mod, monkeypatch, tmp_path):
 def test_handle_incident_no_incident_id_skip(mod, monkeypatch):
     rc = mod.handle_incident({"monitor_name": "x"})
     assert rc == 0
+
+
+def test_handle_incident_linear_retired_noop(mod, monkeypatch, tmp_path):
+    """LINEAR_RETIRED (default on) → graceful no-op: rc 0, no graphql, no state write."""
+    monkeypatch.setenv("LINEAR_RETIRED", "1")
+    monkeypatch.setenv("LINEAR_API_KEY", "test-key")
+    state_path = tmp_path / "bs.json"
+    monkeypatch.setenv("AGENCY_OS_BS_INCIDENTS_STATE", str(state_path))
+
+    def _no_graphql(*args, **kwargs):
+        raise AssertionError("graphql must not be called when LINEAR_RETIRED")
+
+    monkeypatch.setattr(mod, "_linear_graphql", _no_graphql)
+    rc = mod.handle_incident(
+        {
+            "incident_id": "x",
+            "monitor_name": "y",
+            "cause": "z",
+            "monitor_url": "u",
+            "monitor_id": "m",
+            "started_at": "t",
+        }
+    )
+    assert rc == 0
+    assert not state_path.exists()  # no write happened
 
 
 def test_main_unknown_op_returns_zero(mod, tmp_path):

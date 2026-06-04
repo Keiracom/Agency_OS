@@ -1,0 +1,13 @@
+[Unit]
+Description=Daily Weaviate offsite snapshot to Cloudflare R2 (KEI-242)
+Documentation=ceo:vultr_infrastructure_ratified weaviate_snapshot=R2 (HARD GATE)
+Requires=weaviate-snapshot.service
+
+[Timer]
+# 04:30 UTC (14:30 AEST) — staggered 1h after the host-local weaviate-backup (03:30).
+OnCalendar=*-*-* 04:30:00
+Persistent=true
+Unit=weaviate-snapshot.service
+
+[Install]
+WantedBy=timers.target

@@ -1,15 +1,18 @@
 {
-  "mcpServers": {
-    "dataforseo": {
-      "args": [
-        "/home/elliotbot/clawd/mcp-servers/dataforseo-mcp/dist/index.js"
-      ],
-      "command": "node",
-      "env": {
-        "DATAFORSEO_LOGIN": "${DATAFORSEO_LOGIN}",
-        "DATAFORSEO_PASSWORD": "${DATAFORSEO_PASSWORD}"
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "command": "python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/stop_hook.py",
+            "type": "command"
+          }
+        ],
+        "matcher": ""
       }
-    },
+    ]
+  },
+  "mcpServers": {
     "keiradrive": {
       "args": [
         "/home/elliotbot/clawd/mcp-servers/keiradrive-mcp/server.py"
@@ -41,15 +44,6 @@
         "PREFECT_API_URL": "${PREFECT_API_URL}"
       }
     },
-    "prospeo": {
-      "args": [
-        "/home/elliotbot/clawd/mcp-servers/prospeo-mcp/dist/index.js"
-      ],
-      "command": "node",
-      "env": {
-        "PROSPEO_API_KEY": "${PROSPEO_API_KEY}"
-      }
-    },
     "railway": {
       "args": [
         "/home/elliotbot/clawd/mcp-servers/railway-mcp/dist/index.js"
@@ -70,24 +64,6 @@
         "UPSTASH_EMAIL": "${UPSTASH_EMAIL}"
       }
     },
-    "resend": {
-      "args": [
-        "/home/elliotbot/clawd/mcp-servers/resend-mcp/dist/index.js"
-      ],
-      "command": "node",
-      "env": {
-        "RESEND_API_KEY": "${RESEND_API_KEY}"
-      }
-    },
-    "salesforge": {
-      "args": [
-        "/home/elliotbot/clawd/mcp-servers/salesforge-mcp/dist/index.js"
-      ],
-      "command": "node",
-      "env": {
-        "SALESFORGE_API_KEY": "${SALESFORGE_API_KEY}"
-      }
-    },
     "supabase": {
       "args": [
         "-y",
@@ -99,59 +75,10 @@
       "env": {
         "SUPABASE_URL": "${SUPABASE_URL}"
       }
-    },
-    "telnyx": {
-      "args": [
-        "/home/elliotbot/clawd/mcp-servers/telnyx-mcp/dist/index.js"
-      ],
-      "command": "node",
-      "env": {
-        "TELNYX_API_KEY": "${TELNYX_API_KEY}"
-      }
-    },
-    "unipile": {
-      "args": [
-        "/home/elliotbot/clawd/mcp-servers/unipile-mcp/dist/index.js"
-      ],
-      "command": "node",
-      "env": {
-        "UNIPILE_API_KEY": "${UNIPILE_API_KEY}"
-      }
-    },
-    "vapi": {
-      "args": [
-        "/home/elliotbot/clawd/mcp-servers/vapi-mcp/dist/index.js"
-      ],
-      "command": "node",
-      "env": {
-        "VAPI_API_KEY": "${VAPI_API_KEY}"
-      }
-    },
-    "vercel": {
-      "args": [
-        "/home/elliotbot/clawd/mcp-servers/vercel-mcp/dist/index.js"
-      ],
-      "command": "node",
-      "env": {
-        "VERCEL_TOKEN": "${VERCEL_TOKEN}"
-      }
     }
   },
+  "model": "claude-opus-4-8",
   "permissions": {
     "defaultMode": "bypassPermissions"
-  },
-  "hooks": {
-    "Stop": [
-      {
-        "matcher": "",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "python3 /home/elliotbot/clawd/Agency_OS/scripts/orchestrator/stop_hook.py"
-          }
-        ]
-      }
-    ]
-  },
-  "model": "claude-opus-4-8"
+  }
 }

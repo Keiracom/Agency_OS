@@ -19,22 +19,9 @@ NOTE: T3 email and T5 mobile enrichment provided by Leadmagic.
 # Billing & Booking (stripe_billing.py removed — canonical file is stripe.py)
 # The active billing router lives in src/api/routes/billing.py
 
-__all__ = [
-    "ABNClient",
-    "get_abn_client",
-    "SerperClient",
-    "get_serper_client",
-    "VapiClient",
-    "get_vapi_client",
-    "ElevenAgentsClient",
-    "get_elevenagents_client",
-    "ElevenLabsClient",
-    "get_elevenlabs_client",
-    "LeadmagicClient",
-    "get_leadmagic_client",
-    # SiegeWaterfall + get_siege_waterfall removed PR-A #593 (file deleted, replaced by src/pipeline/waterfall_v2.py)
-    # Routers for FastAPI
-    "calendar_booking_router",
-]
+# [repo_split curation] stale dead-BDR __all__ exports removed (ABNClient, SerperClient,
+# VapiClient, ElevenAgents/ElevenLabsClient, LeadmagicClient, calendar_booking_router) —
+# their submodules were archived; no runtime imports remain. Kept: anthropic/redis/supabase.
+__all__: list[str] = []
 
 # [repo_split curation] dead-BDR submodule imports removed (5); kept only: ['anthropic', 'redis', 'supabase']

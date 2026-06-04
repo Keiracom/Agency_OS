@@ -222,3 +222,51 @@ kept-file -> archived-entry references: 0 real (2 matches both false-positive: i
 ```
 **READY for Atlas gate-2 round-4** (final fresh-clone eyeball + hardened sweep). Modulo the 3 flagged
 live-referenced residuals (each with rationale + a ruling), the repo top-level is zero-actionable-dead-BDR.
+
+---
+
+## §10 GATE-2 ROUND-4 — MCP cleanup + WHOLE-TREE all-files dead-BDR asset sweep (2026-06-04)
+Two coupled completeness classes closed in one converging pass.
+
+### (A) Dead-vendor MCP servers + coupled config cleanup (elliot+Atlas ruling)
+Archived 8 dead-BDR MCP server dirs: dataforseo, prospeo, salesforge, telnyx, unipile, vapi
+(lead-gen enrichment/distribution vendors) + vercel-mcp (orphaned — deploys the archived
+frontend) + resend-mcp (BDR email; no live fleet alert sends via it — only cold_auth_proof
+credential-checks the key). SAFETY-FIRST verified: zero python import / subprocess / mcp-bridge
+call to any of the 8 in the kept tree. Coupled config cleanup (no broken refs): removed the 8
+entries from BOTH `.mcp.json` AND `.claude/settings.json`. Kept (fleet/product): supabase, redis,
+prefect, railway, memory, keiramail (gmail-mcp backed), keiradrive. Also tidied stale dead-BDR
+`__all__` in `src/integrations/__init__.py` (ABN/Vapi/ElevenLabs/Leadmagic exports → []).
+
+### (B) WHOLE-TREE all-files dead-BDR asset sweep (closure is .py-only — blind to data/assets)
+Enumerated EVERY tracked file (all types, all depths). Archived 369 dead-BDR data/asset files:
+- `scripts/output/` (33 BDR pipeline dumps: 300a-k/301/302/304/317/335/336/338 + fm_prospects csv).
+- `scripts/` data blobs: fm_raw_profiles.json (4.7M), t2_gmb_results.jsonl, zoominfo_*.json.
+- `src/data/au_suburbs.csv` (885K geo — verified unused by kept code).
+- `docs/marketing/` (entire: landing_page_examples_v0/{v1,v2,v3} v0.dev mockups + headshly pngs +
+  MARKETING_*/LANDING_PAGE_*/FOUNDING_20_CAMPAIGN_SIM/EXPERT_PANEL + assets).
+- BDR docs: docs/architecture/{business,frontend}/CAMPAIGNS+LEADS, flows/OUTREACH, e2e J2_CAMPAIGN,
+  phases/PHASE_12_CAMPAIGN_EXEC, research/ZOOMINFO_AU_COVERAGE, specs/{CAMPAIGN_SKILLS,LEAD_POOL*,
+  database/CAMPAIGNS+LEADS,integrations/GMB_SCRAPER}, audits/OUTREACH_AUDIT.
+- BDR skills: skills/campaign/, skills/leadmagic/. BDR memory: memory/leadmagic-trial/, decisions/031-gmb-replacement.
+Each traced to genuinely dead-BDR (not fleet/product-used) before removal.
+
+### KEEP-GUARDRAILS honoured (NOT archived)
+`.beads/` (11, fleet issue tracker), `supabase/migrations` (206, canonical), `.claude/` (80, hooks/
+config/settings), `.git`, 14 fleet docs, kept MCP/skills, all fleet/product code + config.
+
+### FLAGGED — BDR content under `.claude/` (kept per elliot's "KEEP .claude/" guardrail; ruling)
+`.claude/agents/fix-p2/fix-{10-campaign-fk,11-campaign-performance}.md`, `.claude/skills/
+{enrichment/brightdata-gmb,leadmagic}/SKILL.md` — dead-BDR content but under the guarded `.claude/`
+tree; left in place this pass, surfaced for a ruling (archive BDR skill/agent docs within .claude?).
+Prior standing KEEP flags: lead_quality_anomaly (live timer), spawn_nova (pre-existing fleet dangling).
+
+### VERIFICATION (verbatim, whole-tree)
+```
+closure src/ 238 KEEP/0 REMOVE, EDGE PASS; neg-test (a)238-compile (b)165-resolve (c)zero-ref (d)MAPPER -> PASS
+WHOLE-TREE dead-BDR-asset residual (excl .py/.claude-flagged/guardrails): 0
+.mcp.json + .claude/settings.json: both = [keiradrive,keiramail,memory,prefect,railway,redis,supabase], zero dead-vendor
+full-absent zero-ref (src+scripts): 1 = spawn_nova (flagged); kept->archived live refs: 0
+guardrails intact: .beads 11, supabase/migrations 206, .claude 80
+```
+**READY for Atlas WHOLE-TREE gate-2 round-4** (browse-into-ANY-dir = zero dead-BDR + neg-test 4).

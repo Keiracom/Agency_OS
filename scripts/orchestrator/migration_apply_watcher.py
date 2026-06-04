@@ -39,6 +39,16 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 MIGRATION_APPLY_TIMEOUT_MIN: int = int(os.environ.get("MIGRATION_APPLY_TIMEOUT_MIN", "15"))
 SOURCE_DOC_WATCHER = "migration_apply_watcher"
 
+# Tracking-drift detection (KEI bind-gate follow-up 2026-06-04). The original
+# watcher checks the FUNCTIONAL axis (is the schema change present in
+# information_schema?). It is blind to the TRACKING axis (is the migration
+# recorded in supabase_migrations.schema_migrations?). A migration applied
+# directly via psql is functionally-present-but-untracked — a fresh-DB rebuild
+# from history would LOSE it. This is the gap that let the merge_to_proven
+# bind-gate slip. check_tracking_drift() closes it.
+TRACKING_DRIFT_DEBT_KEY = "governance_debt:migration_tracking_drift"
+MIGRATIONS_DIR = Path(__file__).resolve().parents[2] / "supabase" / "migrations"
+
 # Regex patterns to extract schema targets from SQL migration files.
 # Split into two simpler patterns to keep Sonar S5843 complexity ≤20.
 _ALTER_TABLE_NAME_RE = re.compile(
@@ -306,6 +316,140 @@ def process_migration(
         upsert_debt_row(key, filename=filepath, status="pending")
 
 
+# ── Tracking axis: schema_migrations (tracked) vs the migration files ────────
+
+
+def fetch_tracked_names(conn: psycopg.Connection) -> set[str]:
+    """Return the lowercased `name` set from supabase_migrations.schema_migrations.
+
+    Fail-open: returns an empty set if the tracking table is absent (e.g. a bare
+    test DB) so the watcher never crashes the apply-axis scan over a missing
+    tracking table.
+    """
+    with suppress(psycopg.Error), conn.cursor() as cur:
+        cur.execute("SELECT name FROM supabase_migrations.schema_migrations")
+        return {r[0].strip().lower() for r in cur.fetchall() if r[0]}
+    return set()
+
+
+def list_migration_basenames(migrations_dir: Path = MIGRATIONS_DIR) -> list[str]:
+    """All migration filenames (without the .sql extension), sorted."""
+    return sorted(p.stem for p in migrations_dir.glob("*.sql"))
+
+
+def is_tracked(basename: str, tracked_names: set[str]) -> bool:
+    """True if `basename` is recorded in schema_migrations.
+
+    A file may be tracked under its full name OR a short name (the leading date
+    token dropped), so an exact match OR a suffix match in either direction
+    counts. Conservative on purpose — over-matching avoids false drift alerts.
+    """
+    b = basename.strip().lower()
+    if not b or b in tracked_names:
+        return b in tracked_names
+    return any(b.endswith(t) or t.endswith(b) for t in tracked_names if t)
+
+
+def compute_untracked(basenames: list[str], tracked_names: set[str]) -> list[str]:
+    """Pure: migration basenames not recorded in schema_migrations."""
+    return [b for b in basenames if not is_tracked(b, tracked_names)]
+
+
+def _file_functionally_applied(conn: psycopg.Connection, basename: str) -> bool | None:
+    """True/False if the file's non-idempotent schema targets are present;
+    None when presence can't be determined (function/insert-only/idempotent)."""
+    try:
+        sql = (MIGRATIONS_DIR / f"{basename}.sql").read_text(encoding="utf-8")
+    except OSError:
+        return None
+    non_idem = [t for t in parse_migration_targets(basename, sql) if not t.is_idempotent_create]
+    if not non_idem:
+        return None
+    return all(schema_applied(conn, t) for t in non_idem)
+
+
+def emit_tracking_drift_alert(count: int, total: int, *, dry_run: bool = False) -> None:
+    """Plain-English #ceo alert for functional-but-untracked drift."""
+    msg = (
+        "*Migration Tracking Drift Detected*\n"
+        f"- {count} database migrations are live in the schema but NOT recorded in the migration history.\n"
+        "- A fresh database rebuild from history would lose these changes.\n"
+        f"- Total migration files: {total}.\n"
+        "- Action: reconcile via the tracked migration path so schema_migrations records them.\n"
+        "- This alert clears automatically once tracking is reconciled."
+    )
+    if dry_run:
+        logger.info("dry-run tracking-drift alert: %s", msg)
+        return
+    relay = Path(__file__).resolve().parents[1] / "slack_relay.py"
+    if not relay.exists():
+        logger.warning("slack_relay.py not found — tracking-drift alert logged only: %s", msg)
+        return
+    with suppress(subprocess.SubprocessError, OSError):
+        subprocess.run(["python3", str(relay), "-c", "ceo", msg], check=False, timeout=15)
+
+
+def _upsert_tracking_debt(
+    *, status: str, total: int, untracked: int, applied: int, sample: list[str]
+) -> None:
+    callsign = os.environ.get("CALLSIGN", "system")
+    upsert_ceo_memory_key(
+        callsign,
+        TRACKING_DRIFT_DEBT_KEY,
+        {
+            "source": SOURCE_DOC_WATCHER,
+            "status": status,
+            "total_files": total,
+            "untracked_files": untracked,
+            "functional_but_untracked": applied,
+            "sample": sample,
+            "updated_at": _dt.datetime.now(_dt.UTC).isoformat(),
+        },
+    )
+
+
+def check_tracking_drift(conn: psycopg.Connection, *, dry_run: bool) -> None:
+    """Detect migrations that are functionally present but untracked in
+    schema_migrations (the rebuild-loses-it gap). Single idempotent aggregate
+    debt + #ceo alert; resolves when the confirmed drift clears."""
+    tracked = fetch_tracked_names(conn)
+    if not tracked:
+        logger.info("schema_migrations tracking table empty/absent — skipping tracking-drift scan")
+        return
+    basenames = list_migration_basenames()
+    untracked = compute_untracked(basenames, tracked)
+    applied_untracked = [b for b in untracked if _file_functionally_applied(conn, b) is True]
+    total, n_untracked, n_applied = len(basenames), len(untracked), len(applied_untracked)
+    logger.info(
+        "tracking drift: %d files, %d untracked, %d confirmed functional-but-untracked",
+        total,
+        n_untracked,
+        n_applied,
+    )
+    existing = get_debt_row(conn, TRACKING_DRIFT_DEBT_KEY)
+    if n_applied == 0:
+        if existing and existing.get("status") == "pending":
+            _upsert_tracking_debt(
+                status="resolved", total=total, untracked=n_untracked, applied=0, sample=[]
+            )
+        return
+    if existing and existing.get("status") == "pending":
+        logger.info("tracking-drift debt already pending — no duplicate alert")
+        return
+    logger.warning(
+        "%d functional-but-untracked migrations — firing tracking-drift alert", n_applied
+    )
+    emit_tracking_drift_alert(n_applied, total, dry_run=dry_run)
+    if not dry_run:
+        _upsert_tracking_debt(
+            status="pending",
+            total=total,
+            untracked=n_untracked,
+            applied=n_applied,
+            sample=applied_untracked[:15],
+        )
+
+
 def main(argv: list[str] | None = None) -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dry-run", action="store_true")
@@ -313,19 +457,19 @@ def main(argv: list[str] | None = None) -> None:
 
     now = _dt.datetime.now(_dt.UTC)
     migrations = recent_migration_files()
-    if not migrations:
-        logger.info("no recent migration files found — nothing to do")
-        return
 
     try:
         with psycopg.connect(_dsn(), autocommit=True, prepare_threshold=None) as conn:
             for filepath, commit_ts in migrations:
                 process_migration(conn, filepath, commit_ts, now=now, dry_run=args.dry_run)
+            # Tracking axis runs every pass (not just on recent files) — the
+            # systemic drift is a standing backlog, not a per-file recency event.
+            check_tracking_drift(conn, dry_run=args.dry_run)
     except psycopg.OperationalError as exc:
         logger.exception("DB connection failed: %s", exc)
         sys.exit(1)
 
-    logger.info("migration_apply_watcher: scan complete — %d files checked", len(migrations))
+    logger.info("migration_apply_watcher: scan complete — %d recent files checked", len(migrations))
 
 
 if __name__ == "__main__":

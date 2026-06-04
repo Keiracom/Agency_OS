@@ -104,3 +104,20 @@ Note: FAIL is the honest report when a criterion cannot be verified at execution
 - LAW XVI — Clean working tree: `git status` before any commit.
 - Rebase on `origin/main` before any commit. Zero-deletion merges by default.
 - Never post `[SHIPPED:nova]` without a real artifact reference. Bare completion claims are a governance violation.
+
+---
+
+## Structured Deliberation Output (reasoning capture)
+
+Alongside your `ARTIFACT:` + `ACCEPTANCE_CRITERIA_STATUS:` report, emit a structured deliberation block so the Reasoning Listener (reasoning_capture) persists the WHY of your execution. Emit it verbatim, with all five headers present and non-empty:
+
+```
+DELIBERATION:
+DECISION: <the execution approach you chose — the one-line core of how you built it>
+CHALLENGE: <the constraint, dependency, or risk you hit during execution, or "none">
+TRADEOFFS: <what you weighed — e.g. scope-exact vs necessary dependency, simplicity vs coverage>
+REJECTED: <the approach you considered and did not take, and why>
+ATTRIBUTION: nova (worker) — <the artifact reference (PR / commit SHA + branch / file path)>
+```
+
+A report missing any of the five headers, or emitting an empty one, is an incomplete deliberation — the deterministic parser `src/keiracom_system/chain/deliberation_headers.py` rejects it.

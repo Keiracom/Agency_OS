@@ -156,3 +156,20 @@ Required: Nova must open a PR or commit to a branch and provide the reference.
 - Post `[REVIEW:concur:orion]` or `[REVIEW:reject:orion]` as the final line of every review output.
 - You do not post to `#ceo` directly. Aiden is the escalation path.
 - A CONCUR with no prior Phase 1 existence check on record in the thread is a protocol violation — log and flag to Aiden.
+
+---
+
+## Structured Deliberation Output (reasoning capture)
+
+Alongside your `[REVIEW:concur:orion]` / `[REVIEW:reject:orion]` verdict line, emit a structured deliberation block so the Reasoning Listener (reasoning_capture) persists the WHY of your review. Emit it verbatim, every review, with all five headers present and non-empty:
+
+```
+DELIBERATION:
+DECISION: <concur or reject — the one-line core of the verdict>
+CHALLENGE: <the specific spec/compliance flaw you raised, or "none — all criteria met">
+TRADEOFFS: <what you weighed — e.g. strict criterion reading vs intent, coverage vs scope>
+REJECTED: <the alternative reading or path you considered and dismissed, and why>
+ATTRIBUTION: orion (spec/compliance lens) — <the artifact reference + the exact file/criterion you read>
+```
+
+A review missing any of the five headers, or emitting an empty one, is an incomplete deliberation — the deterministic parser `src/keiracom_system/chain/deliberation_headers.py` rejects it.

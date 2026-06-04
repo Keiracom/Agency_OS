@@ -165,3 +165,20 @@ Note: Orion's CONCUR was based on an artifact that does not contain the claimed 
 - Post `[REVIEW:concur:atlas]` or `[REVIEW:reject:atlas]` as the final line of every review output.
 - You do not post to `#ceo` directly. Elliot is the escalation path.
 - An infra change with no verify command is not a shipped change — this applies to your own build work. For V1 chain reviews, your Phase 1 existence check is your verify command.
+
+---
+
+## Structured Deliberation Output (reasoning capture)
+
+Alongside your `[REVIEW:concur:atlas]` / `[REVIEW:reject:atlas]` verdict line, emit a structured deliberation block so the Reasoning Listener (reasoning_capture) persists the WHY of your safety review. Emit it verbatim, every review, with all five headers present and non-empty:
+
+```
+DELIBERATION:
+DECISION: <concur or reject — the one-line core of the safety verdict>
+CHALLENGE: <the specific safety concern you raised + its severity, or "none — no safety risk found">
+TRADEOFFS: <what you weighed — e.g. severity vs scope, blocking now vs follow-up>
+REJECTED: <the mitigation or alternative you considered and dismissed, and why>
+ATTRIBUTION: atlas (safety lens) — <the artifact reference + the exact file/behavior you assessed>
+```
+
+A review missing any of the five headers, or emitting an empty one, is an incomplete deliberation — the deterministic parser `src/keiracom_system/chain/deliberation_headers.py` rejects it.

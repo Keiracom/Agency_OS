@@ -270,3 +270,26 @@ full-absent zero-ref (src+scripts): 1 = spawn_nova (flagged); kept->archived liv
 guardrails intact: .beads 11, supabase/migrations 206, .claude 80
 ```
 **READY for Atlas WHOLE-TREE gate-2 round-4** (browse-into-ANY-dir = zero dead-BDR + neg-test 4).
+
+---
+
+## §11 METHOD SWITCH — allowlist-KEEP / archive-REST (terminal) — DRAFT, application HELD
+Atlas+elliot: the category/denylist sweep is structurally non-converging (always a next
+uncovered category — docs/specs, skills, frontend-docs, even a non-import-reached BDR .py
+survived). INVERTED to allowlist: KEEP-SET = curated .py (src closure 238 + scripts seeds/
+fleet-ops + tests-of-kept + tooling) UNION explicit fleet/product non-.py allowlist;
+ARCHIVE = everything not in keep-set. Inverse risk (wrongly archiving fleet) mitigated:
+uncertain → FLAG bucket (kept, surfaced), never silently archived.
+
+Tool: `scripts/repo_split/allowlist_classify.py` (deterministic, non-destructive — writes
+`allowlist_archive.txt` + `allowlist_flag.txt`). First-cut over 2851 tracked files:
+- **KEEP 2056** (all curated .py + fleet dirs + fleet-doc allowlist + fleet skills).
+- **ARCHIVE 298** (high-confidence dead-BDR): 143 tests importing removed modules, 111
+  BDR-signal paths (distribution/dashboard/CIS/smartlead/icp docs), 35 BDR tests, 6
+  non-allowlist skills (pipedrive/smartlead/hubspot/crm/seek/conversion), 3 dead .claude skills.
+- **FLAG 497** (kept pending ruling): 276 docs/ uncertain, 220 memory/+other uncertain, 1 src-py.
+
+APPLICATION HELD pending HoO confirmation of the method switch. Next on confirm: refine the
+fleet-doc + memory allowlist to shrink FLAG to genuinely-uncertain, then apply archive-rest +
+neg-test (kept .py boot) + a NOT-ARCHIVED-FLEET/PRODUCT inverse check + Atlas terminal gate-2
+(BOTH directions: zero dead-BDR AND zero fleet/product wrongly archived).
